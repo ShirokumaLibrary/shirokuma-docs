@@ -7,8 +7,11 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import * as ts from "typescript";
+import type * as TypeScript from "typescript";
 import * as glob from "glob";
+
+// typescript は重い依存のため、コマンド実行時のみ動的にロードする
+let ts: typeof TypeScript;
 import { loadConfig, type ShirokumaConfig } from "../utils/config.js";
 import { inferAppFromPath } from "../utils/app-inference.js";
 
@@ -160,7 +163,7 @@ function parseFileHeaderAnnotations(sourceCode: string): ApiToolAnnotation {
 /**
  * Get leading JSDoc comment for a node
  */
-function getLeadingJsDoc(node: ts.Node, sourceFile: ts.SourceFile): string | null {
+function getLeadingJsDoc(node: TypeScript.Node, sourceFile: TypeScript.SourceFile): string | null {
   const fullText = sourceFile.getFullText();
   const nodeStart = node.getFullStart();
 
@@ -191,7 +194,7 @@ function parseApiToolsFromSource(filePath: string, sourceCode: string): ApiToolD
   );
 
   // Find Tool[] array literals
-  function visit(node: ts.Node) {
+  function visit(node: TypeScript.Node) {
     // Look for variable declarations with Tool[] type
     if (ts.isVariableDeclaration(node) && node.initializer) {
       if (ts.isArrayLiteralExpression(node.initializer)) {
@@ -233,8 +236,8 @@ function parseApiToolsFromSource(filePath: string, sourceCode: string): ApiToolD
  * Parse a single tool object literal
  */
 function parseToolObject(
-  obj: ts.ObjectLiteralExpression,
-  sourceFile: ts.SourceFile,
+  obj: TypeScript.ObjectLiteralExpression,
+  sourceFile: TypeScript.SourceFile,
   filePath: string,
   app: string,
   category: string
@@ -311,8 +314,8 @@ function parseToolObject(
  */
 function parseParamObject(
   name: string,
-  obj: ts.ObjectLiteralExpression,
-  sourceFile: ts.SourceFile
+  obj: TypeScript.ObjectLiteralExpression,
+  sourceFile: TypeScript.SourceFile
 ): ApiToolParam {
   let type = "string";
   let description = "";
@@ -833,6 +836,10 @@ function parseTestsForTargets(projectPath: string): ApiToolTest[] {
  * Run API Tools documentation generator
  */
 export async function runApiTools(options: ApiToolsOptions): Promise<void> {
+  // typescript を動的にロード（グローバルインストール時に起動を妨げないため）
+  const tsModule = await import("typescript");
+  ts = (tsModule as Record<string, unknown>).default as typeof TypeScript ?? tsModule;
+
   const { projectPath, configPath } = options;
 
   // Load config (optional, MCP tools don't need much config)
