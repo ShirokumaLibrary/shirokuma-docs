@@ -601,13 +601,17 @@ async function updateExternalProject(
     logger.warn("Marketplace registration failed, proceeding with bundled fallback");
   }
 
+  // 言語設定を確認（#495: キャッシュ登録とルール展開の両方で使用）
+  const languageSetting = getLanguageSetting(projectPath);
+
   // claude plugin update でキャッシュ更新
   if (!options.dryRun && marketplaceOk) {
     logger.info(T("updatingGlobalCache"));
 
     const registryIds = [
-      PLUGIN_REGISTRY_ID,
-      ...(hasJaPlugin() ? [PLUGIN_REGISTRY_ID_JA] : []),
+      ...(languageSetting === "japanese" && hasJaPlugin()
+        ? [PLUGIN_REGISTRY_ID_JA]
+        : [PLUGIN_REGISTRY_ID]),
       ...(hasHooksPlugin() ? [PLUGIN_REGISTRY_ID_HOOKS] : []),
     ];
 
@@ -622,7 +626,6 @@ async function updateExternalProject(
   }
 
   // ルール展開（キャッシュ → bundled フォールバック）
-  const languageSetting = getLanguageSetting(projectPath);
   const useJaRules = languageSetting === "japanese" && hasJaPlugin();
 
   if (useJaRules) {

@@ -101,7 +101,7 @@ export async function lintAnnotationsCommand(
     .lintAnnotations ?? defaultConfig;
 
   if (!lintConfig.enabled) {
-    logger.warn("lint-annotations is not enabled in config");
+    logger.warn("lint-annotations is not enabled in config. Add 'lintAnnotations: { enabled: true }' to shirokuma-docs.config.yaml");
     return;
   }
 

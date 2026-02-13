@@ -54,6 +54,7 @@ A new session is required after cache update for skills to appear.
 | `plugin update` says "already at latest" | Same version number | Use uninstall + install instead |
 | Skill works in one project but not another | Plugin scope mismatch | Check `--scope` (user vs project) |
 | `.claude/plugins/` directory still exists | Legacy installation | `shirokuma-docs update` will auto-cleanup |
+| `disable` / `uninstall` scope mismatch error | Plugin installed with `--scope project` | Use `--scope project` explicitly, or omit `--scope` for auto-detect |
 
 ## Rules
 

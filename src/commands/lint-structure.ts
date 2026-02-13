@@ -82,7 +82,7 @@ export async function lintStructureCommand(
     | undefined;
 
   if (!lintStructureConfig?.enabled) {
-    logger.warn("lint-structure is not enabled in config");
+    logger.warn("lint-structure is not enabled in config. Add 'lintStructure: { enabled: true }' to shirokuma-docs.config.yaml");
     return;
   }
 

@@ -58,7 +58,7 @@ export async function lintDocsCommand(options: LintDocsOptions): Promise<void> {
   const lintDocsConfig = config.lintDocs as LintDocsConfig | undefined;
 
   if (!lintDocsConfig?.enabled) {
-    logger.warn("lint-docs is not enabled in config");
+    logger.warn("lint-docs is not enabled in config. Add 'lintDocs: { enabled: true }' to shirokuma-docs.config.yaml");
     return;
   }
 

@@ -164,7 +164,7 @@ install_package() {
 
   # Install the package (capture output for filtering)
   local npm_output
-  if ! npm_output=$(npm install --prefix "$INSTALL_DIR" "$PACKAGE_NAME" 2>&1); then
+  if ! npm_output=$(npm install --prefer-online --prefix "$INSTALL_DIR" "$PACKAGE_NAME" 2>&1); then
     error "npm install failed:"
     echo "$npm_output" | grep -v '^npm WARN\|^npm notice' | head -20
     exit 1

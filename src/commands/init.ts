@@ -19,7 +19,7 @@
 
 import { resolve, dirname } from "node:path";
 import { existsSync, writeFileSync, readFileSync, mkdirSync, rmSync } from "node:fs";
-import { stringify as yamlStringify } from "yaml";
+import { Document as YamlDocument, type YAMLMap, type Scalar } from "yaml";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import type { ShirokumaConfig } from "../utils/config.js";
@@ -43,8 +43,6 @@ import {
   DEPLOYED_RULES_DIR_JA,
   PLUGIN_NAME,
   PLUGIN_NAME_JA,
-  PLUGIN_NAME_HOOKS,
-  PLUGIN_REGISTRY_ID,
   PLUGIN_REGISTRY_ID_JA,
   PLUGIN_REGISTRY_ID_HOOKS,
 } from "../utils/skills-repo.js";
@@ -107,7 +105,7 @@ const defaultConfigTemplate: ShirokumaConfig = {
   project: {
     name: "Project Name",
     description: "プロジェクト説明",
-    url: "https://example.local.test",
+    url: "",
   },
   output: {
     dir: "./docs",
@@ -150,23 +148,19 @@ const defaultConfigTemplate: ShirokumaConfig = {
   portal: {
     title: "ドキュメントポータル",
     links: [],
-    devTools: [
-      {
-        name: "アプリケーション",
-        url: "https://example.local.test",
-        description: "メインアプリ",
-      },
-      {
-        name: "Mailpit",
-        url: "https://mailpit.local.test",
-        description: "メールテスト",
-      },
-      {
-        name: "Adminer",
-        url: "https://adminer.local.test",
-        description: "データベースGUI",
-      },
-    ],
+    devTools: [],
+  },
+  lintDocs: {
+    enabled: false,
+  },
+  lintCode: {
+    enabled: false,
+  },
+  lintStructure: {
+    enabled: false,
+  },
+  lintAnnotations: {
+    enabled: false,
   },
   adr: {
     enabled: true,
@@ -175,6 +169,43 @@ const defaultConfigTemplate: ShirokumaConfig = {
     language: "ja",
   },
 };
+
+/** セクションコメント定義 */
+const sectionComments: Record<string, string> = {
+  typedoc: "TypeDoc API ドキュメント生成対象。自分のプロジェクトのソースパスに変更してください。",
+  schema: "Drizzle ORM スキーマの ER 図生成。Drizzle を使わない場合はセクションごと削除してください。",
+  deps: "依存関係グラフ生成。include に分析対象のパスを指定してください。",
+  testCases: "テストケース抽出設定。Jest / Playwright の設定パスを指定してください。",
+  portal: "ドキュメントポータル設定。devTools にローカル開発ツールの URL を追加できます。",
+  lintDocs: "ドキュメント構造検証。有効にするには enabled: true に変更してください。",
+  lintCode: "コードアノテーション検証。有効にするには enabled: true に変更してください。",
+  lintStructure: "プロジェクト構造検証。有効にするには enabled: true に変更してください。",
+  lintAnnotations: "アノテーション整合性検証。有効にするには enabled: true に変更してください。",
+  adr: "ADR (Architecture Decision Records) 設定。GitHub Discussions 連携。",
+};
+
+/**
+ * YAML Document API を使い、セクションコメント付きの config を生成する
+ */
+function buildConfigYaml(config: ShirokumaConfig): string {
+  const doc = new YamlDocument(config);
+
+  doc.commentBefore = " shirokuma-docs 設定ファイル\n 詳細: https://github.com/ShirokumaLibrary/shirokuma-docs";
+
+  // 各セクションにコメントを付与
+  const contents = doc.contents as YAMLMap | null;
+  if (contents?.items) {
+    for (const item of contents.items) {
+      const keyNode = item.key as Scalar;
+      const key = String(keyNode.value);
+      if (sectionComments[key]) {
+        keyNode.commentBefore = ` ${sectionComments[key]}`;
+      }
+    }
+  }
+
+  return doc.toString({ indent: 2, lineWidth: 0 }) + "\n";
+}
 
 /**
  * init command handler
@@ -212,18 +243,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
   if (shouldCreateConfig) {
     logger.info(t("commands.init.initializingConfig", { path: configPath }));
 
-    const yamlContent = yamlStringify(defaultConfigTemplate, {
-      indent: 2,
-      lineWidth: 0,
-    });
-
-    const header = `# shirokuma-docs 設定ファイル
-# 詳細: https://github.com/your-org/shirokuma-docs
-
-`;
+    const yamlContent = buildConfigYaml(defaultConfigTemplate);
 
     try {
-      writeFileSync(configPath, header + yamlContent, "utf-8");
+      writeFileSync(configPath, yamlContent, "utf-8");
       logger.success(t("commands.init.success", { path: configPath }));
       result.config_created = true;
     } catch (error) {
@@ -247,28 +270,34 @@ export async function initCommand(options: InitOptions): Promise<void> {
 
       const isExternal = !isSelfRepo(projectPath);
 
+      // 言語設定を確認（--lang オプション優先、なければ既存 settings.json）
+      const effectiveLang = options.lang ? LANG_MAP[options.lang] : getLanguageSetting(projectPath);
+
       // 外部プロジェクト: marketplace 登録 + キャッシュインストール
       if (isExternal && isClaudeCliAvailable()) {
         logger.info("\n" + t("commands.init.registeringCache"));
         const marketplaceOk = ensureMarketplace();
         if (marketplaceOk) {
-          const cacheResult = registerPluginCache(projectPath);
-          if (cacheResult.success) {
-            logger.success(t("commands.init.cacheRegistered"));
-            result.cache_registered = true;
-          } else {
-            logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
-          }
-
-          // JA プラグイン
-          if (hasJaPlugin()) {
+          // 言語に応じたスキルプラグインを登録（#495）
+          if (effectiveLang === "japanese" && hasJaPlugin()) {
             const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
             if (jaCacheResult.success) {
               logger.success(t("commands.init.jaCacheRegistered"));
+              result.cache_registered = true;
+            } else {
+              logger.warn(t("commands.init.cacheFailed", { message: jaCacheResult.message ?? "" }));
+            }
+          } else {
+            const cacheResult = registerPluginCache(projectPath);
+            if (cacheResult.success) {
+              logger.success(t("commands.init.cacheRegistered"));
+              result.cache_registered = true;
+            } else {
+              logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
             }
           }
 
-          // Hooks プラグイン
+          // Hooks プラグイン: 言語に関わらず常に登録
           if (hasHooksPlugin()) {
             const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
             if (hooksCacheResult.success) {
@@ -290,8 +319,6 @@ export async function initCommand(options: InitOptions): Promise<void> {
       // Deploy rules to .claude/rules/shirokuma/ (#254: 言語設定に基づき単一ディレクトリに統一)
       logger.info("\n" + t("commands.init.deployingRules"));
 
-      // 言語設定を確認（--lang オプション優先、なければ既存 settings.json）
-      const effectiveLang = options.lang ? LANG_MAP[options.lang] : getLanguageSetting(projectPath);
       const useJaRules = effectiveLang === "japanese" && hasJaPlugin();
 
       let deployedNames: string[];

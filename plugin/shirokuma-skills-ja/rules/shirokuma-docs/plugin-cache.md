@@ -54,6 +54,7 @@ claude plugin install shirokuma-skills-ja@shirokuma-library --scope project
 | `plugin update` が「already at latest」と表示 | バージョン番号が同じ | uninstall + install を使用 |
 | あるプロジェクトでスキルが動くが別では動かない | プラグインスコープの不一致 | `--scope`（user vs project）を確認 |
 | `.claude/plugins/` ディレクトリがまだ存在する | レガシーインストール | `shirokuma-docs update` で自動クリーンアップ |
+| `disable` / `uninstall` でスコープ不一致エラー | プラグインが `--scope project` でインストール済み | `--scope project` を指定、または `--scope` を省略して auto-detect |
 
 ## ルール
 

@@ -62,7 +62,7 @@ export async function lintCodeCommand(options: LintCodeOptions): Promise<void> {
   const lintCodeConfig = config.lintCode as LintCodeConfig | undefined;
 
   if (!lintCodeConfig?.enabled) {
-    logger.warn("lint-code is not enabled in config");
+    logger.warn("lint-code is not enabled in config. Add 'lintCode: { enabled: true }' to shirokuma-docs.config.yaml");
     return;
   }
 

@@ -308,7 +308,7 @@ export async function buildNextjsPortal(options: NextjsPortalOptions): Promise<v
     // 4. Next.js ビルドを実行
     const portalFormat = options.format || "card";
     logger.info(`Next.js ビルドを実行中... (format: ${portalFormat})`);
-    const buildResult = spawnSync("npx", ["next", "build"], {
+    const buildResult = spawnSync("npx", ["next", "build", "--no-lint"], {
       cwd: tmpBuildDir,
       stdio: options.verbose ? "inherit" : "pipe",
       env: {

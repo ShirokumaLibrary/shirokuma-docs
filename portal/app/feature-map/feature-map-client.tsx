@@ -162,8 +162,8 @@ function getRelatedCount(
       return (action.params?.length || 0) + (action.dbTables?.length || 0);
     }
     case "modules": {
-      const module = item as ModuleItem;
-      return (module.usedInScreens?.length || 0) + (module.usedInActions?.length || 0);
+      const mod = item as ModuleItem;
+      return (mod.usedInScreens?.length || 0) + (mod.usedInActions?.length || 0);
     }
     case "tables": {
       const table = item as TableItem;
