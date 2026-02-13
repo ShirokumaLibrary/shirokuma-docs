@@ -1,0 +1,196 @@
+// lib/actions/{{name}}s/mutations.ts
+"use server"
+
+/**
+ * {{Name}} Mutation Functions
+ *
+ * Write operations (create, update, delete) for {{name}}s.
+ */
+
+import { revalidatePath } from "next/cache"
+import { headers } from "next/headers"
+import { db, {{name}}s } from "@repo/database"
+import { eq } from "drizzle-orm"
+import { verifyAdmin } from "@/lib/auth"
+import { {{Name}}Schema, type ActionResult } from "./types"
+
+// ============================================================================
+// Create
+// ============================================================================
+
+/**
+ * Create a new {{name}}
+ */
+export async function create{{Name}}(
+  formData: FormData
+): Promise<ActionResult<{ id: string }>> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  const validated = {{Name}}Schema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description") || null,
+  })
+
+  if (!validated.success) {
+    return { success: false, error: validated.error.errors[0].message }
+  }
+
+  try {
+    const [result] = await db
+      .insert({{name}}s)
+      .values({
+        name: validated.data.name,
+        description: validated.data.description,
+      })
+      .returning({ id: {{name}}s.id })
+
+    revalidatePath("/{{name}}s")
+    return { success: true, data: { id: result.id } }
+  } catch (error) {
+    console.error("Failed to create {{name}}:", error)
+    return { success: false, error: "Failed to create {{name}}" }
+  }
+}
+
+// ============================================================================
+// Update
+// ============================================================================
+
+/**
+ * Update an existing {{name}}
+ */
+export async function update{{Name}}(
+  id: string,
+  formData: FormData
+): Promise<ActionResult> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  const validated = {{Name}}Schema.safeParse({
+    name: formData.get("name"),
+    description: formData.get("description") || null,
+  })
+
+  if (!validated.success) {
+    return { success: false, error: validated.error.errors[0].message }
+  }
+
+  try {
+    const [result] = await db
+      .update({{name}}s)
+      .set({
+        name: validated.data.name,
+        description: validated.data.description,
+        updatedAt: new Date(),
+      })
+      .where(eq({{name}}s.id, id))
+      .returning({ id: {{name}}s.id })
+
+    if (!result) {
+      return { success: false, error: "{{Name}} not found" }
+    }
+
+    revalidatePath("/{{name}}s")
+    revalidatePath(`/{{name}}s/${id}/edit`)
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to update {{name}}:", error)
+    return { success: false, error: "Failed to update {{name}}" }
+  }
+}
+
+// ============================================================================
+// Delete
+// ============================================================================
+
+/**
+ * Delete a {{name}}
+ */
+export async function delete{{Name}}(id: string): Promise<ActionResult> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  try {
+    const [result] = await db
+      .delete({{name}}s)
+      .where(eq({{name}}s.id, id))
+      .returning({ id: {{name}}s.id })
+
+    if (!result) {
+      return { success: false, error: "{{Name}} not found" }
+    }
+
+    revalidatePath("/{{name}}s")
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to delete {{name}}:", error)
+    return { success: false, error: "Failed to delete {{name}}" }
+  }
+}
+
+// ============================================================================
+// Soft Delete (if applicable)
+// ============================================================================
+
+/**
+ * Soft delete a {{name}} (set deletedAt)
+ */
+export async function softDelete{{Name}}(id: string): Promise<ActionResult> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  try {
+    const [result] = await db
+      .update({{name}}s)
+      .set({ deletedAt: new Date() })
+      .where(eq({{name}}s.id, id))
+      .returning({ id: {{name}}s.id })
+
+    if (!result) {
+      return { success: false, error: "{{Name}} not found" }
+    }
+
+    revalidatePath("/{{name}}s")
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to delete {{name}}:", error)
+    return { success: false, error: "Failed to delete {{name}}" }
+  }
+}
+
+/**
+ * Restore a soft-deleted {{name}}
+ */
+export async function restore{{Name}}(id: string): Promise<ActionResult> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    return { success: false, error: "Unauthorized" }
+  }
+
+  try {
+    const [result] = await db
+      .update({{name}}s)
+      .set({ deletedAt: null })
+      .where(eq({{name}}s.id, id))
+      .returning({ id: {{name}}s.id })
+
+    if (!result) {
+      return { success: false, error: "{{Name}} not found" }
+    }
+
+    revalidatePath("/{{name}}s")
+    return { success: true }
+  } catch (error) {
+    console.error("Failed to restore {{name}}:", error)
+    return { success: false, error: "Failed to restore {{name}}" }
+  }
+}

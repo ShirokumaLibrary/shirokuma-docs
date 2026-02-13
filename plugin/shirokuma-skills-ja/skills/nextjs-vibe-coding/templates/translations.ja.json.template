@@ -1,0 +1,35 @@
+{
+  "{{name}}s": {
+    "title": "{{Name}}管理",
+    "description": "{{name}}を管理（全{total}件）",
+    "listTitle": "{{Name}}一覧",
+    "listDescription": "すべての{{name}}を表示・管理",
+    "new{{Name}}": "新規{{Name}}",
+    "new{{Name}}Title": "新規{{Name}}",
+    "new{{Name}}Description": "新しい{{name}}を作成",
+    "edit{{Name}}": "{{Name}}を編集",
+    "edit{{Name}}Description": "「{name}」を編集",
+    "delete{{Name}}": "{{Name}}を削除",
+    "deleteConfirm": "この{{name}}を削除しますか？",
+    "deleteWarning": "「{name}」を削除します。この操作は元に戻せません。",
+    "no{{Name}}s": "{{name}}がありません",
+    "createFirst": "最初の{{name}}を作成",
+    "table": {
+      "name": "名前",
+      "description": "説明",
+      "createdAt": "作成日",
+      "actions": "操作"
+    },
+    "form": {
+      "info": "{{Name}}情報",
+      "createDescription": "新しい{{name}}の詳細を入力",
+      "editDescription": "{{name}}の詳細を更新",
+      "name": "名前",
+      "namePlaceholder": "{{name}}名を入力",
+      "description": "説明",
+      "descriptionPlaceholder": "説明（任意）",
+      "descriptionHelp": "この{{name}}の簡単な説明",
+      "saved": "保存しました"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+// messages/{{locale}}/index.ts
+/**
+ * {{Locale}} Messages - Aggregator
+ *
+ * Combines all namespace JSON files into a single messages object.
+ * Use this pattern when messages file exceeds 300 lines or 200+ keys.
+ */
+
+import common from './common.json'
+import auth from './auth.json'
+import content from './content.json'
+import errors from './errors.json'
+import validation from './validation.json'
+// Add more namespaces as needed
+// import {{name}}s from './{{name}}s.json'
+
+const messages = {
+  common,
+  auth,
+  content,
+  errors,
+  validation,
+  // {{name}}s,
+}
+
+export default messages

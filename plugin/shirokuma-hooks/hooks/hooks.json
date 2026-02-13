@@ -1,0 +1,24 @@
+{
+  "description": "Safety hooks and session backup. Blocks destructive commands and auto-saves session state before context compaction.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/block-destructive-commands.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "type": "command",
+        "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/scripts/backup-handover.sh",
+        "timeout": 10
+      }
+    ]
+  }
+}

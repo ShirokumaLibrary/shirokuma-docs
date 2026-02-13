@@ -1,0 +1,57 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## {{t "handovers.header.title"}}
+        {{t "handovers.header.description"}}
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: {{t "handovers.summary.label"}}
+      description: {{t "handovers.summary.description"}}
+      placeholder: |
+        {{ti "handovers.summary.placeholder" 8}}
+    validations:
+      required: true
+
+  - type: textarea
+    id: related-items
+    attributes:
+      label: {{t "handovers.relatedItems.label"}}
+      description: {{t "handovers.relatedItems.description"}}
+      placeholder: |
+        {{ti "handovers.relatedItems.placeholder" 8}}
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: {{t "handovers.decisions.label"}}
+      description: {{t "handovers.decisions.description"}}
+      placeholder: |
+        {{ti "handovers.decisions.placeholder" 8}}
+
+  - type: textarea
+    id: blockers
+    attributes:
+      label: {{t "handovers.blockers.label"}}
+      description: {{t "handovers.blockers.description"}}
+      value: {{t "handovers.blockers.default"}}
+
+  - type: textarea
+    id: next-steps
+    attributes:
+      label: {{t "handovers.nextSteps.label"}}
+      description: {{t "handovers.nextSteps.description"}}
+      placeholder: |
+        {{ti "handovers.nextSteps.placeholder" 8}}
+
+  - type: textarea
+    id: commits
+    attributes:
+      label: {{t "handovers.commits.label"}}
+      description: {{t "handovers.commits.description"}}
+      placeholder: |
+        {{ti "handovers.commits.placeholder" 8}}

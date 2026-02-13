@@ -1,0 +1,62 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Session Handover
+        Record information for AI session continuity.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What was accomplished in this session
+      placeholder: |
+        - Completed Issue #XX
+        - Implemented feature YY
+    validations:
+      required: true
+
+  - type: textarea
+    id: related-items
+    attributes:
+      label: Related Items
+      description: Related Issues/Discussions and their status
+      placeholder: |
+        - Issue #19: execSync → spawnSync → Done
+        - Issue #20: zod-schema fix → Done
+
+  - type: textarea
+    id: decisions
+    attributes:
+      label: Key Decisions
+      description: Important decisions made
+      placeholder: |
+        1. Adopted Table JSON format
+        2. Using Discussions for knowledge management
+
+  - type: textarea
+    id: blockers
+    attributes:
+      label: Blockers
+      description: Current blockers (or "None")
+      value: None
+
+  - type: textarea
+    id: next-steps
+    attributes:
+      label: Next Steps
+      description: What to work on in the next session
+      placeholder: |
+        - [ ] Start Issue #XX
+        - [ ] Research YY
+
+  - type: textarea
+    id: commits
+    attributes:
+      label: Commits
+      description: Commits made in this session
+      placeholder: |
+        - `abc1234` feat: add feature X
+        - `def5678` fix: resolve issue Y

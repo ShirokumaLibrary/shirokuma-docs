@@ -1,0 +1,93 @@
+---
+name: starting-session
+description: 作業セッションを開始し、プロジェクトの状態と前回の引き継ぎを表示します。「セッション開始」「作業開始」「start session」「begin work」で起動。
+allowed-tools: Bash, Read, Grep, AskUserQuestion
+---
+
+# セッション開始
+
+新しい作業セッションを開始し、プロジェクトのコンテキストを表示する。
+
+## ワークフロー
+
+### ステップ 1: セッションコンテキスト取得
+
+```bash
+shirokuma-docs session start
+```
+
+返される JSON: `repository`, `git`（ブランチ、未コミット変更）, `lastHandover`, `backups`（PreCompact バックアップ）, `issues`（アクティブ Issue + フィールド）, `total_issues`
+
+### ステップ 1b: バックアップ検出
+
+`backups` フィールドが存在する場合、前回のセッションが中断された可能性がある。
+バックアップ内容（ブランチ、未コミット変更、直近のコミット）をユーザーに通知し、コンテキスト復元の参考にする。
+
+### ステップ 2: コンテキスト表示
+
+```markdown
+## セッション開始
+
+**リポジトリ:** {repository}
+**時刻:** {current time}
+**ブランチ:** {currentBranch} {hasUncommittedChanges ? "(未コミットあり)" : "(クリーン)"}
+
+### 前回の引き継ぎ
+{lastHandover.title or "なし"}
+- サマリー: {Summary セクション}
+- 次のステップ: {Next Steps セクション}
+
+### アクティブな Issue
+{ステータスでグループ化: 作業中 → 準備完了 → バックログ → アイスボックス}
+```
+
+未コミット変更がある場合、ユーザーに通知。
+
+### ステップ 3: 方向性の確認
+
+AskUserQuestion で上位アイテムを選択肢として提示（作業中 > 準備完了 > バックログ、最大4オプション）。
+
+## アイテム選択時
+
+Issue のステータスに基づいて適切なスキルにルーティングする。
+
+### ステータスベースルーティング
+
+| Issue ステータス | 委任先 | 理由 |
+|-----------------|--------|------|
+| Backlog | `planning-on-issue` | 計画が必要 |
+| Planning | `planning-on-issue` | 計画策定中 |
+| Spec Review | `working-on-issue` | 暗黙承認で実装開始 |
+| In Progress | `working-on-issue` | 作業再開 |
+| Review / Pending | `working-on-issue` | 作業続行 |
+| (その他 / ステータスなし) | `working-on-issue` | デフォルト |
+
+### スキル起動
+
+```
+Skill: {ルーティングテーブルに基づくスキル名}
+Args: #{number}
+```
+
+`working-on-issue` がステータス更新、ブランチ作成、計画確認、スキル選択・実行、作業後フローを一貫して処理する。
+`planning-on-issue` が計画策定とステータス遷移を処理する。
+`starting-session` ではステータス更新やブランチ作成を行わない。
+
+## エッジケース
+
+| 状況 | 対応 |
+|------|------|
+| `shirokuma-docs` 未インストール | `pnpm install` を案内 |
+| `gh` 未インストール | `brew install gh` または `sudo apt install gh` を案内 |
+| GitHub 未ログイン | `gh auth login` を案内 |
+| Issue がゼロ | 「アクティブな Issue なし」と表示 |
+| 引き継ぎがない | 「前回の引き継ぎ: なし」と表示 |
+| git pull 失敗 | 警告して続行（ローカルのベースブランチを使用） |
+
+## 注意事項
+
+- セッションヘッダーに現在時刻を表示
+- 引き継ぎから Summary / Next Steps をパース
+- 優先度順に表示
+- アイテム選択後はステータスベースルーティングに従い `working-on-issue` または `planning-on-issue` に委任（ステータス更新・ブランチ作成を重複しない）
+- 直接 `gh` コマンドを使わない（`shirokuma-docs session start` を使用）

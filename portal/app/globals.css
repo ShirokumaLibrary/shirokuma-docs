@@ -1,0 +1,205 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Colors - Dark theme matching existing portal */
+  --color-background: #0a0a0a;
+  --color-foreground: #fafafa;
+  --color-card: #141414;
+  --color-card-foreground: #fafafa;
+  --color-popover: #141414;
+  --color-popover-foreground: #fafafa;
+  --color-primary: #3b82f6;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fafafa;
+  --color-muted: #1e1e1e;
+  --color-muted-foreground: #a1a1aa;
+  --color-accent: #262626;
+  --color-accent-foreground: #fafafa;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #262626;
+  --color-input: #262626;
+  --color-ring: #3b82f6;
+
+  /* Accent colors */
+  --color-accent-blue: #3b82f6;
+  --color-accent-green: #22c55e;
+  --color-accent-purple: #a855f7;
+  --color-accent-orange: #f97316;
+  --color-accent-pink: #ec4899;
+  --color-accent-yellow: #eab308;
+  --color-accent-cyan: #06b6d4;
+
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Code block styling */
+pre {
+  background: var(--color-muted) !important;
+  border-radius: var(--radius);
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+}
+
+/* Highlight.js theme - Dark mode optimized */
+.hljs {
+  background: var(--color-muted) !important;
+  color: #e6e6e6;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-addition {
+  color: #c678dd;
+}
+
+.hljs-string,
+.hljs-meta .hljs-string,
+.hljs-regexp,
+.hljs-addition {
+  color: #98c379;
+}
+
+.hljs-number,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: #d19a66;
+}
+
+.hljs-built_in,
+.hljs-type,
+.hljs-class .hljs-title {
+  color: #e6c07b;
+}
+
+.hljs-attr,
+.hljs-variable,
+.hljs-template-variable {
+  color: #61afef;
+}
+
+.hljs-function,
+.hljs-title {
+  color: #61afef;
+}
+
+.hljs-params {
+  color: #abb2bf;
+}
+
+.hljs-literal {
+  color: #56b6c2;
+}
+
+.hljs-symbol {
+  color: #61aeee;
+}
+
+.hljs-meta {
+  color: #abb2bf;
+}
+
+.hljs-deletion {
+  color: #e06c75;
+}
+
+/* Mermaid diagram styling */
+.mermaid-container svg {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Mermaid clickable nodes */
+.mermaid svg .node.clickable {
+  cursor: pointer;
+}
+
+.mermaid svg .node.clickable:hover rect,
+.mermaid svg .node.clickable:hover polygon,
+.mermaid svg .node.clickable:hover circle,
+.mermaid svg .node.clickable:hover ellipse {
+  stroke: var(--color-primary) !important;
+  stroke-width: 2px !important;
+  filter: drop-shadow(0 0 4px var(--color-primary));
+}
+
+.mermaid svg .node.clickable:hover .nodeLabel {
+  fill: var(--color-primary) !important;
+}
+
+/* Mermaid link styling in diagrams */
+.mermaid svg a {
+  text-decoration: none;
+}
+
+.mermaid svg a:hover text {
+  fill: var(--color-primary) !important;
+  text-decoration: underline;
+}
+
+/* React Flow Controls - Dark mode styling */
+.react-flow__controls {
+  background: #141414 !important;
+  border: 1px solid #262626 !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+}
+
+.react-flow__controls-button {
+  background: #141414 !important;
+  border: none !important;
+  border-bottom: 1px solid #262626 !important;
+  width: 28px !important;
+  height: 28px !important;
+  padding: 6px !important;
+}
+
+.react-flow__controls-button:last-child {
+  border-bottom: none !important;
+}
+
+.react-flow__controls-button:hover {
+  background: #262626 !important;
+}
+
+.react-flow__controls-button svg {
+  fill: #fafafa !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.react-flow__controls-button:hover svg {
+  fill: #3b82f6 !important;
+}
+
+.react-flow__controls-button:disabled svg {
+  fill: #a1a1aa !important;
+  opacity: 0.5;
+}

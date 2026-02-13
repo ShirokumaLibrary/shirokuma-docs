@@ -1,0 +1,615 @@
+/**
+ * skills-repo bundled plugin utility tests
+ *
+ * Tests for getBundledPluginPath(), getBundledSkillNames(),
+ * installPlugin(), getPackageVersion(), and validation functions.
+ *
+ * @testdoc バンドルプラグインユーティリティのテスト
+ */
+
+import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from "node:fs";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  getBundledPluginPath,
+  getBundledSkillNames,
+  getPackageVersion,
+  installPlugin,
+  isValidSkillName,
+  isValidSkill,
+  isSelfRepo,
+  getEffectivePluginDir,
+  updateGitignore,
+  AVAILABLE_SKILLS,
+  AVAILABLE_RULES,
+  PLUGIN_NAME,
+  GITIGNORE_ENTRIES,
+} from "../../src/utils/skills-repo.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TEST_DIR = join(
+  __dirname,
+  "..",
+  "..",
+  ".test-output",
+  "skills-repo-sync",
+);
+
+// ========================================
+// Setup / Teardown
+// ========================================
+
+beforeEach(() => {
+  if (existsSync(TEST_DIR)) {
+    rmSync(TEST_DIR, { recursive: true, force: true });
+  }
+  mkdirSync(TEST_DIR, { recursive: true });
+});
+
+afterAll(() => {
+  if (existsSync(TEST_DIR)) {
+    rmSync(TEST_DIR, { recursive: true, force: true });
+  }
+});
+
+// ========================================
+// Helpers
+// ========================================
+
+function createSkillDir(baseDir: string, skillName: string): void {
+  const skillsDir = join(baseDir, "skills", skillName);
+  mkdirSync(skillsDir, { recursive: true });
+  writeFileSync(join(skillsDir, "SKILL.md"), `# ${skillName}\n`, "utf-8");
+}
+
+function createPluginStructure(baseDir: string, skillNames: string[]): void {
+  mkdirSync(join(baseDir, "skills"), { recursive: true });
+  mkdirSync(join(baseDir, "rules"), { recursive: true });
+  mkdirSync(join(baseDir, ".claude-plugin"), { recursive: true });
+  writeFileSync(
+    join(baseDir, ".claude-plugin", "plugin.json"),
+    JSON.stringify({ name: "shirokuma-skills-en", version: "0.1.0" }),
+    "utf-8",
+  );
+  for (const name of skillNames) {
+    createSkillDir(baseDir, name);
+  }
+}
+
+// ========================================
+// Constants
+// ========================================
+
+describe("PLUGIN_NAME", () => {
+  /**
+   * @testdoc プラグイン名が "shirokuma-skills-en" であること
+   */
+  it("should be 'shirokuma-skills-en'", () => {
+    expect(PLUGIN_NAME).toBe("shirokuma-skills-en");
+  });
+});
+
+describe("AVAILABLE_SKILLS", () => {
+  /**
+   * @testdoc 22個のスキルが定義されている
+   */
+  it("should contain 22 skills", () => {
+    expect(AVAILABLE_SKILLS).toHaveLength(22);
+  });
+
+  /**
+   * @testdoc 実際のスキルディレクトリ名と一致する
+   */
+  it("should contain all actual skill directory names", () => {
+    const expected = [
+      "managing-agents",
+      "managing-skills",
+      "managing-plugins",
+      "managing-output-styles",
+      "managing-rules",
+      "frontend-designing",
+      "nextjs-vibe-coding",
+      "reviewing-on-issue",
+      "codebase-rule-discovery",
+      "working-on-issue",
+      "committing-on-issue",
+      "creating-pr-on-issue",
+      "github-project-setup",
+      "starting-session",
+      "ending-session",
+      "showing-github",
+      "managing-github-items",
+      "project-config-generator",
+      "publishing",
+      "best-practices-researching",
+      "claude-config-reviewing",
+      "planning-on-issue",
+    ];
+    for (const skill of expected) {
+      expect(AVAILABLE_SKILLS).toContain(skill);
+    }
+  });
+
+  /**
+   * @testdoc 旧名のスキル名が含まれていない
+   */
+  it("should not contain old skill names", () => {
+    const oldNames = [
+      "session-management",
+      "start-session",
+      "end-session",
+      "show-dashboard",
+      "show-handovers",
+      "show-issues",
+      "show-project-items",
+      "show-specs",
+      "create-item",
+      "create-spec",
+      "add-issue-comment",
+      "manage-labels",
+      "committing",
+      "creating-pull-request",
+    ];
+    for (const name of oldNames) {
+      expect(AVAILABLE_SKILLS).not.toContain(name);
+    }
+  });
+});
+
+describe("AVAILABLE_RULES", () => {
+  /**
+   * @testdoc 19個のルールが定義されている
+   */
+  it("should contain 19 rules", () => {
+    expect(AVAILABLE_RULES).toHaveLength(19);
+  });
+
+  /**
+   * @testdoc 全ルールファイル名を含む
+   */
+  it("should contain all rule file paths", () => {
+    const expected = [
+      "best-practices-first.md",
+      "config-authoring-flow.md",
+      "git-commit-style.md",
+      "output-destinations.md",
+      "skill-authoring.md",
+      "github/branch-workflow.md",
+      "github/discussions-usage.md",
+      "github/pr-review-response.md",
+      "github/project-items.md",
+      "nextjs/known-issues.md",
+      "nextjs/lib-structure.md",
+      "nextjs/radix-ui-hydration.md",
+      "nextjs/server-actions.md",
+      "nextjs/tailwind-v4.md",
+      "nextjs/tech-stack.md",
+      "nextjs/testing.md",
+      "shirokuma-docs/cli-invocation.md",
+      "shirokuma-docs/plugin-cache.md",
+      "shirokuma-docs/shirokuma-annotations.md",
+    ];
+    for (const rule of expected) {
+      expect(AVAILABLE_RULES).toContain(rule);
+    }
+  });
+});
+
+// ========================================
+// Validation
+// ========================================
+
+describe("isValidSkillName", () => {
+  /**
+   * @testdoc 有効なスキル名（小文字英数字とハイフン）を受け入れる
+   */
+  it("should accept valid skill names", () => {
+    expect(isValidSkillName("managing-agents")).toBe(true);
+    expect(isValidSkillName("reviewing-on-issue")).toBe(true);
+    expect(isValidSkillName("my-skill")).toBe(true);
+    expect(isValidSkillName("skill123")).toBe(true);
+    expect(isValidSkillName("a")).toBe(true);
+  });
+
+  /**
+   * @testdoc パストラバーサル文字を含む名前を拒否する
+   */
+  it("should reject names with path traversal", () => {
+    expect(isValidSkillName("../etc/passwd")).toBe(false);
+    expect(isValidSkillName("./skill")).toBe(false);
+    expect(isValidSkillName("skill/nested")).toBe(false);
+    expect(isValidSkillName("..")).toBe(false);
+  });
+
+  /**
+   * @testdoc 特殊文字を含む名前を拒否する
+   */
+  it("should reject names with special characters", () => {
+    expect(isValidSkillName("skill name")).toBe(false);
+    expect(isValidSkillName("skill_name")).toBe(false);
+    expect(isValidSkillName("skill.name")).toBe(false);
+    expect(isValidSkillName("UPPERCASE")).toBe(false);
+    expect(isValidSkillName("")).toBe(false);
+  });
+
+  /**
+   * @testdoc 隠しディレクトリ名を拒否する
+   */
+  it("should reject hidden directories", () => {
+    expect(isValidSkillName(".hidden")).toBe(false);
+    expect(isValidSkillName(".git")).toBe(false);
+  });
+});
+
+describe("isValidSkill", () => {
+  /**
+   * @testdoc AVAILABLE_SKILLS に含まれるスキル名を受け入れる
+   */
+  it("should accept skills in AVAILABLE_SKILLS", () => {
+    expect(isValidSkill("managing-agents")).toBe(true);
+    expect(isValidSkill("starting-session")).toBe(true);
+    expect(isValidSkill("publishing")).toBe(true);
+  });
+
+  /**
+   * @testdoc AVAILABLE_SKILLS に含まれない名前を拒否する
+   */
+  it("should reject skills not in AVAILABLE_SKILLS", () => {
+    expect(isValidSkill("nonexistent-skill")).toBe(false);
+    expect(isValidSkill("start-session")).toBe(false);
+    expect(isValidSkill("session-management")).toBe(false);
+  });
+});
+
+// ========================================
+// Bundled Plugin Path
+// ========================================
+
+describe("getBundledPluginPath", () => {
+  /**
+   * @testdoc バンドルプラグインディレクトリのパスを返す
+   */
+  it("should return path to bundled plugin directory", () => {
+    const pluginPath = getBundledPluginPath();
+    expect(pluginPath).toMatch(/plugin\/shirokuma-skills-en$/);
+    expect(existsSync(pluginPath)).toBe(true);
+  });
+
+  /**
+   * @testdoc バンドルパスに .claude-plugin/plugin.json が存在する
+   */
+  it("should contain .claude-plugin/plugin.json", () => {
+    const pluginPath = getBundledPluginPath();
+    expect(existsSync(join(pluginPath, ".claude-plugin", "plugin.json"))).toBe(true);
+  });
+
+  /**
+   * @testdoc バンドルパスに skills/ ディレクトリが存在する
+   */
+  it("should contain skills/ directory", () => {
+    const pluginPath = getBundledPluginPath();
+    expect(existsSync(join(pluginPath, "skills"))).toBe(true);
+  });
+
+  /**
+   * @testdoc バンドルパスに rules/ ディレクトリが存在する
+   */
+  it("should contain rules/ directory", () => {
+    const pluginPath = getBundledPluginPath();
+    expect(existsSync(join(pluginPath, "rules"))).toBe(true);
+  });
+});
+
+// ========================================
+// Package Version
+// ========================================
+
+describe("getPackageVersion", () => {
+  /**
+   * @testdoc package.json からバージョンを取得する
+   */
+  it("should return version from package.json", () => {
+    const version = getPackageVersion();
+    expect(version).toMatch(/^\d+\.\d+\.\d+/);
+  });
+
+  /**
+   * @testdoc バージョンが "unknown" でない
+   */
+  it("should not return 'unknown'", () => {
+    expect(getPackageVersion()).not.toBe("unknown");
+  });
+});
+
+// ========================================
+// Bundled Skill Names
+// ========================================
+
+describe("getBundledSkillNames", () => {
+  /**
+   * @testdoc バンドルされた plugin/skills/ からスキル名一覧を返す
+   */
+  it("should return skill names from bundled plugin/skills/", () => {
+    const skills = getBundledSkillNames();
+    expect(skills.length).toBeGreaterThan(0);
+    expect(skills).toContain("managing-agents");
+    expect(skills).toContain("reviewing-on-issue");
+  });
+
+  /**
+   * @testdoc 全22スキルが含まれる
+   */
+  it("should contain all 22 bundled skills", () => {
+    const skills = getBundledSkillNames();
+    expect(skills).toHaveLength(22);
+  });
+
+  /**
+   * @testdoc 隠しディレクトリやファイルを含まない
+   */
+  it("should not include hidden directories or files", () => {
+    const skills = getBundledSkillNames();
+    for (const skill of skills) {
+      expect(skill).not.toMatch(/^\./);
+      expect(isValidSkillName(skill)).toBe(true);
+    }
+  });
+});
+
+// ========================================
+// Install Plugin
+// ========================================
+
+describe("installPlugin", () => {
+  /**
+   * @testdoc プラグインを .claude/plugins/shirokuma-skills-en/ にインストールする
+   */
+  it("should install plugin to .claude/plugins/shirokuma-skills-en/", async () => {
+    const projectPath = join(TEST_DIR, "test-project");
+    mkdirSync(projectPath, { recursive: true });
+
+    const result = await installPlugin(projectPath, false);
+
+    expect(result).toBe(true);
+    const installDir = join(projectPath, ".claude", "plugins", "shirokuma-skills-en");
+    expect(existsSync(installDir)).toBe(true);
+    expect(existsSync(join(installDir, ".claude-plugin", "plugin.json"))).toBe(true);
+    expect(existsSync(join(installDir, "skills"))).toBe(true);
+    expect(existsSync(join(installDir, "rules"))).toBe(true);
+  });
+
+  /**
+   * @testdoc インストール先に skills/ 内のスキルが存在する
+   */
+  it("should copy skills to install directory", async () => {
+    const projectPath = join(TEST_DIR, "test-project-skills");
+    mkdirSync(projectPath, { recursive: true });
+
+    await installPlugin(projectPath, false);
+
+    const skillsDir = join(projectPath, ".claude", "plugins", "shirokuma-skills-en", "skills");
+    expect(existsSync(join(skillsDir, "managing-agents"))).toBe(true);
+    expect(existsSync(join(skillsDir, "managing-agents", "SKILL.md"))).toBe(true);
+  });
+
+  /**
+   * @testdoc インストール先に rules/ 内のルールが存在する
+   */
+  it("should copy rules to install directory", async () => {
+    const projectPath = join(TEST_DIR, "test-project-rules");
+    mkdirSync(projectPath, { recursive: true });
+
+    await installPlugin(projectPath, false);
+
+    const rulesDir = join(projectPath, ".claude", "plugins", "shirokuma-skills-en", "rules");
+    expect(existsSync(join(rulesDir, "skill-authoring.md"))).toBe(true);
+  });
+
+  /**
+   * @testdoc 既存のインストールを上書きできる
+   */
+  it("should overwrite existing installation", async () => {
+    const projectPath = join(TEST_DIR, "test-project-overwrite");
+    mkdirSync(projectPath, { recursive: true });
+
+    // First install
+    await installPlugin(projectPath, false);
+
+    // Create a marker file
+    const markerPath = join(
+      projectPath, ".claude", "plugins", "shirokuma-skills-en", "marker.txt",
+    );
+    writeFileSync(markerPath, "old", "utf-8");
+
+    // Second install (overwrite)
+    const result = await installPlugin(projectPath, false);
+    expect(result).toBe(true);
+
+    // Marker should be gone (directory was replaced)
+    expect(existsSync(markerPath)).toBe(false);
+  });
+
+  /**
+   * @testdoc .claude/ ディレクトリが存在しない場合も正常にインストールできる
+   */
+  it("should create .claude/plugins/ directory if it does not exist", async () => {
+    const projectPath = join(TEST_DIR, "test-project-no-claude");
+    mkdirSync(projectPath, { recursive: true });
+
+    const result = await installPlugin(projectPath, false);
+    expect(result).toBe(true);
+    expect(existsSync(join(projectPath, ".claude", "plugins", "shirokuma-skills-en"))).toBe(true);
+  });
+
+  /**
+   * @testdoc 標準パスにはコピーしない（プラグインは --plugin-dir でロードする）
+   */
+  it("should not copy to standard .claude/ paths", async () => {
+    const projectPath = join(TEST_DIR, "test-project-no-std");
+    mkdirSync(projectPath, { recursive: true });
+
+    await installPlugin(projectPath, false);
+
+    // Plugin should only be in .claude/plugins/shirokuma-skills-en/
+    expect(existsSync(join(projectPath, ".claude", "skills"))).toBe(false);
+    expect(existsSync(join(projectPath, ".claude", "rules"))).toBe(false);
+    expect(existsSync(join(projectPath, ".claude", "agents"))).toBe(false);
+  });
+
+  /**
+   * @testdoc self-repo ではコピーをスキップする
+   * @purpose shirokuma-docs リポジトリ自身ではプラグインコピーが不要
+   */
+  it("should skip copy for self-repo", async () => {
+    // Use the actual repo root which is a self-repo
+    const repoRoot = join(__dirname, "..", "..");
+    const pluginsDir = join(repoRoot, ".claude", "plugins", "shirokuma-skills-en");
+    const hadPlugins = existsSync(pluginsDir);
+
+    const result = await installPlugin(repoRoot, false);
+
+    expect(result).toBe(true);
+    // Should NOT have created .claude/plugins/ (or if it existed before, we don't add to it)
+    if (!hadPlugins) {
+      expect(existsSync(pluginsDir)).toBe(false);
+    }
+  });
+
+});
+
+// ========================================
+// Self-Repo Detection
+// ========================================
+
+describe("isSelfRepo", () => {
+  /**
+   * @testdoc shirokuma-docs リポジトリ自身を検出する
+   * @purpose plugin/shirokuma-skills-en/.claude-plugin/plugin.json の存在で判定
+   */
+  it("should detect the shirokuma-docs repo as self-repo", () => {
+    const repoRoot = join(__dirname, "..", "..");
+    expect(isSelfRepo(repoRoot)).toBe(true);
+  });
+
+  /**
+   * @testdoc 外部プロジェクトを self-repo と判定しない
+   */
+  it("should return false for external projects", () => {
+    const externalPath = join(TEST_DIR, "external-project");
+    mkdirSync(externalPath, { recursive: true });
+    expect(isSelfRepo(externalPath)).toBe(false);
+  });
+});
+
+describe("getEffectivePluginDir", () => {
+  /**
+   * @testdoc self-repo ではバンドルパスを返す
+   */
+  it("should return bundled path for self-repo", () => {
+    const repoRoot = join(__dirname, "..", "..");
+    const result = getEffectivePluginDir(repoRoot);
+    expect(result).toBe(getBundledPluginPath());
+  });
+
+  /**
+   * @testdoc 外部プロジェクトでは .claude/plugins/ パスを返す
+   */
+  it("should return .claude/plugins/ path for external projects", () => {
+    const externalPath = join(TEST_DIR, "external-project-dir");
+    mkdirSync(externalPath, { recursive: true });
+    const result = getEffectivePluginDir(externalPath);
+    expect(result).toBe(join(externalPath, ".claude", "plugins", "shirokuma-skills-en"));
+  });
+});
+
+// ========================================
+// Gitignore Management
+// ========================================
+
+describe("updateGitignore", () => {
+  /**
+   * @testdoc .gitignore がない場合は新規作成してエントリを追加する
+   */
+  it("should create .gitignore with all entries when file does not exist", () => {
+    const projectPath = join(TEST_DIR, "test-gitignore-new");
+    mkdirSync(projectPath, { recursive: true });
+
+    const result = updateGitignore(projectPath);
+
+    expect(result.added).toEqual(GITIGNORE_ENTRIES);
+    expect(result.alreadyPresent).toEqual([]);
+
+    const content = readFileSync(join(projectPath, ".gitignore"), "utf-8");
+    for (const entry of GITIGNORE_ENTRIES) {
+      expect(content).toContain(entry);
+    }
+    expect(content).toContain("# shirokuma-docs");
+  });
+
+  /**
+   * @testdoc 既存エントリと重複しないこと
+   */
+  it("should not add duplicate entries", () => {
+    const projectPath = join(TEST_DIR, "test-gitignore-dup");
+    mkdirSync(projectPath, { recursive: true });
+
+    // 既に一部エントリがある .gitignore を作成
+    writeFileSync(
+      join(projectPath, ".gitignore"),
+      "node_modules/\n.claude/rules/shirokuma/\n",
+      "utf-8",
+    );
+
+    const result = updateGitignore(projectPath);
+
+    expect(result.alreadyPresent).toContain(".claude/rules/shirokuma/");
+    expect(result.added).not.toContain(".claude/rules/shirokuma/");
+    // .claude/plans/ is not in existing .gitignore, so it should be added
+    expect(result.added).toContain(".claude/plans/");
+  });
+
+  /**
+   * @testdoc 全エントリが既に存在する場合は何も追加しない
+   */
+  it("should add nothing when all entries already present", () => {
+    const projectPath = join(TEST_DIR, "test-gitignore-all");
+    mkdirSync(projectPath, { recursive: true });
+
+    writeFileSync(
+      join(projectPath, ".gitignore"),
+      GITIGNORE_ENTRIES.join("\n") + "\n",
+      "utf-8",
+    );
+
+    const result = updateGitignore(projectPath);
+
+    expect(result.added).toEqual([]);
+    expect(result.alreadyPresent).toEqual(GITIGNORE_ENTRIES);
+  });
+
+  /**
+   * @testdoc dryRun ではファイルを変更しない
+   */
+  it("should not write file in dryRun mode", () => {
+    const projectPath = join(TEST_DIR, "test-gitignore-dry");
+    mkdirSync(projectPath, { recursive: true });
+
+    const result = updateGitignore(projectPath, { dryRun: true });
+
+    expect(result.added.length).toBeGreaterThan(0);
+    expect(existsSync(join(projectPath, ".gitignore"))).toBe(false);
+  });
+
+  /**
+   * @testdoc セクションコメントが追加される
+   */
+  it("should add section comment", () => {
+    const projectPath = join(TEST_DIR, "test-gitignore-comment");
+    mkdirSync(projectPath, { recursive: true });
+
+    updateGitignore(projectPath);
+
+    const content = readFileSync(join(projectPath, ".gitignore"), "utf-8");
+    expect(content).toContain("# shirokuma-docs (managed by shirokuma-docs init)");
+  });
+});

@@ -1,0 +1,66 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 技術知見
+        確定した技術的知見・パターンを記録します。
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 問題
+      description: どんな問題を解決するか
+      placeholder: |
+        Radix UI コンポーネントでハイドレーションエラーが発生する
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: 解決策
+      description: 確定した解決策
+      placeholder: |
+        `mounted` state パターンを使用する
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: 例
+      description: コード例
+      render: typescript
+      placeholder: |
+        const [mounted, setMounted] = useState(false)
+        useEffect(() => { setMounted(true) }, [])
+
+        if (!mounted) return <Placeholder />
+        return <RadixComponent />
+
+  - type: textarea
+    id: when-to-use
+    attributes:
+      label: 適用タイミング
+      description: この知見を適用すべき状況
+      placeholder: |
+        - DropdownMenu, Select, Collapsible などの Radix UI コンポーネント使用時
+        - SSR 環境で ID 不一致エラーが出る場合
+
+  - type: textarea
+    id: references
+    attributes:
+      label: 参照
+      description: 関連するドキュメント、Issue、Discussion
+      placeholder: |
+        - Issue #XX で発見
+        - https://github.com/radix-ui/primitives/issues/XXX
+
+  - type: input
+    id: related-rule
+    attributes:
+      label: 関連ルール
+      description: 対応する .claude/rules/ ファイル（あれば）
+      placeholder: .claude/rules/radix-ui.md

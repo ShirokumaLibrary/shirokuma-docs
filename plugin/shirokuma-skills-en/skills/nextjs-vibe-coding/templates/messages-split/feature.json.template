@@ -1,0 +1,46 @@
+{
+  "title": "{{Name}} Management",
+  "description": "Manage {{name}}s",
+  "list": {
+    "title": "{{Name}} List",
+    "description": "View and manage all {{name}}s",
+    "empty": "No {{name}}s yet",
+    "createFirst": "Create your first {{name}}"
+  },
+  "new": {
+    "title": "New {{Name}}",
+    "description": "Create a new {{name}}"
+  },
+  "edit": {
+    "title": "Edit {{Name}}",
+    "description": "Edit {{name}} details"
+  },
+  "delete": {
+    "title": "Delete {{Name}}",
+    "confirm": "Are you sure you want to delete this {{name}}?",
+    "warning": "This action cannot be undone."
+  },
+  "table": {
+    "name": "Name",
+    "description": "Description",
+    "createdAt": "Created",
+    "updatedAt": "Updated",
+    "status": "Status"
+  },
+  "form": {
+    "name": "Name",
+    "namePlaceholder": "Enter {{name}} name",
+    "nameHelp": "A unique name for this {{name}}",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter description (optional)",
+    "descriptionHelp": "A brief description of this {{name}}"
+  },
+  "messages": {
+    "created": "{{Name}} created successfully",
+    "updated": "{{Name}} updated successfully",
+    "deleted": "{{Name}} deleted successfully",
+    "createError": "Failed to create {{name}}",
+    "updateError": "Failed to update {{name}}",
+    "deleteError": "Failed to delete {{name}}"
+  }
+}

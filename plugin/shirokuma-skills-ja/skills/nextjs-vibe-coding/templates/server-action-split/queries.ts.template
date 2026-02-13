@@ -1,0 +1,134 @@
+// lib/actions/{{name}}s/queries.ts
+"use server"
+
+/**
+ * {{Name}} Query Functions
+ *
+ * Read-only operations for {{name}}s.
+ */
+
+import { headers } from "next/headers"
+import { db, {{name}}s } from "@repo/database"
+import { eq, desc, count, ilike, and, or } from "drizzle-orm"
+import { verifyAdmin } from "@/lib/auth"
+import type { {{Name}}, Paginated } from "./types"
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+const PAGE_SIZE = 20
+
+// ============================================================================
+// List Queries
+// ============================================================================
+
+/**
+ * Get paginated {{name}}s
+ */
+export async function get{{Name}}s(
+  page: number = 1,
+  options?: { search?: string }
+): Promise<Paginated<{{Name}}>> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    throw new Error("Unauthorized")
+  }
+
+  const offset = (page - 1) * PAGE_SIZE
+  const conditions = []
+
+  // Search filter
+  if (options?.search) {
+    const pattern = `%${options.search}%`
+    conditions.push(
+      or(
+        ilike({{name}}s.name, pattern),
+        ilike({{name}}s.description, pattern)
+      )
+    )
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : undefined
+
+  const [items, countResult] = await Promise.all([
+    db
+      .select()
+      .from({{name}}s)
+      .where(whereClause)
+      .orderBy(desc({{name}}s.createdAt))
+      .limit(PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ count: count() })
+      .from({{name}}s)
+      .where(whereClause),
+  ])
+
+  const total = countResult[0]?.count ?? 0
+
+  return {
+    items,
+    pagination: {
+      page,
+      pageSize: PAGE_SIZE,
+      total,
+      totalPages: Math.ceil(total / PAGE_SIZE),
+    },
+  }
+}
+
+// ============================================================================
+// Single Item Queries
+// ============================================================================
+
+/**
+ * Get a single {{name}} by ID
+ */
+export async function get{{Name}}(id: string): Promise<{{Name}} | null> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    throw new Error("Unauthorized")
+  }
+
+  const [result] = await db
+    .select()
+    .from({{name}}s)
+    .where(eq({{name}}s.id, id))
+
+  return result ?? null
+}
+
+/**
+ * Get a single {{name}} by slug (if applicable)
+ */
+export async function get{{Name}}BySlug(slug: string): Promise<{{Name}} | null> {
+  const session = await verifyAdmin(await headers())
+  if (!session) {
+    throw new Error("Unauthorized")
+  }
+
+  const [result] = await db
+    .select()
+    .from({{name}}s)
+    .where(eq({{name}}s.slug, slug))
+
+  return result ?? null
+}
+
+// ============================================================================
+// Existence Checks
+// ============================================================================
+
+/**
+ * Check if {{name}} exists by ID
+ */
+export async function {{name}}Exists(id: string): Promise<boolean> {
+  const [result] = await db
+    .select({ id: {{name}}s.id })
+    .from({{name}}s)
+    .where(eq({{name}}s.id, id))
+    .limit(1)
+
+  return !!result
+}

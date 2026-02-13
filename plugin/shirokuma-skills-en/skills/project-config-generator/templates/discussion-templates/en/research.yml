@@ -1,0 +1,71 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Research Request
+        Record research requests and findings.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What needs to be researched?
+      placeholder: |
+        What are the best practices for implementing soft delete in Drizzle ORM?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why is this research needed?
+      placeholder: |
+        Want to implement logical deletion instead of physical deletion for user data.
+        Related: Issue #XX
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Research scope and aspects
+      placeholder: |
+        - Drizzle ORM official documentation
+        - Existing project implementations
+        - Performance implications
+
+  - type: textarea
+    id: findings
+    attributes:
+      label: Findings
+      description: Research results (update after completion)
+      placeholder: |
+        *Researching...*
+
+        ---
+        **After completion:**
+        1. Method A: ...
+        2. Method B: ...
+
+  - type: textarea
+    id: conclusion
+    attributes:
+      label: Conclusion
+      description: Conclusion and recommendations
+      placeholder: |
+        **Recommendation**: Adopt Method A
+
+        Reason: ...
+
+  - type: checkboxes
+    id: next-actions
+    attributes:
+      label: Next Actions
+      description: Actions after research
+      options:
+        - label: Create ADR (if decision needed)
+        - label: Create Knowledge (if pattern confirmed)
+        - label: Create Issue (if implementation needed)
+        - label: Create/update Rule (AI extract)

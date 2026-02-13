@@ -1,0 +1,41 @@
+{
+  "description": "Default blocked command patterns for PreToolUse hook. Projects can override via .claude/shirokuma-hooks.json",
+  "rules": [
+    {
+      "id": "pr-merge",
+      "pattern": "(gh pr merge|issues merge)",
+      "reason": "PR merge requires explicit user approval. Ask the user before merging.",
+      "enabled": true
+    },
+    {
+      "id": "force-push",
+      "pattern": "git push.*(--force|--force-with-lease|-f($|\\s))",
+      "reason": "Force push requires explicit user approval. This can overwrite remote history.",
+      "enabled": true
+    },
+    {
+      "id": "hard-reset",
+      "pattern": "git reset --hard",
+      "reason": "Hard reset requires explicit user approval. This discards all uncommitted changes.",
+      "enabled": true
+    },
+    {
+      "id": "discard-worktree",
+      "pattern": "git (checkout|restore)(\\s+--\\s*|\\s+)\\.\\s*$",
+      "reason": "Discarding all working tree changes requires explicit user approval.",
+      "enabled": true
+    },
+    {
+      "id": "clean-untracked",
+      "pattern": "git clean.*(--force|-f)",
+      "reason": "Deleting untracked files requires explicit user approval.",
+      "enabled": true
+    },
+    {
+      "id": "force-delete-branch",
+      "pattern": "git branch (-D|--delete --force|--force --delete)",
+      "reason": "Force deleting a branch requires explicit user approval.",
+      "enabled": true
+    }
+  ]
+}

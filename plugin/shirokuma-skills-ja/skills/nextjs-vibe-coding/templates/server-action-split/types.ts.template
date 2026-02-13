@@ -1,0 +1,60 @@
+// lib/actions/{{name}}s/types.ts
+/**
+ * {{Name}} Types
+ *
+ * Shared types for {{name}} actions.
+ */
+
+import { z } from "zod"
+
+// ============================================================================
+// Action Result Type
+// ============================================================================
+
+export type ActionResult<T = void> =
+  | { success: true; data?: T }
+  | { success: false; error: string }
+
+// ============================================================================
+// Entity Types
+// ============================================================================
+
+export type {{Name}} = {
+  id: string
+  name: string
+  description: string | null
+  createdAt: Date
+  updatedAt: Date
+}
+
+export type {{Name}}WithRelations = {{Name}} & {
+  // Add relation types here
+  // author?: User
+}
+
+// ============================================================================
+// Validation Schemas
+// ============================================================================
+
+export const {{Name}}Schema = z.object({
+  name: z.string().min(1, "Name is required").max(100, "Name must be 100 characters or less"),
+  description: z.string().max(500, "Description must be 500 characters or less").nullable().optional(),
+})
+
+export type {{Name}}Input = z.infer<typeof {{Name}}Schema>
+
+// ============================================================================
+// Pagination Types
+// ============================================================================
+
+export type PaginationMeta = {
+  page: number
+  pageSize: number
+  total: number
+  totalPages: number
+}
+
+export type Paginated<T> = {
+  items: T[]
+  pagination: PaginationMeta
+}

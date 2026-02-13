@@ -1,0 +1,35 @@
+{
+  "{{name}}s": {
+    "title": "{{Name}} Management",
+    "description": "Manage {{name}}s ({total} total)",
+    "listTitle": "{{Name}} List",
+    "listDescription": "View and manage all {{name}}s",
+    "new{{Name}}": "New {{Name}}",
+    "new{{Name}}Title": "New {{Name}}",
+    "new{{Name}}Description": "Create a new {{name}}",
+    "edit{{Name}}": "Edit {{Name}}",
+    "edit{{Name}}Description": "Edit \"{name}\"",
+    "delete{{Name}}": "Delete {{Name}}",
+    "deleteConfirm": "Delete this {{name}}?",
+    "deleteWarning": "\"{name}\" will be deleted. This action cannot be undone.",
+    "no{{Name}}s": "No {{name}}s yet",
+    "createFirst": "Create your first {{name}}",
+    "table": {
+      "name": "Name",
+      "description": "Description",
+      "createdAt": "Created",
+      "actions": "Actions"
+    },
+    "form": {
+      "info": "{{Name}} Info",
+      "createDescription": "Enter the details for the new {{name}}",
+      "editDescription": "Update the {{name}} details",
+      "name": "Name",
+      "namePlaceholder": "Enter {{name}} name",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter description (optional)",
+      "descriptionHelp": "A brief description of this {{name}}",
+      "saved": "Saved successfully"
+    }
+  }
+}

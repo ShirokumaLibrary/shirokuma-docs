@@ -1,0 +1,492 @@
+/**
+ * init command - Initialize configuration file
+ *
+ * @description Initializes shirokuma-docs configuration for a project and
+ * optionally installs the bundled shirokuma-skills-en plugin.
+ *
+ * @example
+ * ```bash
+ * # Create config file only
+ * shirokuma-docs init
+ *
+ * # Install plugin (skills + rules)
+ * shirokuma-docs init --with-skills
+ *
+ * # Install specific skills only
+ * shirokuma-docs init --with-skills=nextjs-vibe-coding,reviewing-on-issue
+ * ```
+ */
+
+import { resolve, dirname } from "node:path";
+import { existsSync, writeFileSync, readFileSync, mkdirSync, rmSync } from "node:fs";
+import { stringify as yamlStringify } from "yaml";
+import { createLogger, type Logger } from "../utils/logger.js";
+import { t } from "../utils/i18n.js";
+import type { ShirokumaConfig } from "../utils/config.js";
+import {
+  installPlugin,
+  deployRules,
+  registerPluginCache,
+  getInstalledSkills,
+  getInstalledRules,
+  updateGitignore,
+  isSelfRepo,
+  isClaudeCliAvailable,
+  hasJaPlugin,
+  hasHooksPlugin,
+  getLanguageSetting,
+  getBundledPluginPathJa,
+  DEPLOYED_RULES_DIR,
+  DEPLOYED_RULES_DIR_JA,
+  PLUGIN_NAME_JA,
+  PLUGIN_NAME_HOOKS,
+  PLUGIN_REGISTRY_ID_JA,
+  PLUGIN_REGISTRY_ID_HOOKS,
+} from "../utils/skills-repo.js";
+
+/**
+ * init command options
+ */
+interface InitOptions {
+  /** Project path */
+  project: string;
+  /** Overwrite existing files */
+  force?: boolean;
+  /** Install skills (true=all, string=comma-separated) */
+  withSkills?: boolean | string;
+  /** Install rules */
+  withRules?: boolean;
+  /** Verbose logging */
+  verbose?: boolean;
+  /** Language setting (en|ja) */
+  lang?: string;
+  /** Manage .gitignore (default: true, set false by --no-gitignore) */
+  gitignore?: boolean;
+}
+
+/**
+ * init command result
+ */
+interface InitResult {
+  config_created: boolean;
+  plugin_installed: boolean;
+  cache_registered: boolean;
+  language_set: boolean;
+  gitignore_updated: boolean;
+  gitignore_entries_added: number;
+  skills_installed: string[];
+  rules_installed: string[];
+  rules_deployed: number;
+}
+
+/** 言語コードから settings.json の language 値へのマッピング */
+const LANG_MAP: Record<string, string> = {
+  en: "english",
+  ja: "japanese",
+};
+
+/**
+ * init command error
+ */
+class InitError extends Error {
+  constructor(message: string, public readonly cause?: unknown) {
+    super(message);
+    this.name = "InitError";
+  }
+}
+
+/**
+ * Default config template
+ */
+const defaultConfigTemplate: ShirokumaConfig = {
+  project: {
+    name: "Project Name",
+    description: "プロジェクト説明",
+    url: "https://example.local.test",
+  },
+  output: {
+    dir: "./docs",
+    portal: "./docs/portal",
+    generated: "./docs/generated",
+  },
+  typedoc: {
+    entryPoints: [
+      "./apps/web/lib/actions",
+      "./packages/database/src/schema",
+    ],
+    tsconfig: "./tsconfig.json",
+    exclude: ["**/node_modules/**", "**/*.test.ts", "**/*.spec.ts"],
+  },
+  schema: {
+    sources: [
+      { path: "./packages/database/src/schema" },
+    ],
+    pattern: "*.ts",
+  },
+  deps: {
+    include: [
+      "apps/web/lib/actions",
+      "apps/web/components",
+    ],
+    exclude: ["node_modules", ".next", "dist"],
+    output: "./docs/generated/architecture",
+    formats: ["svg", "json"],
+  },
+  testCases: {
+    jest: {
+      config: "./jest.config.ts",
+      testMatch: ["**/__tests__/**/*.test.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    },
+    playwright: {
+      config: "./playwright.config.ts",
+      testDir: "./tests/e2e",
+    },
+  },
+  portal: {
+    title: "ドキュメントポータル",
+    links: [],
+    devTools: [
+      {
+        name: "アプリケーション",
+        url: "https://example.local.test",
+        description: "メインアプリ",
+      },
+      {
+        name: "Mailpit",
+        url: "https://mailpit.local.test",
+        description: "メールテスト",
+      },
+      {
+        name: "Adminer",
+        url: "https://adminer.local.test",
+        description: "データベースGUI",
+      },
+    ],
+  },
+  adr: {
+    enabled: true,
+    directory: "docs/adr",
+    template: "madr",
+    language: "ja",
+  },
+};
+
+/**
+ * init command handler
+ *
+ * @param options - Command options
+ * @throws {InitError} On fatal error
+ */
+export async function initCommand(options: InitOptions): Promise<void> {
+  const logger = createLogger(options.verbose ?? true);
+  const projectPath = resolve(options.project);
+  const configPath = resolve(projectPath, "shirokuma-docs.config.yaml");
+
+  const result: InitResult = {
+    config_created: false,
+    plugin_installed: false,
+    cache_registered: false,
+    language_set: false,
+    gitignore_updated: false,
+    gitignore_entries_added: 0,
+    skills_installed: [],
+    rules_installed: [],
+    rules_deployed: 0,
+  };
+
+  // Validate --lang option
+  if (options.lang && !LANG_MAP[options.lang]) {
+    logger.error(`Invalid --lang value: ${options.lang}. Use 'en' or 'ja'.`);
+    throw new InitError(`Invalid --lang value: ${options.lang}`);
+  }
+
+  // Initialize config file
+  // Note: --force only applies to skill/rule redeployment, not config overwrite
+  const shouldCreateConfig = !existsSync(configPath);
+
+  if (shouldCreateConfig) {
+    logger.info(t("commands.init.initializingConfig", { path: configPath }));
+
+    const yamlContent = yamlStringify(defaultConfigTemplate, {
+      indent: 2,
+      lineWidth: 0,
+    });
+
+    const header = `# shirokuma-docs 設定ファイル
+# 詳細: https://github.com/your-org/shirokuma-docs
+
+`;
+
+    try {
+      writeFileSync(configPath, header + yamlContent, "utf-8");
+      logger.success(t("commands.init.success", { path: configPath }));
+      result.config_created = true;
+    } catch (error) {
+      const message = t("commands.init.configCreateFailed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      logger.error(message);
+      throw new InitError(message, error);
+    }
+  } else if (!options.withSkills && !options.withRules && !options.lang) {
+    logger.warn(t("commands.init.exists"));
+    logger.info(t("commands.init.existsHint"));
+    logger.info(t("commands.init.existsRegenHint"));
+    return;
+  }
+
+  // Install plugin (skills + rules)
+  if (options.withSkills || options.withRules) {
+    try {
+      logger.info("\n" + t("commands.init.installingPlugin"));
+
+      const installed = await installPlugin(projectPath, options.verbose ?? false);
+      if (!installed) {
+        throw new InitError(t("commands.init.pluginInstallFailed"));
+      }
+
+      result.plugin_installed = true;
+      result.skills_installed = getInstalledSkills(projectPath);
+      result.rules_installed = getInstalledRules(projectPath);
+
+      // Deploy rules to .claude/rules/shirokuma/ (#254: 言語設定に基づき単一ディレクトリに統一)
+      logger.info("\n" + t("commands.init.deployingRules"));
+
+      // 言語設定を確認（--lang オプション優先、なければ既存 settings.json）
+      const effectiveLang = options.lang ? LANG_MAP[options.lang] : getLanguageSetting(projectPath);
+      const useJaRules = effectiveLang === "japanese" && hasJaPlugin();
+
+      let deployedNames: string[];
+
+      if (useJaRules) {
+        // JA プラグインをインストール
+        logger.info("\n" + t("commands.init.installingJaPlugin"));
+        await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_JA);
+
+        // 日本語ルールを shirokuma/ にデプロイ
+        const deployResult = await deployRules(projectPath, {
+          verbose: options.verbose ?? false,
+          bundledPluginPath: getBundledPluginPathJa(),
+        });
+        deployedNames = deployResult.deployed
+          .filter(r => r.status === "deployed" || r.status === "updated" || r.status === "unchanged")
+          .map(r => r.name);
+        result.rules_deployed = deployedNames.length;
+      } else {
+        // 英語ルールを shirokuma/ にデプロイ（デフォルト）
+        const deployResult = await deployRules(projectPath, {
+          verbose: options.verbose ?? false,
+        });
+        deployedNames = deployResult.deployed
+          .filter(r => r.status === "deployed" || r.status === "updated" || r.status === "unchanged")
+          .map(r => r.name);
+        result.rules_deployed = deployedNames.length;
+
+        // EN のみ場合でも JA プラグインはインストール（スキル翻訳用）
+        if (hasJaPlugin()) {
+          await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_JA);
+        }
+      }
+
+      // レガシー shirokuma-ja/ ディレクトリを削除 (#254)
+      const legacyJaDir = resolve(projectPath, DEPLOYED_RULES_DIR_JA);
+      if (existsSync(legacyJaDir)) {
+        rmSync(legacyJaDir, { recursive: true, force: true });
+      }
+
+      // Install hooks plugin if available (language-independent safety hooks)
+      if (hasHooksPlugin()) {
+        logger.info("\n" + t("commands.init.installingHooksPlugin"));
+        await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_HOOKS);
+      }
+
+    } catch (error) {
+      if (error instanceof InitError) {
+        logger.error(error.message);
+        throw error;
+      }
+      const message = t("errors.errorOccurred", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      logger.error(message);
+      throw new InitError(message, error);
+    }
+  }
+
+  // Write language to .claude/settings.json
+  if (options.lang) {
+    const settingsPath = resolve(projectPath, ".claude", "settings.json");
+    const settingsDir = dirname(settingsPath);
+    try {
+      mkdirSync(settingsDir, { recursive: true });
+
+      // 既存の settings.json があればマージ、なければ新規作成
+      let settings: Record<string, unknown> = {};
+      if (existsSync(settingsPath)) {
+        try {
+          const raw = readFileSync(settingsPath, "utf-8");
+          const parsed: unknown = JSON.parse(raw);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            settings = parsed as Record<string, unknown>;
+          } else {
+            logger.warn(`${settingsPath} is not a JSON object, overwriting`);
+          }
+        } catch {
+          logger.warn(`${settingsPath} contains invalid JSON, overwriting`);
+        }
+      }
+
+      settings.language = LANG_MAP[options.lang];
+      writeFileSync(settingsPath, JSON.stringify(settings, null, 2) + "\n", "utf-8");
+      result.language_set = true;
+      logger.success(t("commands.init.languageSet", { lang: LANG_MAP[options.lang] }));
+    } catch (error) {
+      logger.warn(`Failed to write ${settingsPath}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Register in Claude Code's global cache (external projects only)
+  if (result.plugin_installed && !isSelfRepo(projectPath)) {
+    // Check if claude CLI is available before attempting registration
+    if (isClaudeCliAvailable()) {
+      logger.info("\n" + t("commands.init.registeringCache"));
+      logger.info(t("commands.init.registeringCacheCmd"));
+      const cacheResult = registerPluginCache(projectPath);
+
+      if (cacheResult.success) {
+        logger.success(t("commands.init.cacheRegistered"));
+        result.cache_registered = true;
+      } else {
+        logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
+        logger.info(t("commands.init.cacheManualHint"));
+      }
+
+      // Register JA plugin cache if available
+      if (hasJaPlugin()) {
+        const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
+        if (jaCacheResult.success) {
+          logger.success(t("commands.init.jaCacheRegistered"));
+        }
+      }
+
+      // Register hooks plugin cache if available
+      if (hasHooksPlugin()) {
+        const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
+        if (hooksCacheResult.success) {
+          logger.success(t("commands.init.hooksCacheRegistered"));
+        }
+      }
+    } else {
+      logger.warn("\n" + t("commands.init.claudeNotFound"));
+      logger.info(t("commands.init.claudeInstallHint"));
+    }
+  }
+
+  // Update .gitignore (unless --no-gitignore)
+  if (options.gitignore !== false) {
+    logger.info("\n" + t("commands.init.updatingGitignore"));
+    const gitignoreResult = updateGitignore(projectPath, {
+      verbose: options.verbose,
+    });
+    if (gitignoreResult.added.length > 0) {
+      result.gitignore_updated = true;
+      result.gitignore_entries_added = gitignoreResult.added.length;
+      logger.success(t("commands.init.gitignoreUpdated", {
+        count: gitignoreResult.added.length,
+      }));
+    }
+  }
+
+  // Summary
+  logger.info("\n" + t("commands.init.setupComplete"));
+  if (result.config_created) {
+    logger.info(t("commands.init.summaryConfig"));
+  }
+  if (result.plugin_installed) {
+    logger.info(t("commands.init.summaryPlugin", {
+      skillCount: result.skills_installed.length,
+      ruleCount: result.rules_installed.length,
+    }));
+    if (result.rules_deployed > 0) {
+      logger.info(t("commands.init.summaryRules", {
+        count: result.rules_deployed,
+        dir: DEPLOYED_RULES_DIR,
+      }));
+    }
+    if (result.cache_registered) {
+      logger.info(t("commands.init.summaryCache"));
+    }
+  }
+  if (result.language_set) {
+    logger.info(t("commands.init.summaryLanguage", { lang: LANG_MAP[options.lang!] }));
+  }
+  if (result.gitignore_updated) {
+    logger.info(t("commands.init.summaryGitignore", { count: result.gitignore_entries_added }));
+  }
+
+  if (options.verbose) {
+    console.log(JSON.stringify(result, null, 2));
+  }
+
+  // Next steps guidance (external projects only)
+  if (result.plugin_installed && !isSelfRepo(projectPath)) {
+    const claudeCliFound = isClaudeCliAvailable();
+    printNextSteps(logger, result.cache_registered, claudeCliFound);
+  } else {
+    logger.info("\n" + t("commands.init.editConfigHint"));
+    logger.info(t("commands.init.editConfigCmd"));
+  }
+}
+
+/**
+ * Print next-steps guidance for external projects after plugin installation
+ *
+ * @param logger - Logger instance
+ * @param cacheRegistered - Whether cache registration succeeded (skip manual step if true)
+ * @param claudeCliFound - Whether claude CLI was found in PATH
+ */
+function printNextSteps(logger: Logger, cacheRegistered: boolean, claudeCliFound: boolean): void {
+  logger.info("\n" + t("commands.init.nextSteps") + "\n");
+
+  let step = 1;
+
+  if (!cacheRegistered) {
+    if (!claudeCliFound) {
+      logger.info(t("commands.init.stepInstallClaude", { step }));
+      logger.info(t("commands.init.stepInstallClaudeUrl") + "\n");
+      step++;
+      logger.info(t("commands.init.stepRegisterCache", { step }));
+    } else {
+      logger.info(t("commands.init.stepRegisterCacheFallback", { step }));
+    }
+    logger.info(t("commands.init.stepRegisterCacheCmd") + "\n");
+    step++;
+  }
+
+  logger.info(t("commands.init.stepEditConfig", { step }));
+  logger.info(t("commands.init.stepEditConfigFile") + "\n");
+  step++;
+
+  logger.info(t("commands.init.stepGenerate", { step }));
+  logger.info(t("commands.init.stepGenerateCmd") + "\n");
+  step++;
+
+  logger.info(t("commands.init.stepManualSetup", { step }));
+  logger.info(t("commands.init.stepManualSetupCategories"));
+  logger.info(t("commands.init.stepManualSetupWorkflows"));
+  logger.info(t("commands.init.stepManualSetupVerify") + "\n");
+
+  logger.info(t("commands.init.skillsHeader") + "\n");
+  logger.info(t("commands.init.skillWorkingOnIssue"));
+  logger.info(t("commands.init.skillStartingSession"));
+  logger.info(t("commands.init.skillCommitting"));
+  logger.info(t("commands.init.skillCreatingPr") + "\n");
+
+  logger.info(t("commands.init.skillUpdate"));
+  if (cacheRegistered) {
+    logger.info(t("commands.init.skillUpdateNote"));
+  }
+}
+
+// Export error class
+export { InitError };

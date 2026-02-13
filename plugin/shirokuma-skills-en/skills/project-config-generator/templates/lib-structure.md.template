@@ -1,0 +1,73 @@
+# lib/ Directory Structure
+
+Project-specific conventions for organizing the `lib/` directory.
+
+## Structure
+
+```
+lib/
+├── actions/           # Server Actions (CRUD operations)
+│   ├── crud/          # Basic CRUD by domain
+│   │   ├── users.ts
+│   │   └── posts.ts
+│   └── workflows/     # Complex multi-step operations
+├── context/           # React Context providers
+├── hooks/             # Custom React hooks
+├── utils/             # Pure utility functions
+├── validations/       # Zod schemas
+└── types/             # TypeScript type definitions
+```
+
+## Conventions
+
+### Server Actions (`lib/actions/`)
+
+```typescript
+/**
+ * @serverAction
+ * @description Creates a new resource
+ * @param {FormData} formData - Form data
+ * @returns {Promise<ActionResult<Resource>>} Created resource
+ */
+export async function createResource(formData: FormData): Promise<ActionResult<Resource>> {
+  const { user } = await auth()  // 1. Auth check
+  if (!user) return { error: "Unauthorized" }
+
+  await verifyCsrfToken(formData)  // 2. CSRF
+
+  const validated = schema.safeParse(...)  // 3. Validation
+  if (!validated.success) return { error: validated.error }
+
+  // 4. Business logic
+  const result = await db.insert(...)
+
+  revalidatePath("/resources")  // 5. Revalidate
+  return { data: result }
+}
+```
+
+### Hooks (`lib/hooks/`)
+
+- Prefix with `use`: `useAuth`, `useTheme`
+- One hook per file
+- Include JSDoc with usage example
+
+### Utils (`lib/utils/`)
+
+- Pure functions only (no side effects)
+- Well-typed with generics where applicable
+- Include unit tests
+
+### Validations (`lib/validations/`)
+
+- One schema file per domain
+- Export both schema and inferred type
+- Use `.refine()` for custom validations
+
+## Anti-Patterns
+
+| Bad | Good | Reason |
+|-----|------|--------|
+| `lib/helpers.ts` | `lib/utils/string.ts` | Too generic |
+| `lib/api.ts` | `lib/actions/` | Use Server Actions |
+| `lib/data.ts` | `lib/actions/crud/` | Unclear purpose |

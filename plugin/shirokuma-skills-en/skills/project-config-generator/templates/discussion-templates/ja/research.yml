@@ -1,0 +1,71 @@
+title: ""
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 調査依頼
+        調査依頼・調査結果を記録します。
+
+  - type: textarea
+    id: question
+    attributes:
+      label: 質問
+      description: 調査したい内容
+      placeholder: |
+        Drizzle ORM で soft delete を実装するベストプラクティスは？
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: 背景
+      description: なぜこの調査が必要か
+      placeholder: |
+        ユーザーデータの削除時に物理削除ではなく論理削除を実装したい。
+        関連: Issue #XX
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: スコープ
+      description: 調査の範囲・観点
+      placeholder: |
+        - Drizzle ORM 公式ドキュメント
+        - 既存プロジェクトの実装例
+        - パフォーマンスへの影響
+
+  - type: textarea
+    id: findings
+    attributes:
+      label: 調査結果
+      description: 調査結果（調査完了後に更新）
+      placeholder: |
+        *調査中...*
+
+        ---
+        **調査完了後:**
+        1. 方法A: ...
+        2. 方法B: ...
+
+  - type: textarea
+    id: conclusion
+    attributes:
+      label: 結論
+      description: 結論・推奨事項
+      placeholder: |
+        **推奨**: 方法A を採用
+
+        理由: ...
+
+  - type: checkboxes
+    id: next-actions
+    attributes:
+      label: 次のアクション
+      description: 調査後のアクション
+      options:
+        - label: ADR を作成する（決定が必要な場合）
+        - label: Knowledge を作成する（パターンが確定した場合）
+        - label: Issue を作成する（実装が必要な場合）
+        - label: Rule を作成/更新する（AI 用の抽出）

@@ -1,0 +1,186 @@
+/**
+ * feature-map コマンド - 機能階層マップ生成
+ *
+ * TypeScript ファイルからカスタム JSDoc タグを解析し、
+ * 5層の階層的な機能マップを生成する
+ *
+ * 対象タグ:
+ * - @screen ScreenName - 画面/ページ識別子
+ * - @component ComponentName - コンポーネント識別子
+ * - @serverAction - Server Action マーカー
+ * - @module moduleName - lib/ モジュール識別子 (auth, security, content等)
+ * - @dbTable tableName - データベーステーブル参照
+ * - @feature FeatureName - 機能グループ
+ * - @route /path - URL ルート
+ * - @usedComponents Comp1, Comp2 - 使用コンポーネント
+ * - @usedActions action1, action2 - 使用アクション
+ * - @usedInScreen ScreenName - 親画面
+ * - @usedInComponent CompName - 親コンポーネント
+ * - @dbTables table1, table2 - 使用データベーステーブル
+ */
+
+import { resolve, relative } from "node:path";
+import { loadConfig, getOutputPath } from "../utils/config.js";
+import { ensureDir, writeFile, readFile } from "../utils/file.js";
+import { createLogger } from "../utils/logger.js";
+import { analyzeProjectReferences } from "../analyzers/reference-analyzer.js";
+import { extractModuleName } from "../parsers/feature-map-utils.js";
+import { parseFeatureMapTagsWithMetadata } from "../parsers/feature-map-tags.js";
+import { mergeInferredReferences, buildTableReverseReferences, buildModuleReferences } from "../analyzers/feature-map-references.js";
+import { buildFeatureMap } from "../analyzers/feature-map-builder.js";
+import { generateFeatureMapHtml } from "../generators/feature-map-html.js";
+import { resolveFeatureMapConfig, collectFiles } from "../generators/feature-map-styles.js";
+import type { FeatureMapOptions, FeatureMapItem, TypeItem, UtilityItem } from "./feature-map-types.js";
+
+// ============================================================
+// Backward-compatible re-exports
+// ============================================================
+
+// Types (used by tests and other modules)
+export type {
+  ScreenItem,
+  ComponentItem,
+  ActionItem,
+  TableItem,
+  ModuleItem,
+  TypeItem,
+  UtilityItem,
+  FeatureMap,
+  FeatureMapItem,
+  FeatureGroup,
+  ParseResult,
+  ResolvedFeatureMapConfig,
+  ExternalDocConfig,
+  StorybookConfig,
+  FileMetadata,
+} from "./feature-map-types.js";
+
+// Parsing functions
+export { parseFeatureMapTags, parseFeatureMapTagsWithMetadata } from "../parsers/feature-map-tags.js";
+
+// Builder
+export { buildFeatureMap } from "../analyzers/feature-map-builder.js";
+
+// Utils
+export { extractModuleName } from "../parsers/feature-map-utils.js";
+
+// ============================================================
+// Command Handler
+// ============================================================
+
+/**
+ * feature-map コマンドハンドラ
+ */
+export async function featureMapCommand(options: FeatureMapOptions): Promise<void> {
+  const logger = createLogger(options.verbose);
+  const projectPath = resolve(options.project);
+
+  logger.info("機能階層マップを生成中");
+
+  // 設定読み込み
+  const config = loadConfig(projectPath, options.config);
+  const featureMapConfig = resolveFeatureMapConfig(config.featureMap);
+
+  // ファイルを収集
+  const files = collectFiles(projectPath, featureMapConfig);
+  logger.info(`対象ファイル数: ${files.length}`);
+
+  // 各ファイルを解析（モジュール説明・型定義・ユーティリティも収集）
+  const allItems: FeatureMapItem[] = [];
+  const moduleDescriptions = new Map<string, string>();
+  const moduleTypes = new Map<string, TypeItem[]>();
+  const moduleUtilities = new Map<string, UtilityItem[]>();
+
+  for (const file of files) {
+    const content = readFile(file);
+    if (!content) continue;
+
+    const relativePath = relative(projectPath, file);
+    const { items, metadata, types, utilities } = parseFeatureMapTagsWithMetadata(content, relativePath);
+    allItems.push(...items);
+
+    const moduleName = extractModuleName(relativePath);
+
+    // モジュール説明を収集（各ファイルのヘッダーから）
+    if (metadata.moduleDescription) {
+      const existingDesc = moduleDescriptions.get(moduleName);
+      if (!existingDesc || metadata.moduleDescription.length > existingDesc.length) {
+        moduleDescriptions.set(moduleName, metadata.moduleDescription);
+      }
+    }
+
+    // 型定義を収集（モジュール別）
+    if (types.length > 0) {
+      const existingTypes = moduleTypes.get(moduleName) || [];
+      for (const type of types) {
+        if (!existingTypes.some(t => t.name === type.name)) {
+          existingTypes.push(type);
+        }
+      }
+      moduleTypes.set(moduleName, existingTypes);
+    }
+
+    // ユーティリティを収集（モジュール別）
+    if (utilities.length > 0) {
+      const existingUtilities = moduleUtilities.get(moduleName) || [];
+      for (const util of utilities) {
+        if (!existingUtilities.some(u => u.name === util.name)) {
+          existingUtilities.push(util);
+        }
+      }
+      moduleUtilities.set(moduleName, existingUtilities);
+    }
+  }
+
+  logger.info(`抽出アイテム数: ${allItems.length}`);
+  logger.info(`モジュール説明数: ${moduleDescriptions.size}`);
+  logger.info(`型定義モジュール数: ${moduleTypes.size}`);
+  logger.info(`ユーティリティモジュール数: ${moduleUtilities.size}`);
+
+  // ts-morph による自動参照解析
+  logger.info("ts-morph で参照解析中...");
+  const tsxFiles = files.filter(f => f.endsWith(".tsx") || f.endsWith(".ts"));
+  const referenceResult = analyzeProjectReferences({
+    projectPath,
+    targetFiles: tsxFiles,
+    verbose: options.verbose,
+  });
+  logger.info(`参照解析完了: ${referenceResult.fileUsages.size} ファイルで参照を検出`);
+
+  // 解析結果を allItems にマージ
+  mergeInferredReferences(allItems, referenceResult, projectPath);
+
+  // Action → Table 逆参照を構築（Table.usedInActions を設定）
+  buildTableReverseReferences(allItems);
+
+  // Module → Module 双方向関連を構築
+  buildModuleReferences(allItems, referenceResult, projectPath);
+
+  // Feature Map を構築
+  const featureMap = buildFeatureMap(allItems, moduleDescriptions, moduleTypes, moduleUtilities);
+
+  // 検出されたアプリを表示
+  if (featureMap.apps && featureMap.apps.length > 0) {
+    logger.info(`検出されたアプリ: ${featureMap.apps.join(", ")}`);
+  }
+
+  // 出力先
+  const portalDir = options.output
+    ? resolve(options.output)
+    : getOutputPath(config, projectPath, "portal");
+  ensureDir(portalDir);
+
+  // HTML 出力
+  const htmlPath = resolve(portalDir, "feature-map.html");
+  const moduleDescMap = new Map(Object.entries(featureMap.moduleDescriptions));
+  const htmlContent = generateFeatureMapHtml(featureMap, config.project.name, featureMapConfig, moduleDescMap);
+  writeFile(htmlPath, htmlContent);
+  logger.success(`HTML: ${htmlPath}`);
+
+  // JSON 出力
+  const jsonPath = resolve(portalDir, "feature-map.json");
+  writeFile(jsonPath, JSON.stringify(featureMap, null, 2));
+  logger.success(`JSON: ${jsonPath}`);
+
+  logger.success("機能階層マップ生成完了");
+}

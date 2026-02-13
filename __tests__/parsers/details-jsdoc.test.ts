@@ -1,0 +1,187 @@
+/**
+ * Tests for details-jsdoc.ts
+ *
+ * Covers: cleanJSDoc, formatCode, simpleMarkdown, extractJSDoc,
+ * parseJSDoc, parseJSDocForJson, splitTypeSourceCode
+ */
+
+import {
+  cleanJSDoc,
+  formatCode,
+  simpleMarkdown,
+  parseJSDoc,
+  parseJSDocForJson,
+  splitTypeSourceCode,
+} from "../../src/parsers/details-jsdoc.js";
+
+describe("details-jsdoc", () => {
+  describe("cleanJSDoc", () => {
+    it("should remove JSDoc delimiters and asterisks", () => {
+      const input = `/**
+ * This is a description
+ * @param name The name
+ */`;
+      const result = cleanJSDoc(input);
+      expect(result).toContain("This is a description");
+      expect(result).toContain("@param name The name");
+      expect(result).not.toContain("/**");
+      expect(result).not.toContain("*/");
+    });
+
+    it("should handle single-line JSDoc", () => {
+      const result = cleanJSDoc("/** Hello world */");
+      expect(result.trim()).toBe("Hello world");
+    });
+
+    it("should preserve line structure", () => {
+      const input = `/**
+ * Line one
+ * Line two
+ */`;
+      const result = cleanJSDoc(input);
+      expect(result).toContain("Line one");
+      expect(result).toContain("Line two");
+    });
+  });
+
+  describe("formatCode", () => {
+    it("should escape HTML entities", () => {
+      const result = formatCode('<div class="test">Hello & "world"</div>');
+      expect(result).toContain("&lt;");
+      expect(result).toContain("&gt;");
+      expect(result).toContain("&amp;");
+      expect(result).toContain("&quot;");
+    });
+  });
+
+  describe("simpleMarkdown", () => {
+    it("should return empty string for empty input", () => {
+      expect(simpleMarkdown("")).toBe("");
+    });
+
+    it("should wrap text in paragraphs", () => {
+      const result = simpleMarkdown("Hello world");
+      expect(result).toContain("<p>Hello world</p>");
+    });
+
+    it("should handle code blocks", () => {
+      const result = simpleMarkdown("```ts\nconst x = 1;\n```");
+      expect(result).toContain("<pre");
+      expect(result).toContain("<code");
+      expect(result).toContain("language-ts");
+      expect(result).toContain("const x = 1;");
+    });
+
+    it("should handle inline code", () => {
+      const result = simpleMarkdown("Use `const` keyword");
+      expect(result).toContain("<code>const</code>");
+    });
+
+    it("should separate paragraphs by double newline", () => {
+      const result = simpleMarkdown("First paragraph\n\nSecond paragraph");
+      expect(result).toContain("<p>First paragraph</p>");
+      expect(result).toContain("<p>Second paragraph</p>");
+    });
+  });
+
+  describe("parseJSDoc", () => {
+    it("should parse description from plain text", () => {
+      const result = parseJSDoc("A simple function that does something.");
+      expect(result.description).toBe("A simple function that does something.");
+    });
+
+    it("should parse @param tags", () => {
+      const result = parseJSDoc("Description\n@param {string} name - The name\n@param {number} age - The age");
+      expect(result.params).toHaveLength(2);
+      expect(result.params[0]).toEqual({ name: "name", type: "string", description: "The name" });
+      expect(result.params[1]).toEqual({ name: "age", type: "number", description: "The age" });
+    });
+
+    it("should parse @returns tag", () => {
+      const result = parseJSDoc("@returns The computed value");
+      expect(result.returns).toBe("The computed value");
+    });
+
+    it("should parse @return tag (alias)", () => {
+      const result = parseJSDoc("@return The result");
+      expect(result.returns).toBe("The result");
+    });
+
+    it("should parse @throws tags", () => {
+      const result = parseJSDoc("@throws Error if input is invalid\n@throws TypeError if type is wrong");
+      expect(result.throws).toHaveLength(2);
+      expect(result.throws![0]).toBe("Error if input is invalid");
+    });
+
+    it("should parse @example tag", () => {
+      const result = parseJSDoc("@example\n```ts\nconst x = 1;\n```");
+      expect(result.examples).toHaveLength(1);
+      expect(result.examples[0]).toContain("const x = 1;");
+    });
+
+    it("should parse custom tags", () => {
+      const result = parseJSDoc("@serverAction\n@feature entities\n@dbTables users, sessions");
+      expect(result.tags.find((t) => t.name === "serverAction")).toBeDefined();
+      expect(result.tags.find((t) => t.name === "feature")?.value).toBe("entities");
+      expect(result.tags.find((t) => t.name === "dbTables")?.value).toBe("users, sessions");
+    });
+
+    it("should return empty result for empty input", () => {
+      const result = parseJSDoc("");
+      expect(result.description).toBe("");
+      expect(result.params).toEqual([]);
+      expect(result.examples).toEqual([]);
+    });
+
+    it("should parse @description tag", () => {
+      const result = parseJSDoc("@description A detailed description here");
+      expect(result.description).toBe("A detailed description here");
+    });
+  });
+
+  describe("parseJSDocForJson", () => {
+    it("should parse like parseJSDoc for basic cases", () => {
+      const result = parseJSDocForJson("Description\n@param {string} name - The name");
+      expect(result.description).toBe("Description");
+      expect(result.params[0]).toEqual({ name: "name", type: "string", description: "The name" });
+    });
+
+    it("should handle multiline tags like @errorCodes", () => {
+      const input = "@errorCodes\n- NOT_FOUND: Resource not found (404)\n- FORBIDDEN: Access denied (403)";
+      const result = parseJSDocForJson(input);
+      const errorCodesTag = result.tags.find((t) => t.name === "errorCodes");
+      expect(errorCodesTag).toBeDefined();
+      expect(errorCodesTag!.value).toContain("NOT_FOUND");
+      expect(errorCodesTag!.value).toContain("FORBIDDEN");
+    });
+
+    it("should handle @throws with alias @throw", () => {
+      const result = parseJSDocForJson("@throw Something went wrong");
+      expect(result.throws).toHaveLength(1);
+      expect(result.throws![0]).toBe("Something went wrong");
+    });
+  });
+
+  describe("splitTypeSourceCode", () => {
+    it("should split JSDoc and type definition", () => {
+      const source = `/**
+ * A user entity
+ * @description Represents a user in the system
+ */
+export interface User {
+  id: string;
+  name: string;
+}`;
+      const result = splitTypeSourceCode(source);
+      expect(result.jsdocHtml).toContain("A user entity");
+      expect(result.definitionCode).toContain("export interface User");
+    });
+
+    it("should return full source as definition when no JSDoc", () => {
+      const source = "export type Status = 'active' | 'inactive';";
+      const result = splitTypeSourceCode(source);
+      expect(result.jsdocHtml).toBe("");
+      expect(result.definitionCode).toBe(source.trim());
+    });
+  });
+});
