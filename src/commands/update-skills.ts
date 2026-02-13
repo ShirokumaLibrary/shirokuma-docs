@@ -29,7 +29,7 @@
 import { resolve, join } from "node:path";
 import { existsSync, mkdirSync, cpSync, rmSync } from "node:fs";
 import { execFileSync } from "node:child_process";
-import { createLogger, type Logger } from "../utils/logger.js";
+import { createLogger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import {
   AVAILABLE_SKILLS,
@@ -52,9 +52,12 @@ import {
   getInstalledRules,
   getEffectivePluginDir,
   deployRules,
-  installPlugin,
   registerPluginCache,
+  ensureMarketplace,
+  getGlobalCachePath,
+  cleanupLegacyPluginDir,
   isSelfRepo,
+  isClaudeCliAvailable,
   hasJaPlugin,
   hasHooksPlugin,
   getLanguageSetting,
@@ -450,6 +453,13 @@ export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise
     }
   }
 
+  // 外部プロジェクト: claude plugin update に完全委譲（#486）
+  if (!isSelfRepo(projectPath)) {
+    return updateExternalProject(projectPath, options, logger, T, newVersion, newPluginVersion, verbose);
+  }
+
+  // === 以下は self-repo（shirokuma-docs 自身）専用 ===
+
   // Determine which skills to update
   let targetSkills: string[];
   if (options.skills) {
@@ -517,17 +527,10 @@ export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise
 
     if (useJaRules) {
       logger.info(T("deployingRulesJa"));
-      const jaPluginPath = getBundledPluginPathJa();
-
-      // Copy JA plugin to .claude/plugins/ (external projects only)
-      if (!isSelfRepo(projectPath) && !options.dryRun) {
-        await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_JA);
-      }
-
       const deployResult = await deployRules(projectPath, {
         dryRun: options.dryRun,
         verbose: options.verbose ?? false,
-        bundledPluginPath: jaPluginPath,
+        bundledPluginPath: getBundledPluginPathJa(),
       });
       deployedRuleResults = deployResult.deployed;
     } else {
@@ -547,20 +550,8 @@ export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise
     }
   }
 
-  // Copy hooks plugin to .claude/plugins/ (external projects only)
-  let hooksStatus: "updated" | "skipped" | "error" | "not-applicable" = "not-applicable";
-  if (hasHooksPlugin()) {
-    if (isSelfRepo(projectPath) || options.dryRun) {
-      hooksStatus = "skipped";
-    } else {
-      try {
-        const hooksResult = await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_HOOKS);
-        hooksStatus = hooksResult ? "updated" : "error";
-      } catch {
-        hooksStatus = "error";
-      }
-    }
-  }
+  // Hooks (self-repo: always skip)
+  const hooksStatus: "updated" | "skipped" | "error" | "not-applicable" = hasHooksPlugin() ? "skipped" : "not-applicable";
 
   // Summary
   const result: UpdateResult = {
@@ -575,42 +566,108 @@ export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise
 
   printSummary(result, logger);
 
-  // Auto-sync global cache (#244: --sync / --install-cache でも自動同期)
-  const skillsChanged = result.skills.some(s => s.status === "added" || s.status === "updated");
-  const rulesChanged = result.rules.some(r => r.status === "added" || r.status === "updated");
-  const shouldSyncCache = skillsChanged || rulesChanged || options.sync || options.installCache;
-  if (shouldSyncCache && !options.dryRun && !isSelfRepo(projectPath)) {
+  if (verbose) {
+    console.log(JSON.stringify(result, null, 2));
+  }
+}
+
+/**
+ * 外部プロジェクト向け update-skills: claude plugin update に委譲（#486）
+ *
+ * updateSkills()/updateRules()/removeObsoleteSkills() はキャッシュ内に
+ * 書き込んでしまうため、外部プロジェクトでは完全にスキップし、
+ * claude plugin update でリモートから最新を取得する。
+ */
+async function updateExternalProject(
+  projectPath: string,
+  options: UpdateSkillsOptions,
+  logger: ReturnType<typeof createLogger>,
+  T: (key: string, params?: Record<string, string | number>) => string,
+  newVersion: string,
+  newPluginVersion: string,
+  verbose: boolean,
+): Promise<void> {
+  const deployedRuleResults: DeployedRuleItem[] = [];
+
+  if (!isClaudeCliAvailable()) {
+    logger.warn(T("errorNoClaudeCli"));
+    logger.info("Install: https://docs.anthropic.com/en/docs/claude-code/overview");
+    return;
+  }
+
+  // Marketplace 登録確認
+  const marketplaceOk = ensureMarketplace();
+  if (!marketplaceOk) {
+    logger.warn("Marketplace registration failed, proceeding with bundled fallback");
+  }
+
+  // claude plugin update でキャッシュ更新
+  if (!options.dryRun && marketplaceOk) {
     logger.info(T("updatingGlobalCache"));
-    const cacheResult = registerPluginCache(projectPath, { reinstall: true });
 
-    if (cacheResult.success) {
-      logger.success(T("globalCacheUpdated"));
-    } else {
-      printCacheSyncGuidance(logger, cacheResult.message);
-    }
+    const registryIds = [
+      PLUGIN_REGISTRY_ID,
+      ...(hasJaPlugin() ? [PLUGIN_REGISTRY_ID_JA] : []),
+      ...(hasHooksPlugin() ? [PLUGIN_REGISTRY_ID_HOOKS] : []),
+    ];
 
-    // Sync JA plugin cache if available
-    if (hasJaPlugin()) {
-      const jaCacheResult = registerPluginCache(projectPath, {
-        reinstall: true,
-        registryId: PLUGIN_REGISTRY_ID_JA,
-      });
-      if (jaCacheResult.success) {
-        logger.success(T("jaCacheUpdated"));
-      }
-    }
-
-    // Sync hooks plugin cache if available
-    if (hasHooksPlugin()) {
-      const hooksCacheResult = registerPluginCache(projectPath, {
-        reinstall: true,
-        registryId: PLUGIN_REGISTRY_ID_HOOKS,
-      });
-      if (hooksCacheResult.success) {
-        logger.success(T("hooksCacheUpdated"));
+    for (const registryId of registryIds) {
+      const cacheResult = registerPluginCache(projectPath, { reinstall: true, registryId });
+      if (cacheResult.success) {
+        logger.success(`${registryId}: ${T("globalCacheUpdated")}`);
+      } else {
+        logger.warn(`${registryId}: ${cacheResult.message ?? "update failed"}`);
       }
     }
   }
+
+  // ルール展開（キャッシュ → bundled フォールバック）
+  const languageSetting = getLanguageSetting(projectPath);
+  const useJaRules = languageSetting === "japanese" && hasJaPlugin();
+
+  if (useJaRules) {
+    logger.info(T("deployingRulesJa"));
+    const jaRulesSource = getGlobalCachePath(PLUGIN_NAME_JA) ?? getBundledPluginPathJa();
+    const deployResult = await deployRules(projectPath, {
+      dryRun: options.dryRun,
+      verbose: options.verbose ?? false,
+      bundledPluginPath: jaRulesSource,
+    });
+    deployedRuleResults.push(...deployResult.deployed);
+  } else {
+    logger.info(T("deployingRules"));
+    const enRulesSource = getGlobalCachePath(PLUGIN_NAME) ?? getBundledPluginPath();
+    const deployResult = await deployRules(projectPath, {
+      dryRun: options.dryRun,
+      verbose: options.verbose ?? false,
+      bundledPluginPath: enRulesSource,
+    });
+    deployedRuleResults.push(...deployResult.deployed);
+  }
+
+  // レガシー .claude/plugins/ 削除（マイグレーション）
+  if (!options.dryRun) {
+    cleanupLegacyPluginDir(projectPath);
+
+    // レガシー shirokuma-ja/ 削除
+    const legacyJaDir = resolve(projectPath, DEPLOYED_RULES_DIR_JA);
+    if (existsSync(legacyJaDir)) {
+      rmSync(legacyJaDir, { recursive: true, force: true });
+    }
+  }
+
+  // Summary
+  const result: UpdateResult = {
+    skills: [],
+    rules: [],
+    deployedRules: deployedRuleResults,
+    version: newVersion,
+    pluginVersion: newPluginVersion,
+    dryRun: options.dryRun ?? false,
+    hooksStatus: hasHooksPlugin() ? "updated" : "not-applicable",
+  };
+
+  printSummary(result, logger);
 
   if (verbose) {
     console.log(JSON.stringify(result, null, 2));
@@ -739,23 +796,4 @@ function printSummary(
   } else {
     logger.success(`✓ ${T("completedOk")}`);
   }
-}
-
-/**
- * Print cache sync guidance as a fallback when auto-registration fails
- *
- * Claude Code loads skills from the global cache, not the project-local
- * .claude/plugins/ directory. When new skills are added locally, the user
- * must sync the global cache for them to be available.
- */
-function printCacheSyncGuidance(logger: Logger, reason?: string): void {
-  const T = (key: string, params?: Record<string, string | number>) =>
-    t(`commands.updateSkills.${key}`, params);
-  if (reason) {
-    logger.warn(T("cacheAutoSyncFailed", { reason }));
-  }
-  logger.warn(T("cacheManualSyncHint"));
-  logger.info(T("cacheUninstallCommand", { registryId: PLUGIN_REGISTRY_ID }));
-  logger.info(T("cacheInstallCommand", { registryId: PLUGIN_REGISTRY_ID }));
-  logger.info(T("cacheNewSessionNote"));
 }

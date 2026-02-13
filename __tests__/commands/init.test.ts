@@ -141,10 +141,10 @@ describe("init command", () => {
 
   describe("--with-skills option (plugin installation)", () => {
     /**
-     * @testdoc プラグイン全体を .claude/plugins/shirokuma-skills-en/ にインストールする
-     * @purpose --with-skills でバンドルプラグインが正しくインストールされることを確認
+     * @testdoc --with-skills でプラグインがインストール済みとしてマークされる
+     * @purpose #486: marketplace + cache 方式のため .claude/plugins/ にはコピーしない
      */
-    it("should install plugin to .claude/plugins/shirokuma-skills-en/", () => {
+    it("should mark plugin as installed without local copy", () => {
       const result = runCli([
         "init",
         "--project", TEST_OUTPUT_DIR,
@@ -157,19 +157,16 @@ describe("init command", () => {
       expect(output.plugin_installed).toBe(true);
       expect(output.skills_installed.length).toBeGreaterThan(0);
 
-      // Check plugin directory structure
+      // .claude/plugins/ にはローカルコピーされない（marketplace + cache 方式）
       const pluginDir = join(TEST_OUTPUT_DIR, ".claude", "plugins", "shirokuma-skills-en");
-      expect(existsSync(pluginDir)).toBe(true);
-      expect(existsSync(join(pluginDir, ".claude-plugin", "plugin.json"))).toBe(true);
-      expect(existsSync(join(pluginDir, "skills"))).toBe(true);
-      expect(existsSync(join(pluginDir, "rules"))).toBe(true);
+      expect(existsSync(pluginDir)).toBe(false);
     });
 
     /**
      * @testdoc インストール済みスキルが16個含まれる
      * @purpose 全バンドルスキルがインストールされることを確認
      */
-    it("should install all 19 bundled skills", () => {
+    it("should install all 22 bundled skills", () => {
       const result = runCli([
         "init",
         "--project", TEST_OUTPUT_DIR,
@@ -181,12 +178,11 @@ describe("init command", () => {
       const output = extractJson<InitResult>(result.stdout);
       expect(output.skills_installed).toHaveLength(22);
 
-      // Check specific skills exist
-      const skillsDir = join(TEST_OUTPUT_DIR, ".claude", "plugins", "shirokuma-skills-en", "skills");
-      expect(existsSync(join(skillsDir, "managing-agents"))).toBe(true);
-      expect(existsSync(join(skillsDir, "nextjs-vibe-coding"))).toBe(true);
-      expect(existsSync(join(skillsDir, "reviewing-on-issue"))).toBe(true);
-      expect(existsSync(join(skillsDir, "publishing"))).toBe(true);
+      // スキル名リストで検証（ファイルは marketplace + cache にあるためローカルには存在しない）
+      expect(output.skills_installed).toContain("managing-agents");
+      expect(output.skills_installed).toContain("nextjs-vibe-coding");
+      expect(output.skills_installed).toContain("reviewing-on-issue");
+      expect(output.skills_installed).toContain("publishing");
     });
 
     /**
@@ -214,7 +210,7 @@ describe("init command", () => {
      * @testdoc ルールが .claude/plugins/shirokuma-skills-en/rules/ にインストールされる
      * @purpose --with-rules でルールが正しくインストールされることを確認
      */
-    it("should install rules in plugin directory", () => {
+    it("should install rules and report them in result", () => {
       const result = runCli([
         "init",
         "--project", TEST_OUTPUT_DIR,
@@ -226,10 +222,9 @@ describe("init command", () => {
       const output = extractJson<InitResult>(result.stdout);
       expect(output.rules_installed.length).toBeGreaterThan(0);
 
-      // Check rules exist in plugin directory
-      const rulesDir = join(TEST_OUTPUT_DIR, ".claude", "plugins", "shirokuma-skills-en", "rules");
-      expect(existsSync(join(rulesDir, "skill-authoring.md"))).toBe(true);
-      expect(existsSync(join(rulesDir, "github", "project-items.md"))).toBe(true);
+      // ルール名リストで検証（ファイルは bundled/cache から参照）
+      expect(output.rules_installed).toContain("skill-authoring.md");
+      expect(output.rules_installed).toContain("github/project-items.md");
     });
   });
 
@@ -284,7 +279,7 @@ describe("init command", () => {
       // Create existing .gitignore with all managed entries already present
       writeFileSync(
         join(TEST_OUTPUT_DIR, ".gitignore"),
-        "node_modules/\n.claude/rules/shirokuma/\n.claude/plans/\n",
+        "node_modules/\n.claude/plugins/\n.claude/rules/shirokuma/\n.claude/plans/\n",
         "utf-8",
       );
 
@@ -333,7 +328,7 @@ describe("init command", () => {
      * @testdoc 旧エージェントがスキルとして含まれる（#182 でスキルに統合済み）
      * @purpose agents/ は廃止され、fork スキルとして skills/ に統合されたことを確認
      */
-    it("should include former agents as fork skills", () => {
+    it("should include former agents as fork skills in installed list", () => {
       const result = runCli([
         "init",
         "--project", TEST_OUTPUT_DIR,
@@ -343,10 +338,11 @@ describe("init command", () => {
 
       expect(result.status).toBe(0);
 
-      const pluginSkillsDir = join(TEST_OUTPUT_DIR, ".claude", "plugins", "shirokuma-skills-en", "skills");
-      expect(existsSync(join(pluginSkillsDir, "best-practices-researching", "SKILL.md"))).toBe(true);
-      expect(existsSync(join(pluginSkillsDir, "reviewing-on-issue", "SKILL.md"))).toBe(true);
-      expect(existsSync(join(pluginSkillsDir, "claude-config-reviewing", "SKILL.md"))).toBe(true);
+      // スキル名リストで検証（#486: ローカルコピーなし、marketplace + cache 方式）
+      const output = extractJson<InitResult>(result.stdout);
+      expect(output.skills_installed).toContain("best-practices-researching");
+      expect(output.skills_installed).toContain("reviewing-on-issue");
+      expect(output.skills_installed).toContain("claude-config-reviewing");
     });
 
     /**

@@ -49,10 +49,9 @@ shirokuma-docs init --with-skills --with-rules --lang en
 
 This single command:
 1. Creates `shirokuma-docs.config.yaml`
-2. Installs the **shirokuma-skills** plugin to `.claude/plugins/`
-3. Installs **shirokuma-hooks** safety hooks plugin
+2. Registers the **shirokuma-library** marketplace
+3. Installs **shirokuma-skills** and **shirokuma-hooks** plugins via marketplace
 4. Deploys rules to `.claude/rules/shirokuma/`
-5. Registers the plugin in Claude Code's global cache (auto-detected)
 
 Start a new Claude Code session and the skills will be available.
 
@@ -94,10 +93,13 @@ npm uninstall -g shirokuma-docs
 To remove per-project files:
 
 ```bash
-rm -rf .claude/plugins/shirokuma-skills-*/
-rm -rf .claude/plugins/shirokuma-hooks/
+# Remove deployed rules and config
 rm -rf .claude/rules/shirokuma/
 rm -f shirokuma-docs.config.yaml
+
+# Remove plugins from global cache
+claude plugin uninstall shirokuma-skills-en@shirokuma-library --scope project
+claude plugin uninstall shirokuma-hooks@shirokuma-library --scope project
 ```
 
 ## Features

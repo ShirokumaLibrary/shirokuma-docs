@@ -24,9 +24,11 @@ import { createLogger, type Logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import type { ShirokumaConfig } from "../utils/config.js";
 import {
-  installPlugin,
   deployRules,
   registerPluginCache,
+  ensureMarketplace,
+  getGlobalCachePath,
+  cleanupLegacyPluginDir,
   getInstalledSkills,
   getInstalledRules,
   updateGitignore,
@@ -35,11 +37,14 @@ import {
   hasJaPlugin,
   hasHooksPlugin,
   getLanguageSetting,
+  getBundledPluginPath,
   getBundledPluginPathJa,
   DEPLOYED_RULES_DIR,
   DEPLOYED_RULES_DIR_JA,
+  PLUGIN_NAME,
   PLUGIN_NAME_JA,
   PLUGIN_NAME_HOOKS,
+  PLUGIN_REGISTRY_ID,
   PLUGIN_REGISTRY_ID_JA,
   PLUGIN_REGISTRY_ID_HOOKS,
 } from "../utils/skills-repo.js";
@@ -240,9 +245,42 @@ export async function initCommand(options: InitOptions): Promise<void> {
     try {
       logger.info("\n" + t("commands.init.installingPlugin"));
 
-      const installed = await installPlugin(projectPath, options.verbose ?? false);
-      if (!installed) {
-        throw new InitError(t("commands.init.pluginInstallFailed"));
+      const isExternal = !isSelfRepo(projectPath);
+
+      // 外部プロジェクト: marketplace 登録 + キャッシュインストール
+      if (isExternal && isClaudeCliAvailable()) {
+        logger.info("\n" + t("commands.init.registeringCache"));
+        const marketplaceOk = ensureMarketplace();
+        if (marketplaceOk) {
+          const cacheResult = registerPluginCache(projectPath);
+          if (cacheResult.success) {
+            logger.success(t("commands.init.cacheRegistered"));
+            result.cache_registered = true;
+          } else {
+            logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
+          }
+
+          // JA プラグイン
+          if (hasJaPlugin()) {
+            const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
+            if (jaCacheResult.success) {
+              logger.success(t("commands.init.jaCacheRegistered"));
+            }
+          }
+
+          // Hooks プラグイン
+          if (hasHooksPlugin()) {
+            const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
+            if (hooksCacheResult.success) {
+              logger.success(t("commands.init.hooksCacheRegistered"));
+            }
+          }
+        } else {
+          logger.warn("Marketplace registration failed");
+        }
+      } else if (isExternal) {
+        logger.warn("\n" + t("commands.init.claudeNotFound"));
+        logger.info(t("commands.init.claudeInstallHint"));
       }
 
       result.plugin_installed = true;
@@ -259,33 +297,29 @@ export async function initCommand(options: InitOptions): Promise<void> {
       let deployedNames: string[];
 
       if (useJaRules) {
-        // JA プラグインをインストール
-        logger.info("\n" + t("commands.init.installingJaPlugin"));
-        await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_JA);
-
-        // 日本語ルールを shirokuma/ にデプロイ
+        // 日本語ルールをデプロイ（キャッシュ → bundled フォールバック）
+        const jaRulesSource = (isExternal ? getGlobalCachePath(PLUGIN_NAME_JA) : null)
+          ?? getBundledPluginPathJa();
         const deployResult = await deployRules(projectPath, {
           verbose: options.verbose ?? false,
-          bundledPluginPath: getBundledPluginPathJa(),
+          bundledPluginPath: jaRulesSource,
         });
         deployedNames = deployResult.deployed
           .filter(r => r.status === "deployed" || r.status === "updated" || r.status === "unchanged")
           .map(r => r.name);
         result.rules_deployed = deployedNames.length;
       } else {
-        // 英語ルールを shirokuma/ にデプロイ（デフォルト）
+        // 英語ルールをデプロイ（キャッシュ → bundled フォールバック）
+        const enRulesSource = (isExternal ? getGlobalCachePath(PLUGIN_NAME) : null)
+          ?? getBundledPluginPath();
         const deployResult = await deployRules(projectPath, {
           verbose: options.verbose ?? false,
+          bundledPluginPath: enRulesSource,
         });
         deployedNames = deployResult.deployed
           .filter(r => r.status === "deployed" || r.status === "updated" || r.status === "unchanged")
           .map(r => r.name);
         result.rules_deployed = deployedNames.length;
-
-        // EN のみ場合でも JA プラグインはインストール（スキル翻訳用）
-        if (hasJaPlugin()) {
-          await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_JA);
-        }
       }
 
       // レガシー shirokuma-ja/ ディレクトリを削除 (#254)
@@ -294,10 +328,9 @@ export async function initCommand(options: InitOptions): Promise<void> {
         rmSync(legacyJaDir, { recursive: true, force: true });
       }
 
-      // Install hooks plugin if available (language-independent safety hooks)
-      if (hasHooksPlugin()) {
-        logger.info("\n" + t("commands.init.installingHooksPlugin"));
-        await installPlugin(projectPath, options.verbose ?? false, PLUGIN_NAME_HOOKS);
+      // レガシー .claude/plugins/ ディレクトリを削除（#486: マイグレーション）
+      if (isExternal) {
+        cleanupLegacyPluginDir(projectPath);
       }
 
     } catch (error) {
@@ -342,43 +375,6 @@ export async function initCommand(options: InitOptions): Promise<void> {
       logger.success(t("commands.init.languageSet", { lang: LANG_MAP[options.lang] }));
     } catch (error) {
       logger.warn(`Failed to write ${settingsPath}: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  // Register in Claude Code's global cache (external projects only)
-  if (result.plugin_installed && !isSelfRepo(projectPath)) {
-    // Check if claude CLI is available before attempting registration
-    if (isClaudeCliAvailable()) {
-      logger.info("\n" + t("commands.init.registeringCache"));
-      logger.info(t("commands.init.registeringCacheCmd"));
-      const cacheResult = registerPluginCache(projectPath);
-
-      if (cacheResult.success) {
-        logger.success(t("commands.init.cacheRegistered"));
-        result.cache_registered = true;
-      } else {
-        logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
-        logger.info(t("commands.init.cacheManualHint"));
-      }
-
-      // Register JA plugin cache if available
-      if (hasJaPlugin()) {
-        const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
-        if (jaCacheResult.success) {
-          logger.success(t("commands.init.jaCacheRegistered"));
-        }
-      }
-
-      // Register hooks plugin cache if available
-      if (hasHooksPlugin()) {
-        const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
-        if (hooksCacheResult.success) {
-          logger.success(t("commands.init.hooksCacheRegistered"));
-        }
-      }
-    } else {
-      logger.warn("\n" + t("commands.init.claudeNotFound"));
-      logger.info(t("commands.init.claudeInstallHint"));
     }
   }
 

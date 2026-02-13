@@ -362,87 +362,23 @@ describe("getBundledSkillNames", () => {
 
 describe("installPlugin", () => {
   /**
-   * @testdoc プラグインを .claude/plugins/shirokuma-skills-en/ にインストールする
+   * @testdoc 外部プロジェクトではローカルコピーをスキップする（marketplace + cache 方式）
+   * @purpose #486: プラグインは marketplace 経由でグローバルキャッシュに配置される
    */
-  it("should install plugin to .claude/plugins/shirokuma-skills-en/", async () => {
+  it("should skip local copy for external projects (marketplace + cache)", async () => {
     const projectPath = join(TEST_DIR, "test-project");
     mkdirSync(projectPath, { recursive: true });
 
     const result = await installPlugin(projectPath, false);
 
     expect(result).toBe(true);
+    // .claude/plugins/ にはコピーされない（marketplace + cache 方式）
     const installDir = join(projectPath, ".claude", "plugins", "shirokuma-skills-en");
-    expect(existsSync(installDir)).toBe(true);
-    expect(existsSync(join(installDir, ".claude-plugin", "plugin.json"))).toBe(true);
-    expect(existsSync(join(installDir, "skills"))).toBe(true);
-    expect(existsSync(join(installDir, "rules"))).toBe(true);
+    expect(existsSync(installDir)).toBe(false);
   });
 
   /**
-   * @testdoc インストール先に skills/ 内のスキルが存在する
-   */
-  it("should copy skills to install directory", async () => {
-    const projectPath = join(TEST_DIR, "test-project-skills");
-    mkdirSync(projectPath, { recursive: true });
-
-    await installPlugin(projectPath, false);
-
-    const skillsDir = join(projectPath, ".claude", "plugins", "shirokuma-skills-en", "skills");
-    expect(existsSync(join(skillsDir, "managing-agents"))).toBe(true);
-    expect(existsSync(join(skillsDir, "managing-agents", "SKILL.md"))).toBe(true);
-  });
-
-  /**
-   * @testdoc インストール先に rules/ 内のルールが存在する
-   */
-  it("should copy rules to install directory", async () => {
-    const projectPath = join(TEST_DIR, "test-project-rules");
-    mkdirSync(projectPath, { recursive: true });
-
-    await installPlugin(projectPath, false);
-
-    const rulesDir = join(projectPath, ".claude", "plugins", "shirokuma-skills-en", "rules");
-    expect(existsSync(join(rulesDir, "skill-authoring.md"))).toBe(true);
-  });
-
-  /**
-   * @testdoc 既存のインストールを上書きできる
-   */
-  it("should overwrite existing installation", async () => {
-    const projectPath = join(TEST_DIR, "test-project-overwrite");
-    mkdirSync(projectPath, { recursive: true });
-
-    // First install
-    await installPlugin(projectPath, false);
-
-    // Create a marker file
-    const markerPath = join(
-      projectPath, ".claude", "plugins", "shirokuma-skills-en", "marker.txt",
-    );
-    writeFileSync(markerPath, "old", "utf-8");
-
-    // Second install (overwrite)
-    const result = await installPlugin(projectPath, false);
-    expect(result).toBe(true);
-
-    // Marker should be gone (directory was replaced)
-    expect(existsSync(markerPath)).toBe(false);
-  });
-
-  /**
-   * @testdoc .claude/ ディレクトリが存在しない場合も正常にインストールできる
-   */
-  it("should create .claude/plugins/ directory if it does not exist", async () => {
-    const projectPath = join(TEST_DIR, "test-project-no-claude");
-    mkdirSync(projectPath, { recursive: true });
-
-    const result = await installPlugin(projectPath, false);
-    expect(result).toBe(true);
-    expect(existsSync(join(projectPath, ".claude", "plugins", "shirokuma-skills-en"))).toBe(true);
-  });
-
-  /**
-   * @testdoc 標準パスにはコピーしない（プラグインは --plugin-dir でロードする）
+   * @testdoc 標準パスにはコピーしない
    */
   it("should not copy to standard .claude/ paths", async () => {
     const projectPath = join(TEST_DIR, "test-project-no-std");
@@ -450,7 +386,6 @@ describe("installPlugin", () => {
 
     await installPlugin(projectPath, false);
 
-    // Plugin should only be in .claude/plugins/shirokuma-skills-en/
     expect(existsSync(join(projectPath, ".claude", "skills"))).toBe(false);
     expect(existsSync(join(projectPath, ".claude", "rules"))).toBe(false);
     expect(existsSync(join(projectPath, ".claude", "agents"))).toBe(false);
@@ -461,7 +396,6 @@ describe("installPlugin", () => {
    * @purpose shirokuma-docs リポジトリ自身ではプラグインコピーが不要
    */
   it("should skip copy for self-repo", async () => {
-    // Use the actual repo root which is a self-repo
     const repoRoot = join(__dirname, "..", "..");
     const pluginsDir = join(repoRoot, ".claude", "plugins", "shirokuma-skills-en");
     const hadPlugins = existsSync(pluginsDir);
@@ -469,7 +403,6 @@ describe("installPlugin", () => {
     const result = await installPlugin(repoRoot, false);
 
     expect(result).toBe(true);
-    // Should NOT have created .claude/plugins/ (or if it existed before, we don't add to it)
     if (!hadPlugins) {
       expect(existsSync(pluginsDir)).toBe(false);
     }
@@ -512,13 +445,16 @@ describe("getEffectivePluginDir", () => {
   });
 
   /**
-   * @testdoc 外部プロジェクトでは .claude/plugins/ パスを返す
+   * @testdoc 外部プロジェクトではグローバルキャッシュまたは bundled フォールバックを返す
+   * @purpose #486: marketplace + cache 方式でプラグインを配置
    */
-  it("should return .claude/plugins/ path for external projects", () => {
+  it("should return global cache or bundled fallback for external projects", () => {
     const externalPath = join(TEST_DIR, "external-project-dir");
     mkdirSync(externalPath, { recursive: true });
     const result = getEffectivePluginDir(externalPath);
-    expect(result).toBe(join(externalPath, ".claude", "plugins", "shirokuma-skills-en"));
+    // グローバルキャッシュがあればキャッシュパス、なければ bundled パス
+    expect(result).toMatch(/shirokuma-skills-en/);
+    expect(existsSync(result)).toBe(true);
   });
 });
 

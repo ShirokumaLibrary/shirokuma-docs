@@ -7,9 +7,10 @@
  */
 
 import { join, dirname } from "node:path";
-import { existsSync, mkdirSync, cpSync, rmSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { homedir } from "node:os";
 import { createLogger } from "./logger.js";
 
 // ========================================
@@ -372,7 +373,7 @@ export function isSelfRepo(projectPath: string): boolean {
  * Get the effective plugin directory for a project
  *
  * For self-repo (shirokuma-docs itself): returns the bundled source path
- * For external projects: returns .claude/plugins/shirokuma-skills-en/
+ * For external projects: global cache → bundled fallback
  *
  * @param projectPath - Project root path
  * @returns Absolute path to the effective plugin directory
@@ -381,7 +382,8 @@ export function getEffectivePluginDir(projectPath: string): string {
   if (isSelfRepo(projectPath)) {
     return getBundledPluginPath();
   }
-  return join(projectPath, ".claude", "plugins", PLUGIN_NAME);
+  // 外部: キャッシュ → bundled フォールバック
+  return getGlobalCachePath(PLUGIN_NAME) ?? getBundledPluginPath();
 }
 
 // ========================================
@@ -389,14 +391,12 @@ export function getEffectivePluginDir(projectPath: string): string {
 // ========================================
 
 /**
- * Install the bundled plugin to a project
+ * Install the bundled plugin to a project (self-repo 用)
  *
- * Copies the entire plugin/ directory to .claude/plugins/shirokuma-skills-en/
- * in the target project. The plugin is loaded via Claude Code's
- * --plugin-dir flag or /plugin install command.
- *
- * For self-repo (shirokuma-docs itself), the copy is skipped because
- * the bundled source is directly available.
+ * self-repo（shirokuma-docs 自身）では bundled source を直接使用するためスキップ。
+ * 外部プロジェクトでは ensureMarketplace() + registerPluginCache() を使用する。
+ * この関数は後方互換性のために残しているが、外部プロジェクトでのローカルコピーは
+ * 不要になった。
  *
  * @param projectPath - Target project root path
  * @param verbose - Enable verbose logging
@@ -409,40 +409,20 @@ export async function installPlugin(
 ): Promise<boolean> {
   const logger = createLogger(verbose);
   const srcPath = getBundledPluginPathFor(pluginName);
-  const destPath = join(projectPath, ".claude", "plugins", pluginName);
 
   if (!existsSync(srcPath)) {
     logger.error(`Bundled plugin not found: ${srcPath}`);
     return false;
   }
 
-  // Skip copy for self-repo (bundled source is directly available)
+  // self-repo / 外部ともにローカルコピーは不要
   if (isSelfRepo(projectPath)) {
     logger.info("Self-repo detected: skipping plugin copy (using bundled source directly)");
-    return true;
+  } else {
+    logger.info("External project: skipping local copy (using marketplace + cache)");
   }
 
-  try {
-    // Remove existing installation if present
-    if (existsSync(destPath)) {
-      logger.info(`Removing existing installation: ${destPath}`);
-      rmSync(destPath, { recursive: true, force: true });
-    }
-
-    // Create parent directory
-    mkdirSync(join(projectPath, ".claude", "plugins"), { recursive: true });
-
-    // Copy entire plugin directory
-    cpSync(srcPath, destPath, { recursive: true });
-
-    logger.info(`✓ Plugin installed to ${destPath}`);
-    logger.info(`  Load with: claude --plugin-dir .claude/plugins/${pluginName}`);
-
-    return true;
-  } catch (error) {
-    logger.error(`Plugin installation failed: ${error instanceof Error ? error.message : String(error)}`);
-    return false;
-  }
+  return true;
 }
 
 // ========================================
@@ -576,6 +556,42 @@ export function updateGitignore(
   return { added, alreadyPresent };
 }
 
+/**
+ * .gitignore から特定のエントリを削除する
+ *
+ * @param projectPath - プロジェクトルートパス
+ * @param entry - 削除するエントリ（例: ".claude/plugins/"）
+ * @returns true: 削除成功、false: エントリが見つからないまたはファイルなし
+ */
+export function removeGitignoreEntry(projectPath: string, entry: string): boolean {
+  const gitignorePath = join(projectPath, ".gitignore");
+  if (!existsSync(gitignorePath)) return false;
+
+  const content = readFileSync(gitignorePath, "utf-8");
+  const lines = content.split("\n");
+  const filtered = lines.filter(line => line.trim() !== entry);
+  if (filtered.length === lines.length) return false;
+
+  writeFileSync(gitignorePath, filtered.join("\n"), "utf-8");
+  return true;
+}
+
+/**
+ * レガシー .claude/plugins/ ディレクトリを削除する（マイグレーション用）
+ *
+ * 旧バージョンの init で作成された .claude/plugins/ ディレクトリと
+ * 対応する .gitignore エントリを削除する。
+ *
+ * @param projectPath - プロジェクトルートパス
+ */
+export function cleanupLegacyPluginDir(projectPath: string): void {
+  const legacyDir = join(projectPath, ".claude", "plugins");
+  if (existsSync(legacyDir)) {
+    rmSync(legacyDir, { recursive: true, force: true });
+  }
+  removeGitignoreEntry(projectPath, ".claude/plugins/");
+}
+
 // ========================================
 // Rule Deployment
 // ========================================
@@ -675,6 +691,86 @@ export async function deployRules(
   }
 
   return { deployed: results, targetDir, unmanagedFiles };
+}
+
+// ========================================
+// Marketplace Management
+// ========================================
+
+/**
+ * マーケットプレース名（marketplace.json の name フィールドで解決）
+ */
+export const MARKETPLACE_NAME = "shirokuma-library";
+
+/**
+ * マーケットプレースリポジトリ
+ */
+export const MARKETPLACE_REPO = "ShirokumaLibrary/shirokuma-plugins";
+
+/**
+ * マーケットプレースが登録済みか確認し、未登録なら追加する
+ *
+ * `claude plugin marketplace list` で確認し、MARKETPLACE_NAME が
+ * 含まれていなければ `claude plugin marketplace add` で登録する。
+ *
+ * 既存の登録（directory/github）は上書きしない。
+ *
+ * @returns true: 登録済みまたは登録成功、false: 登録失敗
+ */
+export function ensureMarketplace(): boolean {
+  try {
+    const output = execFileSync(
+      "claude",
+      ["plugin", "marketplace", "list"],
+      { encoding: "utf-8", timeout: 15000, stdio: "pipe" },
+    );
+    if (output.includes(MARKETPLACE_NAME)) {
+      return true;
+    }
+  } catch {
+    // CLI エラー: 登録を試みる
+  }
+
+  try {
+    execFileSync(
+      "claude",
+      ["plugin", "marketplace", "add", MARKETPLACE_REPO],
+      { encoding: "utf-8", timeout: 30000, stdio: "pipe" },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * グローバルキャッシュ内のプラグインディレクトリパスを解決する
+ *
+ * キャッシュパス: ~/.claude/plugins/cache/{marketplace}/{pluginName}/{version}/
+ *
+ * @param pluginName - プラグイン名
+ * @param version - 特定バージョン（省略時は最新を自動検出）
+ * @returns キャッシュパス、見つからない場合は null
+ */
+export function getGlobalCachePath(pluginName: string, version?: string): string | null {
+  const cacheBase = join(homedir(), ".claude", "plugins", "cache", MARKETPLACE_NAME, pluginName);
+  if (!existsSync(cacheBase)) return null;
+
+  if (version) {
+    const versionDir = join(cacheBase, version);
+    return existsSync(versionDir) ? versionDir : null;
+  }
+
+  // version 未指定: ディレクトリをスキャンし最新を返す
+  // NOTE: 辞書順ソート。0.10.x 以降では semver ソートが必要になる
+  const versions = readdirSync(cacheBase)
+    .filter(name => {
+      try { return statSync(join(cacheBase, name)).isDirectory(); }
+      catch { return false; }
+    })
+    .sort()
+    .reverse();
+  return versions.length > 0 ? join(cacheBase, versions[0]) : null;
 }
 
 // ========================================

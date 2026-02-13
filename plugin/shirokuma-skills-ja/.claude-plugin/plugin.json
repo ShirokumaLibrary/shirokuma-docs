@@ -1,12 +1,12 @@
 {
   "name": "shirokuma-skills-ja",
   "description": "Japanese version of shirokuma-skills - AI skills and rules for Claude Code",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.3",
   "author": {
     "name": "ShirokumaLibrary"
   },
-  "homepage": "https://github.com/ShirokumaLibrary/shirokuma-docs",
-  "repository": "https://github.com/ShirokumaLibrary/shirokuma-docs",
+  "homepage": "https://github.com/ShirokumaLibrary/shirokuma-plugins",
+  "repository": "https://github.com/ShirokumaLibrary/shirokuma-plugins",
   "keywords": [
     "claude-code",
     "skills",
