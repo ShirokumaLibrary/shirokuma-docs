@@ -26,7 +26,8 @@ NC='\033[0m' # No Color
 # Installation directories
 INSTALL_DIR="$HOME/.local/share/shirokuma-docs"
 BIN_DIR="$HOME/.local/bin"
-PACKAGE_NAME="shirokuma-docs"
+PACKAGE_NAME="@shirokuma-library/shirokuma-docs"
+BIN_NAME="shirokuma-docs"
 SELECTED_LANG=""
 
 # Print colored output (defined early for use in parse_args/select_language)
@@ -177,7 +178,7 @@ install_package() {
     fi
   done
 
-  if [ ! -f "$INSTALL_DIR/node_modules/.bin/$PACKAGE_NAME" ]; then
+  if [ ! -f "$INSTALL_DIR/node_modules/.bin/$BIN_NAME" ]; then
     error "Installation failed: binary not found."
     exit 1
   fi
@@ -187,8 +188,8 @@ install_package() {
 create_symlink() {
   info "Creating symlink in $BIN_DIR..."
 
-  local target="$INSTALL_DIR/node_modules/.bin/$PACKAGE_NAME"
-  local link="$BIN_DIR/$PACKAGE_NAME"
+  local target="$INSTALL_DIR/node_modules/.bin/$BIN_NAME"
+  local link="$BIN_DIR/$BIN_NAME"
 
   # Remove existing symlink if present
   if [ -L "$link" ] || [ -f "$link" ]; then
@@ -222,10 +223,10 @@ check_path() {
 verify_installation() {
   info "Verifying installation..."
 
-  if [ -x "$BIN_DIR/$PACKAGE_NAME" ]; then
+  if [ -x "$BIN_DIR/$BIN_NAME" ]; then
     local version
-    version=$("$BIN_DIR/$PACKAGE_NAME" --version 2>/dev/null || echo "unknown")
-    success "$PACKAGE_NAME $version installed successfully!"
+    version=$("$BIN_DIR/$BIN_NAME" --version 2>/dev/null || echo "unknown")
+    success "$BIN_NAME $version installed successfully!"
   else
     error "Installation verification failed."
     exit 1

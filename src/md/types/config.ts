@@ -62,7 +62,7 @@ export const ConfigSchema = z.object({
 
   validation: z.object({
     required_frontmatter: z.array(z.string()).default([]),
-    custom_types: z.record(z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.string())])).optional(),
+    custom_types: z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null(), z.array(z.string())])).optional(),
     forbidden_patterns: z
       .array(
         z.object({
@@ -84,7 +84,7 @@ export const ConfigSchema = z.object({
   }),
 
   lint: z.object({
-    builtin_rules: z.record(z.boolean()),
+    builtin_rules: z.record(z.string(), z.boolean()),
     file_naming: z
       .object({
         pattern: z.string(),
@@ -121,7 +121,7 @@ export const ConfigSchema = z.object({
         module: z.string(),
         validators: z.array(z.string()).optional(),
         enabled: z.boolean().optional(),
-        config: z.record(z.unknown()).optional(),
+        config: z.record(z.string(), z.unknown()).optional(),
       })
     )
     .optional(),

@@ -1411,7 +1411,7 @@ function fetchItemTextFieldValues(
  *
  * Detects:
  * 1. Done/Released issues missing Completed At timestamp
- * 2. In Progress issues that are stale (Started At older than threshold)
+ * 2. In Progress issues that are stale (In Progress At older than threshold)
  */
 export function classifyMetricsInconsistencies(
   issues: IssueData[],
@@ -1450,12 +1450,12 @@ export function classifyMetricsInconsistencies(
 
     // In Progress issues - stale check
     if (status === "In Progress") {
-      const startedAtField = mapping["In Progress"];
-      if (startedAtField && textValues[startedAtField]) {
-        const startedAt = new Date(textValues[startedAtField]);
-        if (!isNaN(startedAt.getTime())) {
+      const inProgressAtField = mapping["In Progress"];
+      if (inProgressAtField && textValues[inProgressAtField]) {
+        const inProgressAt = new Date(textValues[inProgressAtField]);
+        if (!isNaN(inProgressAt.getTime())) {
           const daysSinceStart = Math.floor(
-            (currentTime.getTime() - startedAt.getTime()) / (1000 * 60 * 60 * 24)
+            (currentTime.getTime() - inProgressAt.getTime()) / (1000 * 60 * 60 * 24)
           );
           if (daysSinceStart > staleThreshold) {
             inconsistencies.push({

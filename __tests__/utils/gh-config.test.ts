@@ -402,7 +402,7 @@ describe("getMetricsConfig", () => {
     expect(result.enabled).toBe(false);
     expect(result.dateFields?.planningAt).toBe("Planning At");
     expect(result.dateFields?.specReviewAt).toBe("Spec Review At");
-    expect(result.dateFields?.startedAt).toBe("Started At");
+    expect(result.dateFields?.inProgressAt).toBe("In Progress At");
     expect(result.dateFields?.reviewAt).toBe("Review At");
     expect(result.dateFields?.completedAt).toBe("Completed At");
     expect(result.staleThresholdDays).toBe(14);
@@ -421,10 +421,10 @@ describe("getMetricsConfig", () => {
     expect(result.enabled).toBe(true);
     expect(result.dateFields?.planningAt).toBe("Planning At");
     expect(result.dateFields?.specReviewAt).toBe("Spec Review At");
-    expect(result.dateFields?.startedAt).toBe("Started At");
+    expect(result.dateFields?.inProgressAt).toBe("In Progress At");
     expect(result.statusToDateMapping?.["Planning"]).toBe("Planning At");
     expect(result.statusToDateMapping?.["Spec Review"]).toBe("Spec Review At");
-    expect(result.statusToDateMapping?.["In Progress"]).toBe("Started At");
+    expect(result.statusToDateMapping?.["In Progress"]).toBe("In Progress At");
   });
 
   /**
@@ -435,12 +435,12 @@ describe("getMetricsConfig", () => {
     const config: GhConfig = {
       metrics: {
         enabled: true,
-        dateFields: { startedAt: "開始日" },
+        dateFields: { inProgressAt: "開始日" },
       },
     };
     const result = getMetricsConfig(config);
 
-    expect(result.dateFields?.startedAt).toBe("開始日");
+    expect(result.dateFields?.inProgressAt).toBe("開始日");
     expect(result.dateFields?.reviewAt).toBe("Review At");
     expect(result.dateFields?.completedAt).toBe("Completed At");
   });

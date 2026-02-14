@@ -1480,12 +1480,12 @@ describe("session check - metrics inconsistency classification (#342)", () => {
   const defaultMetrics = {
     enabled: true,
     dateFields: {
-      startedAt: "Started At",
+      inProgressAt: "In Progress At",
       reviewAt: "Review At",
       completedAt: "Completed At",
     },
     statusToDateMapping: {
-      "In Progress": "Started At",
+      "In Progress": "In Progress At",
       "Review": "Review At",
       "Done": "Completed At",
     },
@@ -1552,7 +1552,7 @@ describe("session check - metrics inconsistency classification (#342)", () => {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const textValues: Record<string, Record<string, string>> = {
-      "PVTI_3": { "Started At": thirtyDaysAgo.toISOString() },
+      "PVTI_3": { "In Progress At": thirtyDaysAgo.toISOString() },
     };
 
     const result = classifyMetricsInconsistencies(issues, textValues, defaultMetrics);
@@ -1573,7 +1573,7 @@ describe("session check - metrics inconsistency classification (#342)", () => {
     const recentDate = new Date();
     recentDate.setDate(recentDate.getDate() - 3);
     const textValues: Record<string, Record<string, string>> = {
-      "PVTI_4": { "Started At": recentDate.toISOString() },
+      "PVTI_4": { "In Progress At": recentDate.toISOString() },
     };
 
     const result = classifyMetricsInconsistencies(issues, textValues, defaultMetrics);
@@ -1581,10 +1581,10 @@ describe("session check - metrics inconsistency classification (#342)", () => {
   });
 
   /**
-   * @testdoc In Progress で Started At 未設定の場合は stale 検出しない
+   * @testdoc In Progress で In Progress At 未設定の場合は stale 検出しない
    * @purpose タイムスタンプなしの場合は判定不能
    */
-  it("should not flag In Progress without Started At", () => {
+  it("should not flag In Progress without In Progress At", () => {
     const issues = [
       makeIssue({ number: 5, state: "OPEN", status: "In Progress" }),
     ];
@@ -1640,7 +1640,7 @@ describe("session check - metrics inconsistency classification (#342)", () => {
     const eightDaysAgo = new Date();
     eightDaysAgo.setDate(eightDaysAgo.getDate() - 8);
     const textValues: Record<string, Record<string, string>> = {
-      "PVTI_7": { "Started At": eightDaysAgo.toISOString() },
+      "PVTI_7": { "In Progress At": eightDaysAgo.toISOString() },
     };
 
     // With default 14 days: not stale

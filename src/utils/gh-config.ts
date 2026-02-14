@@ -39,12 +39,12 @@ export interface MetricsConfig {
   dateFields?: {
     planningAt?: string;
     specReviewAt?: string;
-    startedAt?: string;
+    inProgressAt?: string;
     reviewAt?: string;
     completedAt?: string;
   };
 
-  /** Status → Text field mapping (e.g., "In Progress" → "Started At") */
+  /** Status → Text field mapping (e.g., "In Progress" → "In Progress At") */
   statusToDateMapping?: Record<string, string>;
 
   /** Days before an In Progress issue is considered stale (default: 14) */
@@ -57,14 +57,14 @@ const DEFAULT_METRICS: MetricsConfig = {
   dateFields: {
     planningAt: "Planning At",
     specReviewAt: "Spec Review At",
-    startedAt: "Started At",
+    inProgressAt: "In Progress At",
     reviewAt: "Review At",
     completedAt: "Completed At",
   },
   statusToDateMapping: {
     "Planning": "Planning At",
     "Spec Review": "Spec Review At",
-    "In Progress": "Started At",
+    "In Progress": "In Progress At",
     "Review": "Review At",
     "Done": "Completed At",
   },
