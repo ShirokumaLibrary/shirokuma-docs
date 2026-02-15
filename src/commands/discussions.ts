@@ -28,6 +28,7 @@ import {
   GH_DISCUSSIONS_LIST_COLUMNS,
 } from "../utils/formatters.js";
 import { resolveTargetRepo, validateCrossRepoAlias } from "../utils/repo-pairs.js";
+import { stripDoubleQuotes } from "../utils/sanitize.js";
 
 // =============================================================================
 // Types
@@ -819,7 +820,7 @@ async function cmdSearch(
   }
 
   if (options.category) {
-    searchQuery += ` category:"${options.category}"`;
+    searchQuery += ` category:"${stripDoubleQuotes(options.category)}"`;
   }
 
   const limit = options.limit ?? 20;

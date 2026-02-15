@@ -7,6 +7,8 @@
  * @module parsers/jsdoc-common
  */
 
+import { escapeRegExp } from "../utils/sanitize.js";
+
 // =============================================================================
 // 型定義
 // =============================================================================
@@ -638,13 +640,6 @@ export function extractAllJsDocs(
   }
 
   return results;
-}
-
-/**
- * 正規表現で特殊文字をエスケープ
- */
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 // =============================================================================

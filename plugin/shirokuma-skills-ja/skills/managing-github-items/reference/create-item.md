@@ -64,13 +64,13 @@ Issue または DraftIssue を作成する。引数なしの場合、会話コ�
 ```bash
 # Issue（推奨 — #番号をサポート）
 shirokuma-docs issues create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --labels feature \
   --field-status "Backlog" --priority "Medium" --type "Feature" --size "M"
 
 # DraftIssue（軽量）
 shirokuma-docs projects create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --field-status "Backlog" --priority "Medium"
 ```
 

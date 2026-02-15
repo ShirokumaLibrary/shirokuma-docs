@@ -113,10 +113,8 @@ Discussion body MUST always be the latest consolidated version (see "Item Body M
 - The body should be "read this alone to understand the current conclusion"
 
 ```bash
-shirokuma-docs discussions update {number} --body "$(cat <<'EOF'
-{updated body content}
-EOF
-)"
+# Write tool でファイル作成後
+shirokuma-docs discussions update {number} --body /tmp/body.md
 ```
 
 ## Title Formats

@@ -64,13 +64,13 @@ Type options:
 ```bash
 # Issue (recommended - supports #number)
 shirokuma-docs issues create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --labels feature \
   --field-status "Backlog" --priority "Medium" --type "Feature" --size "M"
 
 # DraftIssue (lightweight)
 shirokuma-docs projects create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --field-status "Backlog" --priority "Medium"
 ```
 

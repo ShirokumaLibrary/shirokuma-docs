@@ -23,6 +23,7 @@ This returns JSON with:
 - `backups` - PreCompact session backups (if any exist from interrupted sessions)
 - `issues` - Active issues with project fields (Done/Released excluded)
 - `total_issues` - Count of active issues
+- `openPRs` - Open pull requests with review status
 
 ### Step 1b: Backup Detection
 
@@ -44,6 +45,13 @@ Parse the JSON output and display:
 {lastHandover.title or "None found"}
 - Summary: {parse body for Summary section}
 - Next Steps: {parse body for Next Steps section}
+
+### Open PRs
+| # | Title | Review | Threads |
+|---|-------|--------|---------|
+| #42 | feat: Add new feature | APPROVED | 0 |
+
+{If no PRs, show "No open PRs."}
 
 ### Active Issues
 

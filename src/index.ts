@@ -47,16 +47,43 @@ import { lintWorkflowCommand } from "./commands/lint-workflow.js";
 import { repoPairsCommand } from "./commands/repo-pairs.js";
 import { updateSkillsCommand } from "./commands/update-skills.js";
 import { sessionCommand } from "./commands/session.js";
+import { searchCommand } from "./commands/search.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { initI18n } from "./utils/i18n.js";
+import { readBodyFile, validateBody } from "./utils/github.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const packageJson = JSON.parse(
   readFileSync(join(__dirname, "..", "package.json"), "utf-8")
 );
+
+/**
+ * --body オプションをファイルパスとして解決し、内容に置換する。
+ * 失敗時は process.exitCode を設定して false を返す。
+ */
+function resolveBodyOption(options: Record<string, unknown>): boolean {
+  if (options.body && typeof options.body === "string") {
+    try {
+      const content = readBodyFile(options.body);
+      const bodyError = validateBody(content);
+      if (bodyError) {
+        console.error(`Error: ${bodyError}`);
+        process.exitCode = 1;
+        return false;
+      }
+      options.body = content;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`Error: Failed to read body file: ${msg}`);
+      process.exitCode = 1;
+      return false;
+    }
+  }
+  return true;
+}
 
 const program = new Command();
 
@@ -429,21 +456,24 @@ program
   .option("--type <type>", "Set Type field (Feature/Bug/Chore/Docs/Research)")
   .option("--size <size>", "Set Size field (XS/S/M/L/XL)")
   .option("-t, --title <title>", "Item title (for create)")
-  .option("-b, --body <body>", "Item body (for create/update)")
+  .option("-b, --body <file>", "Item body file path (for create/update)")
   .option("-F, --force", "Skip confirmation (for delete)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action(projectsCommand);
+  .action((action, target, options) => {
+    if (!resolveBodyOption(options)) return;
+    projectsCommand(action, target, options);
+  });
 
 // GitHub Issues 管理 (メインコマンド - Issues + Projects 統合)
 program
   .command("issues <action>")
   .description(
-    "GitHub Issues 管理 with Projects (list, show, create, update, comment, comment-edit, close, reopen, import, fields, remove, pr-comments, merge, pr-reply, resolve)"
+    "GitHub Issues 管理 with Projects (list, show, create, update, comment, comment-edit, close, reopen, import, fields, remove, search, pr-comments, merge, pr-reply, resolve)"
   )
-  .argument("[target]", "Issue/PR number or comment ID (for show/update/comment/comment-edit/close/reopen/pr-comments/merge/pr-reply/resolve)")
+  .argument("[target]", "Issue/PR number, comment ID, or search query (for show/update/comment/comment-edit/close/reopen/search/pr-comments/merge/pr-reply/resolve)")
   .option("--owner <owner>", "Repository owner (default: current repo)")
   .option("--all", "Include all issues (open + closed)")
-  .option("--state <state>", "Filter by state: open, closed (for list)", "open")
+  .option("--state <state>", "Issue state: open, closed (filter for list / set for update)")
   .option("--status <status...>", "Filter by Projects Status (for list)")
   .option("-l, --labels <labels...>", "Filter by labels (for list) or add labels (for create)")
   .option("--limit <number>", "Max issues to fetch (for list)", parseInt)
@@ -453,7 +483,7 @@ program
   .option("--type <type>", "Set Projects Type field (Feature/Bug/Chore/Docs/Research)")
   .option("--size <size>", "Set Projects Size field (XS/S/M/L/XL)")
   .option("-t, --title <title>", "Issue title (for create)")
-  .option("-b, --body <body>", "Issue body (for create/update/comment/close)")
+  .option("-b, --body <file>", "Issue body file path (for create/update/comment/close)")
   .option(
     "--state-reason <reason>",
     "Close reason: COMPLETED, NOT_PLANNED (for close)",
@@ -474,7 +504,14 @@ program
   .option("--reply-to <commentId>", "Reply to a review comment database ID (for pr-reply)")
   .option("--thread-id <threadId>", "Thread ID to resolve (for resolve)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action(issuesCommand);
+  .action((action, target, options) => {
+    if (!resolveBodyOption(options)) return;
+    // search アクション: target を query にマッピング
+    if (action === "search" && target) {
+      options.query = target;
+    }
+    issuesCommand(action, target, options);
+  });
 
 // GitHub Discussions 管理
 program
@@ -485,16 +522,34 @@ program
   .option("--limit <number>", "Max discussions to fetch (for list/search)", parseInt)
   .option("--format <format>", "Output format: json, table-json (for list/search)", "json")
   .option("-t, --title <title>", "Discussion title (for create/update)")
-  .option("-b, --body <body>", "Discussion body (for create/update/comment)")
+  .option("-b, --body <file>", "Discussion body file path (for create/update/comment)")
   .option("--public", "Target the public repository (from repoPairs config)")
   .option("--repo <alias>", "Target a cross-repo by alias (from crossRepos config)")
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, target, options) => {
+    if (!resolveBodyOption(options)) return;
     // For search action, treat target as query
     if (action === "search" && target) {
       options.query = target;
     }
     discussionsCommand(action, target, options);
+  });
+
+// 統合検索 (Issues + Discussions 横断)
+program
+  .command("search <query>")
+  .description("Issues + Discussions 横断検索 (GraphQL エイリアスで 1 リクエスト)")
+  .option("--type <types>", "検索対象: issues,discussions (カンマ区切り)", "issues,discussions")
+  .option("--category <category>", "Discussions カテゴリフィルタ")
+  .option("--state <state>", "Issues 状態フィルタ: open, closed, all")
+  .option("--limit <number>", "最大取得件数 (デフォルト: 10)", parseInt)
+  .option("--format <format>", "出力形式: json, table-json", "json")
+  .option("--public", "公開リポジトリを対象")
+  .option("--repo <alias>", "クロスリポジトリのエイリアス")
+  .option("-v, --verbose", "詳細ログ出力")
+  .action(async (query, options) => {
+    const code = await searchCommand(query, options);
+    if (code !== 0) process.exitCode = code;
   });
 
 // GitHub Repository 情報
@@ -528,13 +583,16 @@ program
   .option("--all", "全ユーザーの引き継ぎを表示 (start用)")
   .option("--team", "チームダッシュボード: 全メンバーの引き継ぎと Issue を担当者別に表示 (start用)")
   .option("-t, --title <title>", "引き継ぎタイトル (end用)")
-  .option("-b, --body <body>", "引き継ぎ本文 (end用)")
+  .option("-b, --body <file>", "引き継ぎ本文ファイルパス (end用)")
   .option("--done <numbers...>", "Done にする Issue 番号 (end用)")
   .option("--review <numbers...>", "Review にする Issue 番号 (end用)")
   .option("--fix", "不整合を自動修正 (check用)")
   .option("--setup", "GitHub手動設定の検証 (check用)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action(sessionCommand);
+  .action((action, options) => {
+    if (!resolveBodyOption(options)) return;
+    sessionCommand(action, options);
+  });
 
 // Discussion テンプレート生成
 program

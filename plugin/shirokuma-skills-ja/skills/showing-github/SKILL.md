@@ -1,12 +1,12 @@
 ---
 name: showing-github
-description: GitHubプロジェクトデータ（ダッシュボード、アイテム、Issue、引き継ぎ、仕様）を表示します。「ダッシュボード」「アイテム確認」「Issue一覧」「引き継ぎ確認」「仕様一覧」「dashboard」で使用。
+description: GitHubプロジェクトデータ（ダッシュボード、アイテム、Issue、PR、引き継ぎ、仕様）を表示します。「ダッシュボード」「アイテム確認」「Issue一覧」「PR一覧」「引き継ぎ確認」「仕様一覧」「dashboard」で使用。
 allowed-tools: Bash, Read, Glob
 ---
 
 # GitHub データ表示
 
-ダッシュボード、アイテム、Issue、引き継ぎ、仕様を1つのスキルに統合して表示。
+ダッシュボード、アイテム、Issue、PR、引き継ぎ、仕様を1つのスキルに統合して表示。
 
 > **リファレンス**: CLI コマンド、ステータスワークフロー、エラーハンドリングは `reference/github-operations.md` 参照。
 
@@ -23,9 +23,8 @@ allowed-tools: Bash, Read, Glob
 
 1. リポジトリ情報取得: `gh repo view --json nameWithOwner -q '.nameWithOwner'`
 2. 並列実行:
-   - `shirokuma-docs issues list`（ステータス別アイテム）
-   - `gh issue list --state open --json number | jq length`（オープン Issue 数）
-   - `gh pr list --state open --json number | jq length`（オープン PR 数）
+   - `shirokuma-docs issues list`（ステータス別アイテム + `total_issues` でオープン Issue 数を導出）
+   - `shirokuma-docs issues pr-list`（オープン PR 一覧 + 行数から PR 数を導出）
    - `gh api repos/{owner}/{repo}/commits?per_page=5`（最近のコミット）
    - `shirokuma-docs discussions list --category Handovers --limit 3`（最近の引き継ぎ）
 
@@ -154,6 +153,71 @@ gh issue list --state open \
 
 ---
 
+## /show-prs [フィルター|番号]
+
+PR 一覧・詳細を表示。
+
+```
+/show-prs                  # オープン PR 一覧
+/show-prs --state closed   # クローズ済み PR
+/show-prs --state merged   # マージ済み PR
+/show-prs --state all      # 全 PR
+/show-prs 42               # 特定 PR の詳細
+```
+
+### ワークフロー
+
+**一覧表示:**
+
+```bash
+# デフォルト（オープン PR）
+shirokuma-docs issues pr-list
+
+# フィルター付き
+shirokuma-docs issues pr-list --state merged --limit 10
+shirokuma-docs issues pr-list --state all
+```
+
+**詳細表示:**
+
+```bash
+shirokuma-docs issues pr-show {number}
+```
+
+### 表示フォーマット（一覧）
+
+```markdown
+## Pull Requests
+
+**Filter:** {description} | **Total:** {count}
+
+| # | Title | Branch | Review |
+|---|-------|--------|--------|
+| #42 | feat: 新機能追加 | feat/42-new-feature | APPROVED |
+```
+
+### 表示フォーマット（詳細）
+
+```markdown
+## PR #{number}: {title}
+
+**ステータス:** {state} | **レビュー:** {review_decision}
+**ブランチ:** {head} → {base}
+
+### 概要
+{body}
+
+### 変更統計
+| ファイル | 追加 | 削除 |
+|---------|------|------|
+| src/file.ts | +50 | -10 |
+
+### リンクされた Issue
+- #42 (Closes)
+```
+
+---
+
 ## /show-handovers [件数]
 
 過去のセッション引き継ぎ情報を表示。
@@ -272,5 +336,5 @@ Draft | Review | Approved | Rejected | Implementing
 - アイテムは各ステータス内で Priority 順にソート
 - Discussion とローカル引き継ぎの両方が存在する場合は統合
 - 仕様は慣例として "Ideas" カテゴリに格納
-- 要求が曖昧な場合は AskUserQuestion でサブコマンド（dashboard/items/issues/handovers/specs）を確認
+- 要求が曖昧な場合は AskUserQuestion でサブコマンド（dashboard/items/issues/prs/handovers/specs）を確認
 - 表示系タスクのため TodoWrite は不要

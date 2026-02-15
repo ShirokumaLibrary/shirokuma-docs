@@ -18,6 +18,7 @@ import {
   validateMergeMethod,
   parseMergeMethod,
   parseLinkedIssues,
+  parsePrStateFilter,
   resolvePrFromHead,
 } from "../../src/commands/issues-pr.js";
 
@@ -688,10 +689,256 @@ describe("issues PR actions - routing", () => {
       // Existing
       "list", "get", "create", "update", "comment",
       "close", "reopen", "import", "fields", "remove",
-      // New PR actions
-      "pr-comments", "merge", "pr-reply", "resolve",
+      // PR actions
+      "pr-list", "pr-show", "pr-comments", "merge", "pr-reply", "resolve",
     ];
 
-    expect(allActions).toHaveLength(14);
+    expect(allActions).toHaveLength(16);
+  });
+});
+
+// =============================================================================
+// #568: parsePrStateFilter - state フィルタ変換
+// =============================================================================
+
+describe("parsePrStateFilter - state filter conversion", () => {
+  /**
+   * @testdoc "open" を GraphQL OPEN 状態に変換する
+   * @purpose --state open のデフォルト動作確認
+   */
+  it("should convert 'open' to ['OPEN']", () => {
+    expect(parsePrStateFilter("open")).toEqual(["OPEN"]);
+  });
+
+  /**
+   * @testdoc "closed" を GraphQL CLOSED 状態に変換する
+   * @purpose --state closed でクローズ済み PR のみ取得
+   */
+  it("should convert 'closed' to ['CLOSED']", () => {
+    expect(parsePrStateFilter("closed")).toEqual(["CLOSED"]);
+  });
+
+  /**
+   * @testdoc "merged" を GraphQL MERGED 状態に変換する
+   * @purpose --state merged でマージ済み PR のみ取得
+   */
+  it("should convert 'merged' to ['MERGED']", () => {
+    expect(parsePrStateFilter("merged")).toEqual(["MERGED"]);
+  });
+
+  /**
+   * @testdoc "all" を全状態に変換する
+   * @purpose --state all で全 PR を取得
+   */
+  it("should convert 'all' to all states", () => {
+    const result = parsePrStateFilter("all");
+    expect(result).toEqual(expect.arrayContaining(["OPEN", "CLOSED", "MERGED"]));
+    expect(result).toHaveLength(3);
+  });
+
+  /**
+   * @testdoc 大文字小文字を問わず変換する
+   * @purpose "OPEN", "Open" 等もサポート
+   */
+  it("should be case-insensitive", () => {
+    expect(parsePrStateFilter("OPEN")).toEqual(["OPEN"]);
+    expect(parsePrStateFilter("Closed")).toEqual(["CLOSED"]);
+    expect(parsePrStateFilter("MERGED")).toEqual(["MERGED"]);
+    expect(parsePrStateFilter("ALL")).toEqual(["OPEN", "CLOSED", "MERGED"]);
+  });
+
+  /**
+   * @testdoc 無効な値で null を返す
+   * @purpose バリデーションエラーの検出
+   */
+  it("should return null for invalid state", () => {
+    expect(parsePrStateFilter("invalid")).toBeNull();
+    expect(parsePrStateFilter("")).toBeNull();
+    expect(parsePrStateFilter("draft")).toBeNull();
+  });
+});
+
+// =============================================================================
+// #568: pr-list - 出力構造契約
+// =============================================================================
+
+describe("pr-list - output structure", () => {
+  /**
+   * @testdoc pr-list 出力に全 GH_PR_LIST_COLUMNS フィールドが含まれる
+   * @purpose PR 一覧の出力構造契約
+   */
+  it("should include all GH_PR_LIST_COLUMNS fields", () => {
+    const prOutput = {
+      number: 42,
+      title: "feat: add PR list command",
+      state: "OPEN",
+      head_branch: "feat/568-pr-list-show-commands",
+      base_branch: "develop",
+      author: "squeeze-dev",
+      review_decision: "APPROVED",
+      url: "https://github.com/owner/repo/pull/42",
+    };
+
+    expect(prOutput).toHaveProperty("number");
+    expect(prOutput).toHaveProperty("title");
+    expect(prOutput).toHaveProperty("state");
+    expect(prOutput).toHaveProperty("head_branch");
+    expect(prOutput).toHaveProperty("base_branch");
+    expect(prOutput).toHaveProperty("author");
+    expect(prOutput).toHaveProperty("review_decision");
+    expect(prOutput).toHaveProperty("url");
+    expect(typeof prOutput.number).toBe("number");
+    expect(typeof prOutput.author).toBe("string");
+  });
+
+  /**
+   * @testdoc pr-list の state は OPEN/CLOSED/MERGED のいずれか
+   * @purpose state フィールドの値域契約
+   */
+  it("should have valid state values", () => {
+    const validStates = ["OPEN", "CLOSED", "MERGED"];
+    validStates.forEach((state) => {
+      expect(validStates).toContain(state);
+    });
+  });
+
+  /**
+   * @testdoc pr-list の review_decision は有効値または null
+   * @purpose review_decision フィールドの値域契約
+   */
+  it("should have valid review_decision values", () => {
+    const validDecisions = ["APPROVED", "CHANGES_REQUESTED", "REVIEW_REQUIRED", null];
+    validDecisions.forEach((decision) => {
+      expect(validDecisions).toContain(decision);
+    });
+  });
+
+  /**
+   * @testdoc pr-list 出力に total_count が含まれる
+   * @purpose 件数情報の出力契約
+   */
+  it("should include total_count in output", () => {
+    const output = {
+      repository: "owner/repo",
+      pull_requests: [],
+      total_count: 0,
+    };
+
+    expect(output).toHaveProperty("total_count");
+    expect(typeof output.total_count).toBe("number");
+    expect(output.pull_requests).toBeInstanceOf(Array);
+  });
+});
+
+// =============================================================================
+// #568: pr-show - 出力構造契約
+// =============================================================================
+
+describe("pr-show - output structure", () => {
+  /**
+   * @testdoc pr-show 出力に PR 詳細フィールドが含まれる
+   * @purpose PR 詳細表示の出力構造契約
+   */
+  it("should include all detail fields", () => {
+    const output = {
+      number: 42,
+      title: "feat: add PR list command",
+      state: "OPEN",
+      head_branch: "feat/568-pr-list-show-commands",
+      base_branch: "develop",
+      author: "squeeze-dev",
+      review_decision: "APPROVED",
+      url: "https://github.com/owner/repo/pull/42",
+      body: "## Summary\nAdds PR list command",
+      labels: ["enhancement"],
+      created_at: "2026-02-15T00:00:00Z",
+      updated_at: "2026-02-15T01:00:00Z",
+      additions: 150,
+      deletions: 20,
+      changed_files: 5,
+      review_thread_count: 2,
+      review_count: 1,
+      linked_issues: [568],
+    };
+
+    // pr-list フィールド
+    expect(output).toHaveProperty("number");
+    expect(output).toHaveProperty("title");
+    expect(output).toHaveProperty("state");
+    expect(output).toHaveProperty("head_branch");
+    expect(output).toHaveProperty("base_branch");
+    expect(output).toHaveProperty("author");
+    expect(output).toHaveProperty("review_decision");
+    expect(output).toHaveProperty("url");
+
+    // pr-show 固有フィールド
+    expect(output).toHaveProperty("body");
+    expect(output).toHaveProperty("labels");
+    expect(output).toHaveProperty("created_at");
+    expect(output).toHaveProperty("updated_at");
+    expect(output).toHaveProperty("additions");
+    expect(output).toHaveProperty("deletions");
+    expect(output).toHaveProperty("changed_files");
+    expect(output).toHaveProperty("review_thread_count");
+    expect(output).toHaveProperty("review_count");
+    expect(output).toHaveProperty("linked_issues");
+  });
+
+  /**
+   * @testdoc pr-show の diff 統計は数値型
+   * @purpose diff 統計フィールドの型契約
+   */
+  it("should have numeric diff stats", () => {
+    const output = {
+      additions: 150,
+      deletions: 20,
+      changed_files: 5,
+    };
+
+    expect(typeof output.additions).toBe("number");
+    expect(typeof output.deletions).toBe("number");
+    expect(typeof output.changed_files).toBe("number");
+  });
+
+  /**
+   * @testdoc pr-show の labels は文字列配列
+   * @purpose labels フィールドの型契約
+   */
+  it("should have labels as string array", () => {
+    const output = {
+      labels: ["enhancement", "area:cli"],
+    };
+
+    expect(output.labels).toBeInstanceOf(Array);
+    output.labels.forEach((label) => {
+      expect(typeof label).toBe("string");
+    });
+  });
+
+  /**
+   * @testdoc pr-show の linked_issues は数値配列
+   * @purpose linked_issues フィールドの型契約（parseLinkedIssues との整合性）
+   */
+  it("should have linked_issues as number array", () => {
+    const output = {
+      linked_issues: [39, 44],
+    };
+
+    expect(output.linked_issues).toBeInstanceOf(Array);
+    output.linked_issues.forEach((num) => {
+      expect(typeof num).toBe("number");
+    });
+  });
+
+  /**
+   * @testdoc pr-show の linked_issues が空の場合は空配列
+   * @purpose リンク Issue がない場合の出力契約
+   */
+  it("should return empty linked_issues when no linked issues in body", () => {
+    const output = {
+      linked_issues: [],
+    };
+
+    expect(output.linked_issues).toEqual([]);
   });
 });

@@ -109,10 +109,10 @@ find apps/ -name "*.tsx" | xargs basename -a | sort | uniq -c | sort -rn
 
 ```bash
 # 確認済みパターン → Knowledge カテゴリ
-shirokuma-docs discussions create --category Knowledge --title "{パターン名}" --body "..."
+shirokuma-docs discussions create --category Knowledge --title "{パターン名}" --body /tmp/body.md
 
 # 調査中 → Research カテゴリ
-shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body "..."
+shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body /tmp/body.md
 ```
 
 **確信度に基づきカテゴリを選択：**

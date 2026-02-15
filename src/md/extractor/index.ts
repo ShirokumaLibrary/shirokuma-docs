@@ -3,6 +3,7 @@ import * as path from 'path';
 import matter from 'gray-matter';
 import YAML from 'yaml';
 import { Config, ExtractionResult, BatchExtractionResult } from '../types/config.js';
+import { safeRegExp } from '../../utils/sanitize.js';
 
 /**
  * Extractor class - Extracts information from markdown files and creates shirokuma-md compatible files
@@ -119,7 +120,11 @@ export class Extractor {
     _fieldName: string,
     patternConfig: any
   ): any {
-    const regex = new RegExp(patternConfig.pattern, 'gm');
+    const regex = safeRegExp(patternConfig.pattern, 'gm');
+    if (!regex) {
+      console.warn(`Invalid regex pattern: ${patternConfig.pattern} — skipping field`);
+      return null;
+    }
     const match = regex.exec(content);
 
     if (!match) {
@@ -386,7 +391,8 @@ export class Extractor {
 
     for (const entry of entries) {
       if (entry.isFile() && entry.name.endsWith('.md')) {
-        if (!pattern || new RegExp(pattern).test(entry.name)) {
+        const patternRegex = pattern ? safeRegExp(pattern) : null;
+        if (!pattern || (patternRegex && patternRegex.test(entry.name))) {
           files.push(entry.name);
         }
       }

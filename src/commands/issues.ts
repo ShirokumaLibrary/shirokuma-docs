@@ -11,6 +11,7 @@
  * - comment: Add comment to issue or PR
  * - comment-edit: Edit existing comment
  * - close: Close an issue (with optional comment)
+ * - search: Search issues and PRs by keyword (#552)
  *
  * Key design:
  * - Issues provide: #number references, comments, PR links
@@ -33,6 +34,8 @@ import {
 } from "../utils/github.js";
 import {
   cmdPrComments,
+  cmdPrList,
+  cmdPrShow,
   cmdMerge,
   cmdPrReply,
   cmdResolve,
@@ -42,6 +45,7 @@ import {
   formatOutput,
   OutputFormat,
   GH_ISSUES_LIST_COLUMNS,
+  GH_ISSUES_SEARCH_COLUMNS,
 } from "../utils/formatters.js";
 import {
   resolveTargetRepo,
@@ -89,6 +93,8 @@ export interface IssuesOptions {
   state?: string; // open, closed, all
   labels?: string[];
   limit?: number;
+  // Search query
+  query?: string;
   // Output format
   format?: OutputFormat;
   // Fields for create/update
@@ -224,6 +230,36 @@ query($owner: String!, $name: String!, $number: Int!) {
 }
 `;
 
+const GRAPHQL_QUERY_SEARCH_ISSUES = `
+query($query: String!, $first: Int!) {
+  search(query: $query, type: ISSUE, first: $first) {
+    issueCount
+    nodes {
+      ... on Issue {
+        __typename
+        number
+        title
+        url
+        state
+        createdAt
+        updatedAt
+        author { login }
+      }
+      ... on PullRequest {
+        __typename
+        number
+        title
+        url
+        state
+        createdAt
+        updatedAt
+        author { login }
+      }
+    }
+  }
+}
+`;
+
 const GRAPHQL_QUERY_REPO_ID = `
 query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
@@ -254,6 +290,27 @@ const GRAPHQL_MUTATION_UPDATE_ISSUE = `
 mutation($id: ID!, $title: String, $body: String) {
   updateIssue(input: {id: $id, title: $title, body: $body}) {
     issue { id number title body }
+  }
+}
+`;
+
+const GRAPHQL_QUERY_ISSUE_COMMENTS = `
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    issue(number: $number) {
+      number
+      comments(first: 100) {
+        totalCount
+        nodes {
+          id
+          databaseId
+          author { login }
+          body
+          createdAt
+          url
+        }
+      }
+    }
   }
 }
 `;
@@ -422,6 +479,99 @@ function getLabels(owner: string, repo: string): Record<string, string> {
 // =============================================================================
 // Subcommand Handlers
 // =============================================================================
+
+/**
+ * search subcommand (#552)
+ */
+async function cmdSearch(
+  options: IssuesOptions,
+  logger: Logger
+): Promise<number> {
+  const repoInfo = resolveTargetRepo(options);
+  if (!repoInfo) {
+    logger.error("Could not determine repository");
+    return 1;
+  }
+
+  const { owner, name: repo } = repoInfo;
+
+  // GitHub search syntax: repo:owner/name <query> [is:open|is:closed]
+  let searchQuery = `repo:${owner}/${repo}`;
+
+  if (options.query) {
+    searchQuery += ` ${options.query}`;
+  }
+
+  if (options.state && options.state !== "all") {
+    const validStates = ["open", "closed"];
+    if (validStates.includes(options.state)) {
+      searchQuery += ` is:${options.state}`;
+    }
+  }
+
+  const limit = options.limit ?? 10;
+
+  interface SearchNode {
+    __typename?: string;
+    number?: number;
+    title?: string;
+    url?: string;
+    state?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    author?: { login?: string };
+  }
+
+  interface SearchResult {
+    data?: {
+      search?: {
+        issueCount?: number;
+        nodes?: SearchNode[];
+      };
+    };
+  }
+
+  const result = runGraphQL<SearchResult>(GRAPHQL_QUERY_SEARCH_ISSUES, {
+    query: searchQuery,
+    first: Math.min(limit, 100),
+  });
+
+  if (!result.success || !result.data?.data?.search) {
+    logger.error("Search failed");
+    return 1;
+  }
+
+  const searchData = result.data.data.search;
+  const nodes = searchData.nodes ?? [];
+
+  const issues = nodes
+    .filter((n): n is Required<Pick<SearchNode, 'number'>> & SearchNode => !!n?.number)
+    .map((n) => ({
+      number: n.number,
+      title: n.title ?? "",
+      url: n.url ?? "",
+      state: n.state ?? "",
+      is_pr: n.__typename === "PullRequest",
+      author: n.author?.login ?? "",
+      created_at: n.createdAt ?? "",
+    }));
+
+  const output = {
+    repository: `${owner}/${repo}`,
+    query: options.query ?? "",
+    state: options.state ?? null,
+    issues,
+    total_count: searchData.issueCount ?? issues.length,
+  };
+
+  const outputFormat = options.format ?? "json";
+  const formatted = formatOutput(output, outputFormat, {
+    arrayKey: "issues",
+    columns: GH_ISSUES_SEARCH_COLUMNS,
+  });
+  console.log(formatted);
+  return 0;
+}
 
 /**
  * list subcommand
@@ -835,6 +985,7 @@ async function cmdUpdate(
     number?: number;
     title?: string;
     body?: string;
+    state?: string;
     projectItems?: {
       nodes?: Array<{
         id?: string;
@@ -991,6 +1142,101 @@ async function cmdUpdate(
     }
   }
 
+  // Handle --state (close/reopen)
+  if (options.state !== undefined) {
+    const stateValue = options.state.toLowerCase();
+    if (stateValue !== "open" && stateValue !== "closed") {
+      logger.error(`Invalid --state value: "${options.state}". Use "open" or "closed".`);
+      return 1;
+    }
+
+    const issueId = getIssueId(owner, repo, issueNumber);
+    if (!issueId) {
+      logger.error(`Issue #${issueNumber} not found`);
+      return 1;
+    }
+
+    if (stateValue === "closed" && issueNode.state !== "CLOSED") {
+      // Close the issue
+      const stateReason = options.stateReason === "NOT_PLANNED" ? "NOT_PLANNED" : "COMPLETED";
+
+      interface CloseResult {
+        data?: {
+          closeIssue?: {
+            issue?: { id?: string; number?: number; state?: string };
+          };
+        };
+      }
+
+      const closeResult = runGraphQL<CloseResult>(GRAPHQL_MUTATION_CLOSE_ISSUE, {
+        issueId,
+        stateReason,
+      });
+
+      if (closeResult.success) {
+        updated = true;
+        logger.success(`Closed #${issueNumber} (${stateReason})`);
+
+        // Auto-set Status if --field-status was not explicitly specified
+        if (!options.fieldStatus) {
+          const targetStatus = stateReason === "NOT_PLANNED" ? "Not Planned" : "Done";
+          if (matchingItem?.id && matchingItem?.project?.id) {
+            const pId = matchingItem.project.id;
+            const iId = matchingItem.id;
+            const pf = getProjectFields(pId);
+            const statusCount = setItemFields(pId, iId, { Status: targetStatus }, logger, pf);
+            if (statusCount > 0) {
+              logger.success(`Issue #${issueNumber} → ${targetStatus}`);
+              if (targetStatus === "Done") {
+                autoSetTimestamps(pId, iId, "Done", pf, logger);
+              }
+            }
+          } else {
+            // Issue not in project, try to find project
+            const projectId = getProjectId(owner);
+            if (projectId) {
+              const detail = cmdGetIssueDetail(owner, repo, issueNumber);
+              if (detail?.projectItemId) {
+                const pf = getProjectFields(projectId);
+                const statusCount = setItemFields(projectId, detail.projectItemId, { Status: targetStatus }, logger, pf);
+                if (statusCount > 0) {
+                  logger.success(`Issue #${issueNumber} → ${targetStatus}`);
+                  if (targetStatus === "Done") {
+                    autoSetTimestamps(projectId, detail.projectItemId, "Done", pf, logger);
+                  }
+                }
+              }
+            }
+          }
+        }
+      } else {
+        logger.error(`Failed to close issue #${issueNumber}`);
+        return 1;
+      }
+    } else if (stateValue === "open" && issueNode.state === "CLOSED") {
+      // Reopen the issue
+      interface ReopenResult {
+        data?: {
+          reopenIssue?: {
+            issue?: { id?: string; number?: number; state?: string };
+          };
+        };
+      }
+
+      const reopenResult = runGraphQL<ReopenResult>(GRAPHQL_MUTATION_REOPEN_ISSUE, {
+        issueId,
+      });
+
+      if (reopenResult.success) {
+        updated = true;
+        logger.success(`Reopened #${issueNumber}`);
+      } else {
+        logger.error(`Failed to reopen issue #${issueNumber}`);
+        return 1;
+      }
+    }
+  }
+
   if (!updated) {
     logger.info("No changes made");
   }
@@ -1068,6 +1314,80 @@ async function cmdComment(
     comment_id: comment?.id,
     comment_database_id: comment?.databaseId,
     comment_url: comment?.url,
+  };
+
+  console.log(JSON.stringify(output, null, 2));
+  return 0;
+}
+
+/**
+ * comments subcommand (#537)
+ *
+ * List all comments on an Issue using GraphQL.
+ */
+async function cmdComments(
+  issueNumberStr: string,
+  options: IssuesOptions,
+  logger: Logger
+): Promise<number> {
+  const repoInfo = resolveTargetRepo(options);
+  if (!repoInfo) {
+    logger.error("Could not determine repository");
+    return 1;
+  }
+
+  const { owner, name: repo } = repoInfo;
+  const number = parseIssueNumber(issueNumberStr);
+
+  interface CommentNode {
+    id?: string;
+    databaseId?: number;
+    author?: { login?: string };
+    body?: string;
+    createdAt?: string;
+    url?: string;
+  }
+
+  interface QueryResult {
+    data?: {
+      repository?: {
+        issue?: {
+          number?: number;
+          comments?: {
+            totalCount?: number;
+            nodes?: CommentNode[];
+          };
+        };
+      };
+    };
+  }
+
+  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_COMMENTS, {
+    owner,
+    name: repo,
+    number,
+  });
+
+  if (!result.success || !result.data?.data?.repository?.issue) {
+    logger.error(`Issue #${number} not found`);
+    return 1;
+  }
+
+  const issue = result.data.data.repository.issue;
+  const commentsData = issue.comments;
+  const nodes = commentsData?.nodes ?? [];
+
+  const output = {
+    issue_number: issue.number,
+    total_comments: commentsData?.totalCount ?? 0,
+    comments: nodes.map((c) => ({
+      id: c.id,
+      database_id: c.databaseId,
+      author: c.author?.login ?? null,
+      body: c.body,
+      created_at: c.createdAt,
+      url: c.url,
+    })),
   };
 
   console.log(JSON.stringify(output, null, 2));
@@ -1644,6 +1964,16 @@ export async function issuesCommand(
       exitCode = await cmdList(options, logger);
       break;
 
+    case "search":
+      if (!options.query) {
+        logger.error("Search query required");
+        logger.info("Usage: shirokuma-docs issues search <query> [--state open|closed]");
+        exitCode = 1;
+      } else {
+        exitCode = await cmdSearch(options, logger);
+      }
+      break;
+
     case "show":
       if (!target) {
         logger.error("Issue number required");
@@ -1675,6 +2005,16 @@ export async function issuesCommand(
         exitCode = 1;
       } else {
         exitCode = await cmdComment(target, options, logger);
+      }
+      break;
+
+    case "comments":
+      if (!target) {
+        logger.error("Issue number required");
+        logger.info("Usage: shirokuma-docs issues comments <number>");
+        exitCode = 1;
+      } else {
+        exitCode = await cmdComments(target, options, logger);
       }
       break;
 
@@ -1741,6 +2081,20 @@ export async function issuesCommand(
       }
       break;
 
+    case "pr-list":
+      exitCode = await cmdPrList(options, logger);
+      break;
+
+    case "pr-show":
+      if (!target) {
+        logger.error("PR number required");
+        logger.info("Usage: shirokuma-docs issues pr-show <number>");
+        exitCode = 1;
+      } else {
+        exitCode = await cmdPrShow(target, options, logger);
+      }
+      break;
+
     case "pr-comments":
       if (!target) {
         logger.error("PR number required");
@@ -1791,7 +2145,7 @@ export async function issuesCommand(
     default:
       logger.error(`Unknown action: ${action}`);
       logger.info(
-        "Available actions: list, show, create, update, comment, comment-edit, close, cancel, reopen, import, fields, remove, pr-comments, merge, pr-reply, resolve"
+        "Available actions: list, show, create, update, comment, comments, comment-edit, close, cancel, reopen, import, fields, remove, search, pr-list, pr-show, pr-comments, merge, pr-reply, resolve"
       );
       exitCode = 1;
   }

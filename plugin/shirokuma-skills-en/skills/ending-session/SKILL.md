@@ -91,7 +91,7 @@ Build the handover body using the template below, then run:
 ```bash
 shirokuma-docs session end \
   --title "$(date +%Y-%m-%d) - {brief summary}" \
-  --body "$HANDOVER_BODY" \
+  --body /tmp/handover.md \
   --done {completed_issue_numbers} \
   --review {review_issue_numbers}
 ```
@@ -102,7 +102,7 @@ This single command:
 
 **Options:**
 - `--title` (required) - Handover title, typically date + summary
-- `--body` (required) - Full handover body in markdown
+- `--body` (required) - File path to handover body markdown (Write tool で作成)
 - `--done <numbers...>` - Issue numbers to mark as Done
 - `--review <numbers...>` - Issue numbers to mark as Review
 

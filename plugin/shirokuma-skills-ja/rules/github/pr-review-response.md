@@ -9,7 +9,7 @@
 
 1. コードを修正
 2. コミットしてプッシュ
-3. コミットを参照して返信: `shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body "Fixed in <hash>"`
+3. コミットを参照して返信: `shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body /tmp/reply.md`
 4. 解決: `shirokuma-docs issues resolve <PR#> --thread-id <PRRT_id>`
 
 ### 質問またはディスカッション

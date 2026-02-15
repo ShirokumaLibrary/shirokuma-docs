@@ -1653,3 +1653,10 @@ describe("session check - metrics inconsistency classification (#342)", () => {
     expect(result2).toHaveLength(1);
   });
 });
+
+// =============================================================================
+// isIssueClosed (#557)
+// Note: isIssueClosed は runGhCommand の薄いラッパー（4行）。
+// プロジェクトのテスト方針（純粋関数のみユニットテスト、API モック不使用）に従い、
+// ユニットテストは省略。動作は session end の統合テストでカバー。
+// =============================================================================

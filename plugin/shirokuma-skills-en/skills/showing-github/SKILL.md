@@ -1,12 +1,12 @@
 ---
 name: showing-github
-description: Display GitHub project data (dashboard, items, issues, handovers, specs). Use when "show dashboard", "show items", "show handovers", "show issues", "show specs".
+description: Display GitHub project data (dashboard, items, issues, PRs, handovers, specs). Use when "show dashboard", "show items", "show issues", "show PRs", "show handovers", "show specs".
 allowed-tools: Bash, Read, Glob
 ---
 
 # Showing GitHub
 
-Display GitHub project data. Consolidates dashboard, items, issues, handovers, and specs into one skill.
+Display GitHub project data. Consolidates dashboard, items, issues, PRs, handovers, and specs into one skill.
 
 > **Reference**: See `reference/github-operations.md` for CLI commands, Status Workflow, and error handling.
 
@@ -23,9 +23,8 @@ Full project dashboard aggregating GitHub data.
 
 1. Get repository info: `gh repo view --json nameWithOwner -q '.nameWithOwner'`
 2. Run in parallel:
-   - `shirokuma-docs issues list` (project items by status)
-   - `gh issue list --state open --json number | jq length` (open issues count)
-   - `gh pr list --state open --json number | jq length` (open PRs count)
+   - `shirokuma-docs issues list` (project items by status + derive open issue count from `total_issues`)
+   - `shirokuma-docs issues pr-list` (open PRs list + derive PR count from line count)
    - `gh api repos/{owner}/{repo}/commits?per_page=5` (recent commits)
    - `shirokuma-docs discussions list --category Handovers --limit 3` (recent handovers)
 
@@ -154,6 +153,71 @@ gh issue list --state open \
 
 ---
 
+## /show-prs [filter|number]
+
+PR list and details.
+
+```
+/show-prs                  # Open PRs list
+/show-prs --state closed   # Closed PRs
+/show-prs --state merged   # Merged PRs
+/show-prs --state all      # All PRs
+/show-prs 42               # Specific PR details
+```
+
+### Workflow
+
+**List view:**
+
+```bash
+# Default (open PRs)
+shirokuma-docs issues pr-list
+
+# With filters
+shirokuma-docs issues pr-list --state merged --limit 10
+shirokuma-docs issues pr-list --state all
+```
+
+**Detail view:**
+
+```bash
+shirokuma-docs issues pr-show {number}
+```
+
+### Display Format (List)
+
+```markdown
+## Pull Requests
+
+**Filter:** {description} | **Total:** {count}
+
+| # | Title | Branch | Review |
+|---|-------|--------|--------|
+| #42 | feat: Add new feature | feat/42-new-feature | APPROVED |
+```
+
+### Display Format (Detail)
+
+```markdown
+## PR #{number}: {title}
+
+**Status:** {state} | **Review:** {review_decision}
+**Branch:** {head} → {base}
+
+### Summary
+{body}
+
+### Change Stats
+| File | Additions | Deletions |
+|------|-----------|-----------|
+| src/file.ts | +50 | -10 |
+
+### Linked Issues
+- #42 (Closes)
+```
+
+---
+
 ## /show-handovers [count]
 
 Past session handover information.
@@ -272,5 +336,5 @@ Draft | Review | Approved | Rejected | Implementing
 - Items sorted by Priority within each status
 - Combine Discussion and local handovers if both exist
 - Specs stored in "Ideas" category by convention
-- When the request is ambiguous, use AskUserQuestion to confirm which subcommand (dashboard/items/issues/handovers/specs)
+- When the request is ambiguous, use AskUserQuestion to confirm which subcommand (dashboard/items/issues/prs/handovers/specs)
 - This is a display-only task; TodoWrite is not needed

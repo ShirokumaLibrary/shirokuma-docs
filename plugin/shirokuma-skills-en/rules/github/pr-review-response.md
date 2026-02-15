@@ -9,7 +9,7 @@
 
 1. Fix the code
 2. Commit and push
-3. Reply referencing the commit: `shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body "Fixed in <hash>"`
+3. Reply referencing the commit: `shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body /tmp/reply.md`
 4. Resolve: `shirokuma-docs issues resolve <PR#> --thread-id <PRRT_id>`
 
 ### Question or Discussion

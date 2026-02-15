@@ -6,6 +6,7 @@ import type { Config } from '../types/config.js';
 import type { Issue } from '../types/validation.js';
 import type { Document } from '../types/document.js';
 import { REGEX_PATTERNS } from '../constants.js';
+import { safeRegExp } from '../../utils/sanitize.js';
 
 /**
  * Markdown linter
@@ -96,8 +97,15 @@ export class Linter {
     // Check file naming convention
     if (this.config.lint.file_naming) {
       const fileName = path.basename(document.path);
-      const pattern = new RegExp(this.config.lint.file_naming.pattern);
-      if (!pattern.test(fileName)) {
+      const pattern = safeRegExp(this.config.lint.file_naming.pattern);
+      if (!pattern) {
+        issues.push({
+          severity: 'warning',
+          message: `Invalid file naming pattern: ${this.config.lint.file_naming.pattern}`,
+          file: document.path,
+          rule: 'file-naming',
+        });
+      } else if (!pattern.test(fileName)) {
         issues.push({
           severity: 'warning',
           message: this.config.lint.file_naming.message || 'File name does not match naming convention',

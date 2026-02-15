@@ -113,10 +113,8 @@ Discussion 本文は常に最新の統合版を維持する（`project-items` �
 - 本文が「この Discussion の結論を知りたければここだけ読めばいい」状態を維持する
 
 ```bash
-shirokuma-docs discussions update {number} --body "$(cat <<'EOF'
-{更新内容}
-EOF
-)"
+# Write ツールでファイル作成後
+shirokuma-docs discussions update {number} --body /tmp/body.md
 ```
 
 ## タイトル形式

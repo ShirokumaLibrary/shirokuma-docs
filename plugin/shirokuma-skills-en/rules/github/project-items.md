@@ -204,17 +204,11 @@ See `github-project-setup/reference/labels.md` for full taxonomy and setup comma
 ### How to Update
 
 ```bash
-# Issues
-shirokuma-docs issues update {number} --body "$(cat <<'EOF'
-{updated body content}
-EOF
-)"
+# Issues (Write tool でファイル作成後)
+shirokuma-docs issues update {number} --body /tmp/body.md
 
-# Discussions
-shirokuma-docs discussions update {number} --body "$(cat <<'EOF'
-{updated body content}
-EOF
-)"
+# Discussions (Write tool でファイル作成後)
+shirokuma-docs discussions update {number} --body /tmp/body.md
 ```
 
 ### Workflow Order (Comment First)

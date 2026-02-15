@@ -100,10 +100,10 @@ Before proposing a rule, save findings as a Knowledge Discussion to preserve con
 
 ```bash
 # For confirmed patterns → Knowledge category
-shirokuma-docs discussions create --category Knowledge --title "{Pattern Name}" --body "..."
+shirokuma-docs discussions create --category Knowledge --title "{Pattern Name}" --body /tmp/body.md
 
 # For investigations still in progress → Research category
-shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body "..."
+shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body /tmp/body.md
 ```
 
 **Choose the category based on confidence level:**

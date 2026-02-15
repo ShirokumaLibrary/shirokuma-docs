@@ -184,12 +184,8 @@ shirokuma-docs lint-docs -p . -f terminal
 PR にレビューサマリーをコメントとして投稿：
 
 ```bash
-shirokuma-docs issues comment {PR#} --body "$(cat <<'EOF'
-## レビュー結果: {role}
-
-{サマリー + 重大な問題 + 改善提案の要約}
-EOF
-)"
+# Write ツールでファイル作成後
+shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md
 ```
 
 重大な問題（severity: error）が多数（5件以上）ある場合のみ、詳細レポートを Discussion にも保存し、PR コメントに Discussion URL をリンクする。
@@ -202,7 +198,7 @@ Reports カテゴリに Discussion を作成（従来の動作）：
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Review] {role}: {target}" \
-  --body "$(cat report.md)"
+  --body report.md
 ```
 
 Discussion URL をユーザーに報告。
@@ -438,18 +434,7 @@ Discussion URL をユーザーに報告。
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Self-Review Feedback] {branch}: iteration {n}" \
-  --body "$(cat <<'EOF'
-## 検出パターン
-
-| カテゴリ | ファイル | 指摘内容 | 修正内容 |
-|---------|--------|---------|---------|
-| {category} | {file} | {finding} | {fix} |
-
-## 頻出パターン分析
-
-{同じ種類の指摘が過去のフィードバックと合わせて3回以上検出された場合、ルール化提案を記載}
-EOF
-)"
+  --body /tmp/feedback.md
 ```
 
 **ルール化提案**: 頻出パターン（3回以上）が検出された場合、レポート末尾に追記：

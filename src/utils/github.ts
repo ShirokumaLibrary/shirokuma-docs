@@ -6,6 +6,7 @@
  */
 
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 
 /** Default timeout for subprocess calls (ms) */
 const SUBPROCESS_TIMEOUT = 30_000;
@@ -312,6 +313,14 @@ export function validateBody(body: string | undefined): string | null {
     return `Body too long (${body.length} > ${MAX_BODY_LENGTH} chars)`;
   }
   return null;
+}
+
+/**
+ * ファイルパスから本文を読み込む。
+ * --body オプションでファイルパスを受け取り、内容をテキストとして返す。
+ */
+export function readBodyFile(filePath: string): string {
+  return readFileSync(filePath, "utf-8");
 }
 
 /**

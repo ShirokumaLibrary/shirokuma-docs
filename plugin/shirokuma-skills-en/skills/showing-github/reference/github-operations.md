@@ -45,13 +45,26 @@ shirokuma-docs issues list --all                    # Include closed
 shirokuma-docs issues list --status "In Progress"   # Filter by status
 shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --labels feature \
   --field-status "Backlog" --priority "Medium" --type "Feature" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
-shirokuma-docs issues comment {number} --body "..."
+shirokuma-docs issues comment {number} --body /tmp/comment.md
+shirokuma-docs issues comments {number}                 # List comments
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
+```
+
+### Issues — Pull Requests
+
+```bash
+shirokuma-docs issues pr-list                               # PR list (default: open)
+shirokuma-docs issues pr-list --state merged --limit 5     # Filtering
+shirokuma-docs issues pr-show {number}                      # PR details (body, diff stats, linked issues)
+shirokuma-docs issues pr-comments {number}                  # Review comments and threads
+shirokuma-docs issues merge {number} --squash               # Merge + status update
+shirokuma-docs issues pr-reply {number} --reply-to {id} --body /tmp/reply.md  # Reply to review comment
+shirokuma-docs issues resolve {number} --thread-id {id}    # Resolve thread
 ```
 
 ### Projects (Low-level Access)
@@ -61,7 +74,7 @@ shirokuma-docs projects list                        # Project items
 shirokuma-docs projects fields                      # Show field options
 shirokuma-docs projects add-issue {number}          # Add issue to project
 shirokuma-docs projects create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --field-status "Backlog" --priority "Medium"               # DraftIssue
 shirokuma-docs projects get PVTI_xxx                # By item ID
 shirokuma-docs projects update {number} --field-status "Done"
@@ -75,7 +88,7 @@ shirokuma-docs discussions get {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
-  --body "Content"
+  --body /tmp/body.md
 ```
 
 ### Repository
@@ -89,7 +102,7 @@ shirokuma-docs repo labels
 
 ```bash
 shirokuma-docs issues list --repo docs
-shirokuma-docs issues create --repo docs --title "Title" --body "Body"
+shirokuma-docs issues create --repo docs --title "Title" --body /tmp/body.md
 ```
 
 ### gh Fallback (CLI unsupported only)
@@ -100,11 +113,6 @@ gh issue edit {number} --add-label "label"
 gh issue edit {number} --remove-label "label"
 gh label list
 gh label create "name" --color "0E8A16" --description "Desc"
-
-# Pull Requests
-gh pr list --state open
-gh pr view {number}
-gh pr comment {number} --body "..."
 
 # Repository info
 gh repo view --json nameWithOwner -q '.nameWithOwner'

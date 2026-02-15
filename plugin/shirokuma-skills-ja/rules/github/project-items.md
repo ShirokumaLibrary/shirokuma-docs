@@ -95,17 +95,11 @@ Type を補完し、**どこ**に影響するかを示す。`area:` プレフィ
 ### 更新方法
 
 ```bash
-# Issues
-shirokuma-docs issues update {number} --body "$(cat <<'EOF'
-{更新内容}
-EOF
-)"
+# Issues（Write ツールでファイル作成後）
+shirokuma-docs issues update {number} --body /tmp/body.md
 
-# Discussions
-shirokuma-docs discussions update {number} --body "$(cat <<'EOF'
-{更新内容}
-EOF
-)"
+# Discussions（Write ツールでファイル作成後）
+shirokuma-docs discussions update {number} --body /tmp/body.md
 ```
 
 ### ワークフロー順序（コメントファースト）

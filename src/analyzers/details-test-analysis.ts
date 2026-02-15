@@ -12,6 +12,7 @@ import type {
   CategorizedTestCase,
   TestCoverageAnalysis,
 } from "../commands/details-types.js";
+import { escapeRegExp } from "../utils/sanitize.js";
 
 /**
  * 要素に関連するテストケースを抽出
@@ -189,25 +190,26 @@ export function findTestCasesForModule(
 
   const pathPatterns: RegExp[] = [];
 
+  const escaped = escapeRegExp(lowerName);
   switch (type) {
     case "action":
       pathPatterns.push(
-        new RegExp(`/lib/actions/${lowerName}\\.test\\.ts$`, "i"),
-        new RegExp(`/__tests__/lib/actions/${lowerName}\\.test\\.ts$`, "i"),
-        new RegExp(`/actions/${lowerName}\\.test\\.ts$`, "i")
+        new RegExp(`/lib/actions/${escaped}\\.test\\.ts$`, "i"),
+        new RegExp(`/__tests__/lib/actions/${escaped}\\.test\\.ts$`, "i"),
+        new RegExp(`/actions/${escaped}\\.test\\.ts$`, "i")
       );
       break;
     case "component":
       pathPatterns.push(
-        new RegExp(`/components/${lowerName}\\.test\\.tsx?$`, "i"),
-        new RegExp(`/__tests__/components/${lowerName}\\.test\\.tsx?$`, "i"),
-        new RegExp(`/components/.*${lowerName}.*\\.test\\.tsx?$`, "i")
+        new RegExp(`/components/${escaped}\\.test\\.tsx?$`, "i"),
+        new RegExp(`/__tests__/components/${escaped}\\.test\\.tsx?$`, "i"),
+        new RegExp(`/components/.*${escaped}.*\\.test\\.tsx?$`, "i")
       );
       break;
     case "screen":
       pathPatterns.push(
-        new RegExp(`/e2e/${lowerName}\\.spec\\.ts$`, "i"),
-        new RegExp(`/${lowerName}\\.spec\\.ts$`, "i")
+        new RegExp(`/e2e/${escaped}\\.spec\\.ts$`, "i"),
+        new RegExp(`/${escaped}\\.spec\\.ts$`, "i")
       );
       break;
     default:

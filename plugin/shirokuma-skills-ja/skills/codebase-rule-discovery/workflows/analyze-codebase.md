@@ -145,8 +145,7 @@ App C: パターン欠落 ← 必須ルールの候補
 shirokuma-docs discussions create \
   --category Research \
   --title "[Research] Rule Discovery: ${CATEGORY}" \
-  --body "# Rule Discovery Report: ${CATEGORY}
-..."
+  --body /tmp/report.md
 ```
 
 #### 6.2 将来計画へのリンク（該当する場合）

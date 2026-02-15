@@ -216,7 +216,7 @@ shirokuma-docs lint-code -p . -f terminal
    shirokuma-docs discussions create \
      --category Reports \
      --title "[Implementation] {feature-name}" \
-     --body "$(cat report.md)"
+     --body report.md
    ```
 3. Discussion URL をユーザーに報告
 

@@ -83,7 +83,7 @@ WebSearch: "[技術] official documentation [トピック]"
 重要な調査結果は Research カテゴリに Discussion を作成:
 
 ```bash
-shirokuma-docs discussions create --category Research --title "[Research] {トピック}" --body "{調査結果}"
+shirokuma-docs discussions create --category Research --title "[Research] {トピック}" --body /tmp/findings.md
 ```
 
 ## 出力フォーマット

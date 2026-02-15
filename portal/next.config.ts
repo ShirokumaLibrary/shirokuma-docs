@@ -1,5 +1,4 @@
 import type { NextConfig } from "next";
-import path from "path";
 
 const nextConfig: NextConfig = {
   output: "export",
@@ -14,8 +13,6 @@ const nextConfig: NextConfig = {
     PORTAL_DATA_DIR: process.env.PORTAL_DATA_DIR || "./data",
     PROJECT_NAME: process.env.PROJECT_NAME || "Documentation",
   },
-  // Fix workspace root warning
-  outputFileTracingRoot: path.join(__dirname, "./"),
 };
 
 export default nextConfig;

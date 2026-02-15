@@ -91,7 +91,7 @@ EOF
 ```bash
 shirokuma-docs session end \
   --title "$(date +%Y-%m-%d) - {サマリー}" \
-  --body "$HANDOVER_BODY" \
+  --body /tmp/handover.md \
   --done {完了issue番号} \
   --review {レビュー中issue番号}
 ```
@@ -102,7 +102,7 @@ shirokuma-docs session end \
 
 **オプション**:
 - `--title`（必須）- 引き継ぎタイトル、通常は日付 + サマリー
-- `--body`（必須）- Markdown 形式の引き継ぎ本文
+- `--body`（必須）- 引き継ぎ本文の Markdown ファイルパス（Write ツールで作成）
 - `--done <numbers...>` - Done にする Issue 番号
 - `--review <numbers...>` - Review にする Issue 番号
 

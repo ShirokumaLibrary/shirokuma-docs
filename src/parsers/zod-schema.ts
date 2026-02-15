@@ -14,6 +14,8 @@
  * @module parsers/zod-schema
  */
 
+import { escapeRegExp } from "../utils/sanitize.js";
+
 /**
  * Zod parameter information extracted from schema
  */
@@ -88,7 +90,7 @@ export function parseZodSchema(
 ): ParsedZodSchema | null {
   // Pattern to find schema definition: const SchemaName = z.object({
   const schemaPattern = new RegExp(
-    `const\\s+${schemaName}\\s*=\\s*z\\.object\\s*\\(\\s*\\{([\\s\\S]*?)\\}\\s*\\)`,
+    `const\\s+${escapeRegExp(schemaName)}\\s*=\\s*z\\.object\\s*\\(\\s*\\{([\\s\\S]*?)\\}\\s*\\)`,
     "m"
   );
 

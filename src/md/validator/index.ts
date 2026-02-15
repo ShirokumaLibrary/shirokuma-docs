@@ -7,6 +7,7 @@ import type { Document } from '../types/document.js';
 import { loadTemplate, findMissingHeadings, findUnsubstitutedVariables, templateExists } from '../parser/template.js';
 import { FileCollector } from '../utils/file-collector.js';
 import { DEFAULT_MAX_HEADING_DEPTH } from '../constants.js';
+import { safeRegExp } from '../../utils/sanitize.js';
 
 /**
  * Document validator
@@ -114,7 +115,16 @@ export class Validator {
     // 3. Check forbidden patterns
     if (this.config.validation.forbidden_patterns) {
       for (const forbiddenPattern of this.config.validation.forbidden_patterns) {
-        const regex = new RegExp(forbiddenPattern.pattern);
+        const regex = safeRegExp(forbiddenPattern.pattern);
+        if (!regex) {
+          issues.push({
+            severity: 'error',
+            message: `Invalid regex pattern: ${forbiddenPattern.pattern}`,
+            file: document.path,
+            rule: 'forbidden-pattern',
+          });
+          continue;
+        }
         if (regex.test(document.content)) {
           issues.push({
             severity: 'error',

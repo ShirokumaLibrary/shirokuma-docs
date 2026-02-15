@@ -723,6 +723,24 @@ export function findMergedPrForIssue(
 }
 
 // =============================================================================
+// Helper: Check if an issue is closed (REST API)
+// =============================================================================
+
+/**
+ * Issue が CLOSED かどうかを REST API で確認する。
+ * OPEN-only fetch で見つからない Issue 番号の判定に使用。
+ * API 失敗時は false を返し、従来の warn 動作にフォールバック（安全側）。
+ */
+export function isIssueClosed(owner: string, repo: string, num: number): boolean {
+  const result = runGhCommand<{ state: string }>(
+    ["api", `repos/${owner}/${repo}/issues/${num}`],
+    { silent: true }
+  );
+  if (!result.success) return false;
+  return result.data?.state === "closed";
+}
+
+// =============================================================================
 // Git state helpers
 // =============================================================================
 
@@ -1204,11 +1222,23 @@ async function cmdEnd(
       fieldsCache[pid] = getProjectFields(pid);
     }
 
+    // OPEN list に見つからない番号の closed 状態を一括確認 (#557)
+    const allTargetNumbers = [...new Set([...doneNumbers, ...reviewNumbers])];
+    const missingNumbers = allTargetNumbers.filter(n => !issues.find(i => i.number === n));
+    const closedCache = new Map<number, boolean>();
+    for (const num of missingNumbers) {
+      closedCache.set(num, isIssueClosed(owner, repo, num));
+    }
+
     // Update Done issues
     for (const num of doneNumbers) {
       const issue = issues.find((i) => i.number === num);
       if (!issue?.projectItemId || !issue?.projectId) {
-        logger.warn(`Issue #${num}: not found in project, skipping status update`);
+        if (closedCache.get(num)) {
+          logger.info(`Issue #${num}: already closed, skipping`);
+        } else {
+          logger.warn(`Issue #${num}: not found in project, skipping status update`);
+        }
         continue;
       }
 
@@ -1225,7 +1255,11 @@ async function cmdEnd(
     for (const num of reviewNumbers) {
       const issue = issues.find((i) => i.number === num);
       if (!issue?.projectItemId || !issue?.projectId) {
-        logger.warn(`Issue #${num}: not found in project, skipping status update`);
+        if (closedCache.get(num)) {
+          logger.info(`Issue #${num}: already closed, skipping`);
+        } else {
+          logger.warn(`Issue #${num}: not found in project, skipping status update`);
+        }
         continue;
       }
 

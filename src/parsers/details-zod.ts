@@ -5,6 +5,7 @@
  */
 
 import type { ZodParameter } from "../commands/details-types.js";
+import { escapeRegExp } from "../utils/sanitize.js";
 
 /**
  * Zodスキーマを解析してパラメータ情報を抽出
@@ -18,7 +19,7 @@ export function parseZodSchema(
   fileContent: string
 ): { name: string; parameters: ZodParameter[] } | null {
   const schemaStartPattern = new RegExp(
-    `(?:export\\s+)?(?:const|let)\\s+${schemaName}\\s*=\\s*z\\.object\\s*\\(\\s*\\{`,
+    `(?:export\\s+)?(?:const|let)\\s+${escapeRegExp(schemaName)}\\s*=\\s*z\\.object\\s*\\(\\s*\\{`,
     "s"
   );
   const startMatch = schemaStartPattern.exec(fileContent);

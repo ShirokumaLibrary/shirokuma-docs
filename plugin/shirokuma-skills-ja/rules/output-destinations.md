@@ -24,7 +24,7 @@ Claude Code のスキルは2種類の出力を生成する。それぞれを適�
 shirokuma-docs discussions create \
   --category Reports \
   --title "Review: {target}" \
-  --body "report content"
+  --body /tmp/report.md
 ```
 
 **特徴**: 作業セッション中に作成、人間の確認用、定期的にクリーンアップ可能
@@ -68,7 +68,7 @@ logs/reviews/YYYY-MM-DD-*.md
 PR を対象としたレビュー結果は、PR コメントに直接投稿する。
 
 ```bash
-shirokuma-docs issues comment {PR#} --body "レビュー結果サマリー"
+shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md
 ```
 
 | 条件 | 出力先 |

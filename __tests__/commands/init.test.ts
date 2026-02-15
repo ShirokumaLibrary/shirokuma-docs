@@ -582,4 +582,42 @@ describe("init command", () => {
       expect(result.stdout).toContain("shirokuma-docs.config.yaml");
     });
   });
+
+  describe("setup check integration", () => {
+    /**
+     * @testdoc init --with-skills が GitHub セットアップ検証を実行する
+     * @purpose init 完了時に session check --setup 相当の検証が動的に表示されることを確認
+     */
+    it("should run GitHub setup validation in next steps", () => {
+      const result = runCli([
+        "init",
+        "--project", TEST_OUTPUT_DIR,
+        "--with-skills",
+      ]);
+
+      expect(result.status).toBe(0);
+      // 動的検証が成功した場合: カテゴリ別の結果が表示される
+      // フォールバックの場合: テキストベースの案内が表示される
+      const hasDynamicResults =
+        result.stdout.includes("Discussion Categories") ||
+        result.stdout.includes("Project Setup");
+      const hasFallback = result.stdout.includes("Discussion カテゴリ作成");
+      expect(hasDynamicResults || hasFallback).toBe(true);
+    });
+
+    /**
+     * @testdoc init --with-skills が discussion-templates の案内を表示する
+     * @purpose Discussion テンプレート生成の推奨タイミングが案内に含まれることを確認
+     */
+    it("should show discussion-templates guidance in next steps", () => {
+      const result = runCli([
+        "init",
+        "--project", TEST_OUTPUT_DIR,
+        "--with-skills",
+      ]);
+
+      expect(result.status).toBe(0);
+      expect(result.stdout).toContain("discussion-templates generate");
+    });
+  });
 });

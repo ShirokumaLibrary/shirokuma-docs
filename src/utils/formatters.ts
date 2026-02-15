@@ -203,6 +203,32 @@ export const GH_PROJECTS_LIST_COLUMNS = [
 ];
 
 /**
+ * Default columns for issues search output (#552)
+ */
+export const GH_ISSUES_SEARCH_COLUMNS = [
+  "number",
+  "title",
+  "state",
+  "is_pr",
+  "author",
+  "created_at",
+];
+
+/**
+ * Default columns for PR list output (#568)
+ */
+export const GH_PR_LIST_COLUMNS = [
+  "number",
+  "title",
+  "state",
+  "head_branch",
+  "base_branch",
+  "author",
+  "review_decision",
+  "url",
+];
+
+/**
  * Default columns for discussions list output
  */
 export const GH_DISCUSSIONS_LIST_COLUMNS = [
@@ -211,4 +237,16 @@ export const GH_DISCUSSIONS_LIST_COLUMNS = [
   "category",
   "author",
   "answer_chosen",
+];
+
+/**
+ * Default columns for discussions search output (#553)
+ */
+export const GH_DISCUSSIONS_SEARCH_COLUMNS = [
+  "number",
+  "title",
+  "category",
+  "author",
+  "answer_chosen",
+  "created_at",
 ];

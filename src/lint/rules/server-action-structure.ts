@@ -10,6 +10,7 @@
  */
 
 import type { CodeIssue, CodeIssueSeverity } from "../code-types.js";
+import { escapeRegExp } from "../../utils/sanitize.js";
 
 /**
  * Server Action Structure Rule
@@ -76,7 +77,7 @@ function extractFunctionBody(
   // export async function functionName(...) { ... }
   // export function functionName(...) { ... }
   const funcPattern = new RegExp(
-    `export\\s+(?:async\\s+)?function\\s+${functionName}\\s*\\([^)]*\\)\\s*\\{`,
+    `export\\s+(?:async\\s+)?function\\s+${escapeRegExp(functionName)}\\s*\\([^)]*\\)\\s*\\{`,
     "g"
   );
 

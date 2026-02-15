@@ -107,7 +107,7 @@ pnpm --filter {app-name} build
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Design] {component-name}" \
-  --body "$(cat report.md)"
+  --body report.md
 ```
 
 Report the Discussion URL to the user.

@@ -113,7 +113,7 @@ Server Action ファイル5件をレビュー。全体的なセキュリティ�
 shirokuma-docs discussions create \
   --category Reports \
   --title "[レビュー] security: apps/admin/lib/actions/" \
-  --body "$(cat report.md)"
+  --body report.md
 ```
 
 Discussion の URL をユーザーに報告する。

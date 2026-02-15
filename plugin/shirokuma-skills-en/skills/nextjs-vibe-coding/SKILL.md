@@ -217,7 +217,7 @@ Based on test results and lint feedback:
    shirokuma-docs discussions create \
      --category Reports \
      --title "[Implementation] {feature-name}" \
-     --body "$(cat report.md)"
+     --body report.md
    ```
 3. Report the Discussion URL to the user
 

@@ -45,13 +45,26 @@ shirokuma-docs issues list --all                    # クローズ含む
 shirokuma-docs issues list --status "In Progress"   # ステータスフィルタ
 shirokuma-docs issues show {number}                  # 詳細
 shirokuma-docs issues create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --labels feature \
   --field-status "Backlog" --priority "Medium" --type "Feature" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
-shirokuma-docs issues comment {number} --body "..."
+shirokuma-docs issues comment {number} --body /tmp/comment.md
+shirokuma-docs issues comments {number}                 # コメント一覧
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
+```
+
+### Issues — Pull Requests
+
+```bash
+shirokuma-docs issues pr-list                               # PR 一覧（デフォルト: open）
+shirokuma-docs issues pr-list --state merged --limit 5     # フィルタリング
+shirokuma-docs issues pr-show {number}                      # PR 詳細（body, diff stats, linked issues）
+shirokuma-docs issues pr-comments {number}                  # レビューコメント・スレッド
+shirokuma-docs issues merge {number} --squash               # マージ + ステータス更新
+shirokuma-docs issues pr-reply {number} --reply-to {id} --body /tmp/reply.md  # レビューコメント返信
+shirokuma-docs issues resolve {number} --thread-id {id}    # スレッド解決
 ```
 
 ### Projects（低レベルアクセス）
@@ -61,7 +74,7 @@ shirokuma-docs projects list                        # プロジェクトアイ�
 shirokuma-docs projects fields                      # フィールドオプション表示
 shirokuma-docs projects add-issue {number}          # Issue をプロジェクトに追加
 shirokuma-docs projects create \
-  --title "Title" --body "Body" \
+  --title "Title" --body /tmp/body.md \
   --field-status "Backlog" --priority "Medium"               # DraftIssue
 shirokuma-docs projects get PVTI_xxx                # アイテム ID で取得
 shirokuma-docs projects update {number} --field-status "Done"
@@ -75,7 +88,7 @@ shirokuma-docs discussions get {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
-  --body "Content"
+  --body /tmp/body.md
 ```
 
 ### Repository
@@ -89,7 +102,7 @@ shirokuma-docs repo labels
 
 ```bash
 shirokuma-docs issues list --repo docs
-shirokuma-docs issues create --repo docs --title "Title" --body "Body"
+shirokuma-docs issues create --repo docs --title "Title" --body /tmp/body.md
 ```
 
 ### gh フォールバック（CLI 未対応の操作のみ）
@@ -100,11 +113,6 @@ gh issue edit {number} --add-label "label"
 gh issue edit {number} --remove-label "label"
 gh label list
 gh label create "name" --color "0E8A16" --description "Desc"
-
-# Pull Requests
-gh pr list --state open
-gh pr view {number}
-gh pr comment {number} --body "..."
 
 # リポジトリ情報
 gh repo view --json nameWithOwner -q '.nameWithOwner'

@@ -16,7 +16,7 @@ allowed-tools: Bash, Read, Grep, AskUserQuestion
 shirokuma-docs session start
 ```
 
-返される JSON: `repository`, `git`（ブランチ、未コミット変更）, `lastHandover`, `backups`（PreCompact バックアップ）, `issues`（アクティブ Issue + フィールド）, `total_issues`
+返される JSON: `repository`, `git`（ブランチ、未コミット変更）, `lastHandover`, `backups`（PreCompact バックアップ）, `issues`（アクティブ Issue + フィールド）, `total_issues`, `openPRs`（オープン PR + レビューステータス）
 
 ### ステップ 1b: バックアップ検出
 
@@ -36,6 +36,13 @@ shirokuma-docs session start
 {lastHandover.title or "なし"}
 - サマリー: {Summary セクション}
 - 次のステップ: {Next Steps セクション}
+
+### オープン PR
+| # | タイトル | レビュー | スレッド |
+|---|---------|---------|---------|
+| #42 | feat: 新機能追加 | APPROVED | 0 |
+
+{PR がない場合は「オープン PR はありません。」と表示}
 
 ### アクティブな Issue
 {ステータスでグループ化: 作業中 → 準備完了 → バックログ → アイスボックス}

@@ -8,6 +8,7 @@
 import { resolve, basename } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import type { DetailsContext } from "./details-types.js";
+import { escapeRegExp } from "../utils/sanitize.js";
 
 // ===== コンテキスト作成 =====
 
@@ -127,10 +128,11 @@ export function readSourceCode(projectPath: string, filePath: string): string {
  * 関数/コンポーネントのコードを抽出
  */
 export function extractFunctionCode(sourceCode: string, targetName: string): string {
+  const escaped = escapeRegExp(targetName);
   const patterns = [
-    new RegExp(`(?:export\\s+)?(?:async\\s+)?function\\s+${targetName}\\s*[<({]`, "gm"),
-    new RegExp(`(?:export\\s+)?const\\s+${targetName}\\s*=`, "gm"),
-    new RegExp(`(?:export\\s+)?(?:default\\s+)?function\\s+${targetName}\\s*[<({]`, "gm"),
+    new RegExp(`(?:export\\s+)?(?:async\\s+)?function\\s+${escaped}\\s*[<({]`, "gm"),
+    new RegExp(`(?:export\\s+)?const\\s+${escaped}\\s*=`, "gm"),
+    new RegExp(`(?:export\\s+)?(?:default\\s+)?function\\s+${escaped}\\s*[<({]`, "gm"),
   ];
 
   for (const pattern of patterns) {

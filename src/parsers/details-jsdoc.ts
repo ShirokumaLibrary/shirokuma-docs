@@ -75,13 +75,6 @@ export function simpleMarkdown(text: string): string {
 }
 
 /**
- * 正規表現の特殊文字をエスケープ
- */
-export function escapeRegExp(string: string): string {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-/**
  * JSDocコメントを抽出（共通パーサー使用）
  *
  * 関数宣言の位置を先に特定し、その直前にあるJSDocコメントを抽出する。

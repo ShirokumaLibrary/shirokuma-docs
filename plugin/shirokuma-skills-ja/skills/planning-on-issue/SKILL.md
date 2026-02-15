@@ -199,7 +199,13 @@ NEEDS_REVISION が返された場合:
 計画の判断根拠を**一次記録**としてコメントに投稿する。本文の要約ではなく、コメントでしか残らない判断プロセスを記録する。
 
 ```bash
-shirokuma-docs issues comment {number} --body "## 計画の判断根拠
+# Write ツールでファイル作成後
+shirokuma-docs issues comment {number} --body /tmp/comment.md
+```
+
+コメントファイルの内容:
+```markdown
+## 計画の判断根拠
 
 ### 選定アプローチ
 {選定したアプローチとその理由}
@@ -209,7 +215,6 @@ shirokuma-docs issues comment {number} --body "## 計画の判断根拠
 
 ### 調査で判明した制約
 {コードベース調査で発見した技術的制約や依存関係。なければ省略}
-"
 ```
 
 **テンプレートの意図**: コメントが「なぜこのアプローチを選んだか」の記録になる。本文の計画セクションは「何をするか」を構造化して記載するため、コメントと本文で役割が分かれる。
@@ -219,7 +224,7 @@ shirokuma-docs issues comment {number} --body "## 計画の判断根拠
 既存の Issue 本文の末尾に `## 計画` セクションを追加する。ステップ 3 で判定したレベルに応じたテンプレートを使用。
 
 ```bash
-shirokuma-docs issues update {number} --body "{既存本文 + 計画セクション}"
+shirokuma-docs issues update {number} --body /tmp/body.md
 ```
 
 **重要**: 既存の本文（概要、タスク、成果物等）は保持し、`## 計画` セクションを**追加**する。既存の `## タスク` セクションがある場合、計画の `### タスク分解` はより具体的な実装ステップとして共存する。

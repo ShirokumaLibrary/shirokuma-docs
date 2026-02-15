@@ -113,7 +113,7 @@ Reviewed 5 Server Action files. Overall security posture is **Good** with one cr
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Review] security: apps/admin/lib/actions/" \
-  --body "$(cat report.md)"
+  --body report.md
 ```
 
 Report the Discussion URL to the user.

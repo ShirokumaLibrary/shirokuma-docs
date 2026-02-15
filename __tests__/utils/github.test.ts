@@ -7,11 +7,15 @@
  * @testdoc GitHub CLI用ユーティリティ関数のテスト
  */
 
+import { writeFileSync, mkdirSync, rmSync } from "fs";
+import { join } from "path";
+import { tmpdir } from "os";
 import {
   validateTitle,
   validateBody,
   isIssueNumber,
   parseIssueNumber,
+  readBodyFile,
   MAX_TITLE_LENGTH,
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
@@ -342,6 +346,47 @@ describe("parseIssueNumber", () => {
     expect(parseIssueNumber("abc")).toBeNaN();
     expect(parseIssueNumber("#abc")).toBeNaN();
     expect(parseIssueNumber("")).toBeNaN();
+  });
+});
+
+describe("readBodyFile", () => {
+  const testDir = join(tmpdir(), "shirokuma-readBodyFile-test");
+
+  beforeAll(() => {
+    mkdirSync(testDir, { recursive: true });
+  });
+
+  afterAll(() => {
+    rmSync(testDir, { recursive: true, force: true });
+  });
+
+  /**
+   * @testdoc ファイルの内容を正しく読み込む
+   * @purpose 基本的な読み込み動作の確認
+   */
+  it("should read file contents", () => {
+    const filePath = join(testDir, "body.md");
+    writeFileSync(filePath, "Hello World");
+    expect(readBodyFile(filePath)).toBe("Hello World");
+  });
+
+  /**
+   * @testdoc バッククォートを含むMarkdownを正しく読み込む
+   * @purpose Issue #558 の主要ユースケース
+   */
+  it("should read file with backticks in markdown", () => {
+    const filePath = join(testDir, "backticks.md");
+    const content = "## Summary\n\nFixed `isIssueClosed()` helper.\n\n```typescript\nconst x = 1;\n```";
+    writeFileSync(filePath, content);
+    expect(readBodyFile(filePath)).toBe(content);
+  });
+
+  /**
+   * @testdoc 存在しないファイルでエラーをスローする
+   * @purpose エラーハンドリングの確認
+   */
+  it("should throw for non-existent file", () => {
+    expect(() => readBodyFile(join(testDir, "nonexistent.md"))).toThrow();
   });
 });
 

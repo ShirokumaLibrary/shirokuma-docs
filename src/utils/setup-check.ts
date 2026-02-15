@@ -1,8 +1,9 @@
 /**
- * GitHub setup validation utility (#345)
+ * GitHub setup validation utility (#345, #527)
  *
  * Checks whether manual GitHub configuration steps have been completed:
- * - Discussion categories (Handovers, ADR, Knowledge, Research)
+ * - Discussion categories (Handovers, ADR, Knowledge, Research) with recommended settings
+ * - Project existence and required fields (Status, Priority, Type, Size)
  * - Project workflow automations (Item closed → Done, PR merged → Done)
  * - Metrics text fields (if metrics enabled)
  */
@@ -15,19 +16,28 @@ import {
   RECOMMENDED_WORKFLOWS,
   type ProjectWorkflow,
 } from "../commands/projects.js";
-import { getProjectFields } from "./project-fields.js";
+import { getProjectFields, resolveFieldName } from "./project-fields.js";
 import type { Logger } from "./logger.js";
 
 // =============================================================================
 // Types
 // =============================================================================
 
+/** Discussion カテゴリの推奨設定 */
+export interface RecommendedCategorySetting {
+  description: string;
+  emoji: string;
+  format: "Open-ended discussion" | "Question / Answer";
+}
+
 export interface SetupCheckItem {
-  category: "discussions" | "workflows" | "metrics";
+  category: "discussions" | "workflows" | "metrics" | "project";
   name: string;
   ok: boolean;
   hint?: string;
   url?: string;
+  /** Discussion カテゴリの推奨設定（discussions カテゴリのみ） */
+  recommended?: RecommendedCategorySetting;
 }
 
 export interface SetupCheckResult {
@@ -46,8 +56,38 @@ export interface SetupCheckResult {
 
 const REQUIRED_DISCUSSION_CATEGORIES = ["Handovers", "ADR", "Knowledge", "Research"];
 
+/** 必須 Project フィールド */
+const REQUIRED_PROJECT_FIELDS = ["Status", "Priority", "Type", "Size"];
+
+/**
+ * 各 Discussion カテゴリの推奨設定
+ * GitHub UI でカテゴリを作成する際に使用する値
+ */
+export const RECOMMENDED_CATEGORY_SETTINGS: Record<string, RecommendedCategorySetting> = {
+  Handovers: {
+    description: "セッション間の引き継ぎ記録",
+    emoji: "🔄",
+    format: "Open-ended discussion",
+  },
+  ADR: {
+    description: "Architecture Decision Records — 設計判断の記録",
+    emoji: "📋",
+    format: "Open-ended discussion",
+  },
+  Knowledge: {
+    description: "確認されたパターン・解決策の蓄積",
+    emoji: "📚",
+    format: "Open-ended discussion",
+  },
+  Research: {
+    description: "調査が必要な事項の記録と追跡",
+    emoji: "🔍",
+    format: "Open-ended discussion",
+  },
+};
+
 // =============================================================================
-// GraphQL Query (reuse same shape as session.ts)
+// GraphQL Query
 // =============================================================================
 
 const GRAPHQL_QUERY_CATEGORIES = `
@@ -57,6 +97,9 @@ query($owner: String!, $name: String!) {
       nodes {
         id
         name
+        description
+        emoji
+        isAnswerable
       }
     }
   }
@@ -71,11 +114,19 @@ function checkDiscussionCategories(
   owner: string,
   repo: string
 ): SetupCheckItem[] {
+  interface CategoryNode {
+    id?: string;
+    name?: string;
+    description?: string;
+    emoji?: string;
+    isAnswerable?: boolean;
+  }
+
   interface QueryResult {
     data?: {
       repository?: {
         discussionCategories?: {
-          nodes?: Array<{ id?: string; name?: string }>;
+          nodes?: CategoryNode[];
         };
       };
     };
@@ -92,19 +143,47 @@ function checkDiscussionCategories(
   const existingNames = new Set(nodes.map((n) => n?.name).filter(Boolean));
   const categoriesUrl = `https://github.com/${owner}/${repo}/discussions/categories`;
 
-  return REQUIRED_DISCUSSION_CATEGORIES.map((cat) => ({
-    category: "discussions" as const,
-    name: cat,
-    ok: existingNames.has(cat),
-    hint: existingNames.has(cat) ? undefined : `Create "${cat}" category in GitHub UI`,
-    url: existingNames.has(cat) ? undefined : categoriesUrl,
-  }));
+  return REQUIRED_DISCUSSION_CATEGORIES.map((cat) => {
+    const recommended = RECOMMENDED_CATEGORY_SETTINGS[cat];
+    return {
+      category: "discussions" as const,
+      name: cat,
+      ok: existingNames.has(cat),
+      hint: existingNames.has(cat) ? undefined : `Create "${cat}" category in GitHub UI`,
+      url: existingNames.has(cat) ? undefined : categoriesUrl,
+      recommended,
+    };
+  });
 }
 
-function checkWorkflows(owner: string): SetupCheckItem[] {
-  const projectId = getProjectId(owner);
-  if (!projectId) return [];
+function checkProjectExists(projectId: string | null): SetupCheckItem[] {
+  return [{
+    category: "project" as const,
+    name: "Project",
+    ok: projectId !== null,
+    hint: projectId
+      ? undefined
+      : "Create a GitHub Project with the same name as the repository",
+  }];
+}
 
+function checkProjectFields(projectId: string): SetupCheckItem[] {
+  const fields = getProjectFields(projectId);
+
+  return REQUIRED_PROJECT_FIELDS.map((fieldName) => {
+    const resolved = resolveFieldName(fieldName, fields);
+    return {
+      category: "project" as const,
+      name: fieldName,
+      ok: resolved !== null,
+      hint: resolved
+        ? undefined
+        : `Create "${fieldName}" field in GitHub Project Settings > Fields`,
+    };
+  });
+}
+
+function checkWorkflows(projectId: string): SetupCheckItem[] {
   const workflows = fetchWorkflows(projectId);
   if (workflows.length === 0) return [];
 
@@ -116,19 +195,15 @@ function checkWorkflows(owner: string): SetupCheckItem[] {
       name,
       ok,
       hint: ok ? undefined : `Enable "${name}" workflow in GitHub Project Settings > Workflows`,
-      url: ok ? undefined : undefined, // Project workflow settings URL is not stable
     };
   });
 }
 
 function checkMetricsFields(
-  owner: string,
+  projectId: string,
   metricsConfig: MetricsConfig
 ): SetupCheckItem[] {
   if (!metricsConfig.enabled) return [];
-
-  const projectId = getProjectId(owner);
-  if (!projectId) return [];
 
   const fields = getProjectFields(projectId);
   const mapping = metricsConfig.statusToDateMapping ?? {};
@@ -159,12 +234,21 @@ export function validateGitHubSetup(logger: Logger): SetupCheckResult | null {
 
   const { owner: repoOwner, name: repo } = repoInfo;
   const config = loadGhConfig();
+  const projectId = getProjectId(repoOwner);
 
   const items: SetupCheckItem[] = [
     ...checkDiscussionCategories(repoOwner, repo),
-    ...checkWorkflows(repoOwner),
-    ...checkMetricsFields(repoOwner, getMetricsConfig(config)),
+    ...checkProjectExists(projectId),
   ];
+
+  // Project 依存のチェック: projectId がない場合はスキップ
+  if (projectId) {
+    items.push(
+      ...checkProjectFields(projectId),
+      ...checkWorkflows(projectId),
+      ...checkMetricsFields(projectId, getMetricsConfig(config)),
+    );
+  }
 
   const ok = items.filter((i) => i.ok).length;
 
@@ -186,13 +270,43 @@ export function printSetupCheckResults(
   result: SetupCheckResult,
   logger: Logger
 ): void {
-  for (const item of result.items) {
-    if (item.ok) {
-      logger.success(`${item.category}: ${item.name}`);
-    } else {
-      logger.error(`${item.category}: ${item.name}`);
-      if (item.hint) logger.info(`  → ${item.hint}`);
-      if (item.url) logger.info(`  URL: ${item.url}`);
+  const categoryOrder = ["discussions", "project", "workflows", "metrics"] as const;
+  const categoryLabels: Record<string, string> = {
+    discussions: "Discussion Categories",
+    project: "Project Setup",
+    workflows: "Project Workflows",
+    metrics: "Metrics Fields",
+  };
+
+  for (const cat of categoryOrder) {
+    const catItems = result.items.filter((i) => i.category === cat);
+    if (catItems.length === 0) continue;
+
+    logger.info(`\n[${categoryLabels[cat]}]`);
+
+    for (const item of catItems) {
+      if (item.ok) {
+        logger.success(`  ${item.name}`);
+      } else {
+        logger.error(`  ${item.name}`);
+        if (item.hint) logger.info(`    -> ${item.hint}`);
+        if (item.url) logger.info(`    URL: ${item.url}`);
+        if (item.recommended) {
+          logger.info(`    Recommended settings:`);
+          logger.info(`      Description: ${item.recommended.description}`);
+          logger.info(`      Emoji: ${item.recommended.emoji}`);
+          logger.info(`      Format: ${item.recommended.format}`);
+        }
+      }
     }
+  }
+
+  // Reports カテゴリの任意案内
+  const allDiscussionsOk = result.items
+    .filter((i) => i.category === "discussions")
+    .every((i) => i.ok);
+  if (allDiscussionsOk) {
+    logger.info("\n[Optional]");
+    logger.info("  Reports category (for review reports) is also recommended");
   }
 }

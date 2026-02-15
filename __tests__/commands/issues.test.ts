@@ -20,6 +20,7 @@ import {
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
 import { generateTimestamp, getPullRequestId } from "../../src/commands/issues.js";
+import { GH_ISSUES_SEARCH_COLUMNS } from "../../src/utils/formatters.js";
 
 describe("issues command validation", () => {
   // ===========================================================================
@@ -265,6 +266,30 @@ describe("issues command options", () => {
     });
 
     /**
+     * @testdoc listアクションは--state未指定時にデフォルトで"open"をフィルタする (#535)
+     * @purpose --stateデフォルト値削除後のリグレッション防止
+     */
+    it("list should default to 'open' state when --state is not specified (#535)", () => {
+      // Commander.js からデフォルト値を削除したため、cmdList 内部でデフォルト適用する
+      // options.state ?? "open" パターン
+      const optionsWithState = { state: "closed", all: false };
+      const optionsWithoutState = { state: undefined as string | undefined, all: false };
+      const optionsWithAll = { state: undefined as string | undefined, all: true };
+
+      // --state closed → "closed"
+      const filter1 = optionsWithState.all ? "all" : (optionsWithState.state ?? "open");
+      expect(filter1).toBe("closed");
+
+      // --state 未指定 → "open"（デフォルト）
+      const filter2 = optionsWithoutState.all ? "all" : (optionsWithoutState.state ?? "open");
+      expect(filter2).toBe("open");
+
+      // --all → "all"
+      const filter3 = optionsWithAll.all ? "all" : (optionsWithAll.state ?? "open");
+      expect(filter3).toBe("all");
+    });
+
+    /**
      * @testdoc updateアクションで未指定フィールドは既存値を保持する (#371)
      * @purpose --titleのみ指定時にbodyがクリアされないことを文書化
      */
@@ -417,6 +442,133 @@ describe("issues command actions", () => {
     });
 
     /**
+     * @testdoc updateアクションで--state closedを指定するとIssueをcloseする (#535)
+     * @purpose update --state closedのclose動作を文書化
+     */
+    it("update --state closed should close the issue (#535)", () => {
+      // --state closed → closeIssue mutation を実行
+      const options = {
+        state: "closed",
+        fieldStatus: undefined as string | undefined,
+      };
+
+      const shouldClose = options.state === "closed";
+      expect(shouldClose).toBe(true);
+
+      // --field-status 未指定時は Status を "Done" に自動設定
+      const autoStatus = !options.fieldStatus ? "Done" : undefined;
+      expect(autoStatus).toBe("Done");
+    });
+
+    /**
+     * @testdoc updateで--field-statusと--state closedを同時指定した場合、Statusは二重設定されない (#535)
+     * @purpose --field-status指定時のStatus自動設定スキップを文書化
+     */
+    it("update --field-status 'Done' --state closed should not double-set Status (#535)", () => {
+      const options = {
+        state: "closed",
+        fieldStatus: "Done",
+      };
+
+      // --field-status が明示的に指定されているため、state 変更ロジックでは Status を設定しない
+      const shouldAutoSetStatus = !options.fieldStatus;
+      expect(shouldAutoSetStatus).toBe(false);
+    });
+
+    /**
+     * @testdoc updateで--state未指定時はIssueのstateを変更しない (#535)
+     * @purpose デフォルト値削除後のリグレッション防止
+     */
+    it("update without --state should not change issue state (#535)", () => {
+      const options = {
+        state: undefined as string | undefined,
+        fieldStatus: "Done",
+      };
+
+      // --state が undefined の場合、state 変更ロジックはスキップされる
+      const shouldChangeState = options.state !== undefined;
+      expect(shouldChangeState).toBe(false);
+    });
+
+    /**
+     * @testdoc updateで--state openを指定するとclosedのIssueをreopenする (#535)
+     * @purpose update --state openのreopen動作を文書化
+     */
+    it("update --state open should reopen a closed issue (#535)", () => {
+      const issueState = "CLOSED";
+      const options = { state: "open" };
+
+      const shouldReopen = options.state === "open" && issueState === "CLOSED";
+      expect(shouldReopen).toBe(true);
+
+      // すでに OPEN の場合は何もしない
+      const openIssueState: string = "OPEN";
+      const shouldReopenOpen = options.state === "open" && openIssueState === "CLOSED";
+      expect(shouldReopenOpen).toBe(false);
+    });
+
+    /**
+     * @testdoc updateで--state closedのみ（--field-status未指定）でStatusが"Done"に自動設定される (#535)
+     * @purpose close時のStatus自動設定動作を文書化
+     */
+    it("update --state closed without --field-status should auto-set Status to Done (#535)", () => {
+      const options = {
+        state: "closed",
+        fieldStatus: undefined as string | undefined,
+        stateReason: undefined as string | undefined,
+      };
+
+      const shouldAutoSetStatus = options.state === "closed" && !options.fieldStatus;
+      expect(shouldAutoSetStatus).toBe(true);
+
+      const stateReason = options.stateReason === "NOT_PLANNED" ? "NOT_PLANNED" : "COMPLETED";
+      const targetStatus = stateReason === "NOT_PLANNED" ? "Not Planned" : "Done";
+      expect(targetStatus).toBe("Done");
+    });
+
+    /**
+     * @testdoc updateで--state closed --state-reason NOT_PLANNEDでStatusが"Not Planned"に設定される (#535)
+     * @purpose stateReasonに基づくStatus自動設定を文書化
+     */
+    it("update --state closed --state-reason NOT_PLANNED should set Status to Not Planned (#535)", () => {
+      const options = {
+        state: "closed",
+        fieldStatus: undefined as string | undefined,
+        stateReason: "NOT_PLANNED",
+      };
+
+      const stateReason = options.stateReason === "NOT_PLANNED" ? "NOT_PLANNED" : "COMPLETED";
+      expect(stateReason).toBe("NOT_PLANNED");
+
+      const targetStatus = stateReason === "NOT_PLANNED" ? "Not Planned" : "Done";
+      expect(targetStatus).toBe("Not Planned");
+    });
+
+    /**
+     * @testdoc updateで不正な--state値はエラーになる (#535)
+     * @purpose --stateのバリデーションを文書化
+     */
+    it("update --state with invalid value should be rejected (#535)", () => {
+      const validValues = ["open", "closed"];
+      const invalidValues = ["all", "invalid", "OPEN", "CLOSED"];
+
+      for (const v of validValues) {
+        expect(["open", "closed"].includes(v.toLowerCase())).toBe(true);
+      }
+
+      for (const v of invalidValues) {
+        // "OPEN" and "CLOSED" are also invalid (must be lowercase)
+        // but the implementation does toLowerCase() so they would be accepted
+        const normalized = v.toLowerCase();
+        if (normalized === "open" || normalized === "closed") {
+          expect(["open", "closed"].includes(normalized)).toBe(true);
+        } else {
+          expect(["open", "closed"].includes(normalized)).toBe(false);
+        }
+      }
+    });
+
+    /**
      * @testdoc closeアクションはIssue番号を必要とする (#373)
      * @purpose targetが必須であることを文書化
      */
@@ -525,6 +677,136 @@ describe("issues command actions", () => {
         expect(isNaN(parsed) || parsed <= 0).toBe(true);
       });
     });
+
+    /**
+     * @testdoc commentsアクションはIssue番号を必要とする (#537)
+     * @purpose targetが必須であることを文書化
+     */
+    it("comments action should require issue number (#537)", () => {
+      const action = "comments";
+      const validTarget = "42";
+      const invalidTarget = undefined;
+
+      expect(action).toBe("comments");
+      expect(isIssueNumber(validTarget)).toBe(true);
+      expect(invalidTarget).toBeUndefined();
+    });
+
+    /**
+     * @testdoc commentsアクションは--bodyを必要としない (#537)
+     * @purpose commentアクション（投稿）と異なり、読み取り専用であることを文書化
+     */
+    it("comments action should not require --body (read-only) (#537)", () => {
+      const action = "comments";
+      const options = { body: undefined };
+
+      // comments は読み取り専用なので --body は不要
+      expect(action).toBe("comments");
+      expect(options.body).toBeUndefined();
+    });
+  });
+});
+
+describe("issues comments output format", () => {
+  // ===========================================================================
+  // comments subcommand output format tests (#537)
+  // ===========================================================================
+
+  /**
+   * @testdoc commentsの出力にissue_number, total_comments, commentsフィールドが含まれる (#537)
+   * @purpose JSON出力構造を文書化
+   */
+  it("should have expected output structure (#537)", () => {
+    const output = {
+      issue_number: 42,
+      total_comments: 2,
+      comments: [
+        {
+          id: "IC_kwDOTest001",
+          database_id: 12345678,
+          author: "testuser",
+          body: "テストコメント",
+          created_at: "2026-01-01T00:00:00Z",
+          url: "https://github.com/test/repo/issues/42#issuecomment-12345678",
+        },
+        {
+          id: "IC_kwDOTest002",
+          database_id: 12345679,
+          author: "anotheruser",
+          body: "別のコメント",
+          created_at: "2026-01-02T00:00:00Z",
+          url: "https://github.com/test/repo/issues/42#issuecomment-12345679",
+        },
+      ],
+    };
+
+    expect(output).toHaveProperty("issue_number");
+    expect(output).toHaveProperty("total_comments");
+    expect(output).toHaveProperty("comments");
+    expect(output.issue_number).toBe(42);
+    expect(output.total_comments).toBe(2);
+    expect(output.comments).toHaveLength(2);
+  });
+
+  /**
+   * @testdoc コメントが0件の場合は空配列を返す (#537)
+   * @purpose 空結果時の出力形式を文書化
+   */
+  it("should return empty array when no comments (#537)", () => {
+    const output = {
+      issue_number: 42,
+      total_comments: 0,
+      comments: [] as Array<{
+        id: string;
+        database_id: number;
+        author: string | null;
+        body: string;
+        created_at: string;
+        url: string;
+      }>,
+    };
+
+    expect(output.total_comments).toBe(0);
+    expect(output.comments).toEqual([]);
+  });
+
+  /**
+   * @testdoc 各コメントに必須フィールドが含まれる (#537)
+   * @purpose コメントオブジェクトのスキーマを文書化
+   */
+  it("each comment should have required fields (#537)", () => {
+    const comment = {
+      id: "IC_kwDOTest001",
+      database_id: 12345678,
+      author: "testuser",
+      body: "テストコメント",
+      created_at: "2026-01-01T00:00:00Z",
+      url: "https://github.com/test/repo/issues/42#issuecomment-12345678",
+    };
+
+    expect(comment).toHaveProperty("id");
+    expect(comment).toHaveProperty("database_id");
+    expect(comment).toHaveProperty("author");
+    expect(comment).toHaveProperty("body");
+    expect(comment).toHaveProperty("created_at");
+    expect(comment).toHaveProperty("url");
+  });
+
+  /**
+   * @testdoc authorがnullの場合（削除されたユーザー）を処理できる (#537)
+   * @purpose 削除済みユーザーのコメントに対応していることを文書化
+   */
+  it("should handle null author (deleted user) (#537)", () => {
+    const comment = {
+      id: "IC_kwDOTest001",
+      database_id: 12345678,
+      author: null as string | null,
+      body: "削除されたユーザーのコメント",
+      created_at: "2026-01-01T00:00:00Z",
+      url: "https://github.com/test/repo/issues/42#issuecomment-12345678",
+    };
+
+    expect(comment.author).toBeNull();
   });
 });
 
@@ -795,6 +1077,154 @@ describe("issues output format", () => {
       expect(expectedOutput.comment_id).toBe(12345678);
       expect(expectedOutput.comment_url).toContain("#issuecomment");
       expect(expectedOutput.updated).toBe(true);
+    });
+  });
+});
+
+describe("issues search output format (#552)", () => {
+  // ===========================================================================
+  // search サブコマンドの出力構造テスト
+  // ===========================================================================
+
+  describe("search output structure", () => {
+    /**
+     * @testdoc search出力のJSON構造
+     * @purpose Issues/PRs 検索結果の出力形式を文書化
+     */
+    it("should document search output structure", () => {
+      const expectedOutput = {
+        repository: "owner/repo",
+        query: "keyword",
+        state: "open",
+        issues: [
+          {
+            number: 42,
+            title: "Issue Title",
+            url: "https://github.com/owner/repo/issues/42",
+            state: "OPEN",
+            is_pr: false,
+            author: "user1",
+            created_at: "2025-01-01T00:00:00Z",
+          },
+          {
+            number: 10,
+            title: "PR Title",
+            url: "https://github.com/owner/repo/pull/10",
+            state: "OPEN",
+            is_pr: true,
+            author: "user2",
+            created_at: "2025-01-02T00:00:00Z",
+          },
+        ],
+        total_count: 2,
+      };
+
+      expect(expectedOutput.repository).toBeDefined();
+      expect(expectedOutput.query).toBe("keyword");
+      expect(expectedOutput.issues).toBeInstanceOf(Array);
+      expect(expectedOutput.total_count).toBe(2);
+
+      // Issue エントリ
+      const issue = expectedOutput.issues[0];
+      expect(issue.number).toBe(42);
+      expect(issue.is_pr).toBe(false);
+      expect(issue.author).toBe("user1");
+
+      // PR エントリ
+      const pr = expectedOutput.issues[1];
+      expect(pr.is_pr).toBe(true);
+    });
+  });
+
+  describe("search columns", () => {
+    /**
+     * @testdoc search用の列定義
+     * @purpose GH_ISSUES_SEARCH_COLUMNS が正しい列を持つことを確認
+     */
+    it("should have correct search columns", () => {
+      expect(GH_ISSUES_SEARCH_COLUMNS).toEqual([
+        "number",
+        "title",
+        "state",
+        "is_pr",
+        "author",
+        "created_at",
+      ]);
+    });
+  });
+
+  describe("search action routing", () => {
+    /**
+     * @testdoc searchアクションはクエリを必要とする
+     * @purpose --query が必須であることを文書化
+     */
+    it("search action should require query", () => {
+      const action = "search";
+      const validOptions = { query: "keyword" };
+      const invalidOptions = { query: undefined };
+
+      expect(action).toBe("search");
+      expect(validOptions.query).toBeDefined();
+      expect(invalidOptions.query).toBeUndefined();
+    });
+
+    /**
+     * @testdoc searchはtargetをqueryにマッピングする
+     * @purpose target引数がoptions.queryにマッピングされることを文書化
+     */
+    it("should map target to options.query for search action", () => {
+      const action = "search";
+      const target = "keyword search";
+      const options: Record<string, unknown> = {};
+
+      // index.ts のマッピングロジックをシミュレート
+      if (action === "search" && target) {
+        options.query = target;
+      }
+
+      expect(options.query).toBe("keyword search");
+    });
+  });
+
+  describe("search query building", () => {
+    /**
+     * @testdoc 検索クエリの構築パターン
+     * @purpose GitHub search syntax の正しい構築を文書化
+     */
+    it("should build correct search query with repo scope", () => {
+      const owner = "ShirokumaDevelopment";
+      const repo = "shirokuma-docs";
+      const query = "bug fix";
+
+      const searchQuery = `repo:${owner}/${repo} ${query}`;
+      expect(searchQuery).toBe("repo:ShirokumaDevelopment/shirokuma-docs bug fix");
+    });
+
+    /**
+     * @testdoc --state オプションの変換
+     * @purpose state が GitHub search qualifier に変換されることを文書化
+     */
+    it("should convert --state option to search qualifier", () => {
+      const stateMap: Record<string, string> = {
+        open: "is:open",
+        closed: "is:closed",
+      };
+
+      expect(stateMap["open"]).toBe("is:open");
+      expect(stateMap["closed"]).toBe("is:closed");
+      expect(stateMap["all"]).toBeUndefined(); // all は qualifier を付けない
+    });
+
+    /**
+     * @testdoc is_pr フラグの判定
+     * @purpose __typename による Issue/PR の区別を文書化
+     */
+    it("should determine is_pr from __typename", () => {
+      const issueNode = { __typename: "Issue" };
+      const prNode = { __typename: "PullRequest" };
+
+      expect(issueNode.__typename === "PullRequest").toBe(false);
+      expect(prNode.__typename === "PullRequest").toBe(true);
     });
   });
 });

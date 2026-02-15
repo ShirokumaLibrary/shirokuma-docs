@@ -26,6 +26,7 @@ import type {
   BarrelExportRequiredRuleConfig,
   ActionsSeparationRuleConfig,
 } from "../structure-types.js";
+import { escapeRegExp } from "../../utils/sanitize.js";
 
 /**
  * ステータスを重要度から決定
@@ -360,10 +361,11 @@ export function checkNoCrossAppImport(
 
       for (const otherApp of otherApps) {
         // @app名 または apps/app名 からのインポートを検出
+        const escaped = escapeRegExp(otherApp);
         const patterns = [
-          new RegExp(`from\\s+["']@${otherApp}`, "g"),
-          new RegExp(`from\\s+["'].*apps/${otherApp}`, "g"),
-          new RegExp(`from\\s+["']\\.\\./\\.\\./\\.\\./.*apps/${otherApp}`, "g"),
+          new RegExp(`from\\s+["']@${escaped}`, "g"),
+          new RegExp(`from\\s+["'].*apps/${escaped}`, "g"),
+          new RegExp(`from\\s+["']\\.\\./\\.\\./\\.\\./.*apps/${escaped}`, "g"),
         ];
 
         for (const pattern of patterns) {

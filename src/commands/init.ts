@@ -22,6 +22,7 @@ import { existsSync, writeFileSync, readFileSync, mkdirSync, rmSync } from "node
 import { Document as YamlDocument, type YAMLMap, type Scalar } from "yaml";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
+import { validateGitHubSetup, printSetupCheckResults, type SetupCheckResult } from "../utils/setup-check.js";
 import type { ShirokumaConfig } from "../utils/config.js";
 import {
   deployRules,
@@ -462,6 +463,18 @@ export async function initCommand(options: InitOptions): Promise<void> {
 }
 
 /**
+ * gh CLI を使った GitHub セットアップ検証を試みる。
+ * gh 未インストール、未認証、オフライン、GitHub remote 未設定の場合は null を返す。
+ */
+function tryValidateGitHubSetup(logger: Logger): SetupCheckResult | null {
+  try {
+    return validateGitHubSetup(logger);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Print next-steps guidance for external projects after plugin installation
  *
  * @param logger - Logger instance
@@ -494,10 +507,29 @@ function printNextSteps(logger: Logger, cacheRegistered: boolean, claudeCliFound
   logger.info(t("commands.init.stepGenerateCmd") + "\n");
   step++;
 
+  // GitHub 手動設定: 動的検証 or テキストベースフォールバック
   logger.info(t("commands.init.stepManualSetup", { step }));
-  logger.info(t("commands.init.stepManualSetupCategories"));
-  logger.info(t("commands.init.stepManualSetupWorkflows"));
-  logger.info(t("commands.init.stepManualSetupVerify") + "\n");
+  const setupResult = tryValidateGitHubSetup(logger);
+  if (setupResult) {
+    printSetupCheckResults(setupResult, logger);
+    if (setupResult.summary.missing > 0) {
+      logger.info("\n" + t("commands.init.stepManualSetupFixHint"));
+    } else {
+      logger.info("\n" + t("commands.init.stepManualSetupAllOk"));
+    }
+  } else {
+    // フォールバック: gh CLI が使えない場合はテキスト案内
+    logger.info(t("commands.init.stepManualSetupCategories"));
+    logger.info(t("commands.init.stepManualSetupWorkflows"));
+    logger.info(t("commands.init.stepManualSetupVerify") + "\n");
+  }
+  step++;
+
+  // Discussion テンプレート生成の推奨タイミング
+  logger.info(t("commands.init.stepDiscussionTemplates", { step }));
+  logger.info(t("commands.init.stepDiscussionTemplatesHint"));
+  logger.info(t("commands.init.stepDiscussionTemplatesCmd") + "\n");
+  step++;
 
   logger.info(t("commands.init.skillsHeader") + "\n");
   logger.info(t("commands.init.skillWorkingOnIssue"));

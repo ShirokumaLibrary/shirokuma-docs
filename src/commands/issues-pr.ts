@@ -23,7 +23,7 @@ import {
   parseIssueNumber,
   validateBody,
 } from "../utils/github.js";
-import { OutputFormat, formatOutput } from "../utils/formatters.js";
+import { OutputFormat, formatOutput, GH_PR_LIST_COLUMNS } from "../utils/formatters.js";
 import {
   resolveTargetRepo,
 } from "../utils/repo-pairs.js";
@@ -41,6 +41,9 @@ export interface IssuesPrOptions {
   owner?: string;
   verbose?: boolean;
   format?: OutputFormat;
+  // list/show options (#568)
+  state?: string;
+  limit?: number;
   // merge options
   squash?: boolean;
   merge?: boolean;
@@ -159,18 +162,50 @@ query($owner: String!, $name: String!, $number: Int!) {
 }
 `;
 
-const GRAPHQL_QUERY_OPEN_PRS = `
-query($owner: String!, $name: String!, $first: Int!) {
+// PR 一覧取得クエリ（#568 — pr-list + fetchOpenPRs 共通）
+const GRAPHQL_QUERY_PR_LIST = `
+query($owner: String!, $name: String!, $first: Int!, $states: [PullRequestState!]) {
   repository(owner: $owner, name: $name) {
-    pullRequests(first: $first, states: [OPEN], orderBy: {field: CREATED_AT, direction: DESC}) {
+    pullRequests(first: $first, states: $states, orderBy: {field: CREATED_AT, direction: DESC}) {
       nodes {
         number
         title
+        state
         url
+        headRefName
+        baseRefName
+        author { login }
         reviewDecision
         reviewThreads(first: 0) { totalCount }
         reviews(first: 0) { totalCount }
       }
+    }
+  }
+}
+`;
+
+// PR 詳細取得クエリ（#568 — pr-show）
+const GRAPHQL_QUERY_PR_SHOW = `
+query($owner: String!, $name: String!, $number: Int!) {
+  repository(owner: $owner, name: $name) {
+    pullRequest(number: $number) {
+      number
+      title
+      state
+      url
+      body
+      headRefName
+      baseRefName
+      author { login }
+      reviewDecision
+      reviewThreads(first: 0) { totalCount }
+      reviews(first: 0) { totalCount }
+      labels(first: 20) { nodes { name } }
+      createdAt
+      updatedAt
+      additions
+      deletions
+      changedFiles
     }
   }
 }
@@ -602,6 +637,58 @@ export function resolvePrFromHead(
 }
 
 // =============================================================================
+// PR 一覧の共通型（#568 — pr-list / fetchOpenPRs 共用）
+// =============================================================================
+
+interface PrListNode {
+  number?: number;
+  title?: string;
+  state?: string;
+  url?: string;
+  headRefName?: string;
+  baseRefName?: string;
+  author?: { login?: string };
+  reviewDecision?: string | null;
+  reviewThreads?: { totalCount?: number };
+  reviews?: { totalCount?: number };
+}
+
+interface PrListQueryResult {
+  data?: {
+    repository?: {
+      pullRequests?: {
+        nodes?: PrListNode[];
+      };
+    };
+  };
+}
+
+// =============================================================================
+// parsePrStateFilter (#568 — --state オプションの GraphQL enum 変換)
+// =============================================================================
+
+/**
+ * --state オプション値を GraphQL PullRequestState enum 配列に変換する。
+ * 無効な値の場合は null を返す。
+ */
+export function parsePrStateFilter(
+  state: string
+): ("OPEN" | "CLOSED" | "MERGED")[] | null {
+  switch (state.toLowerCase()) {
+    case "open":
+      return ["OPEN"];
+    case "closed":
+      return ["CLOSED"];
+    case "merged":
+      return ["MERGED"];
+    case "all":
+      return ["OPEN", "CLOSED", "MERGED"];
+    default:
+      return null;
+  }
+}
+
+// =============================================================================
 // fetchOpenPRs (#45 - shared helper for session start)
 // =============================================================================
 
@@ -610,29 +697,11 @@ export function fetchOpenPRs(
   repo: string,
   limit: number = 10
 ): PrSummary[] {
-  interface PrNode {
-    number?: number;
-    title?: string;
-    url?: string;
-    reviewDecision?: string | null;
-    reviewThreads?: { totalCount?: number };
-    reviews?: { totalCount?: number };
-  }
-
-  interface QueryResult {
-    data?: {
-      repository?: {
-        pullRequests?: {
-          nodes?: PrNode[];
-        };
-      };
-    };
-  }
-
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_OPEN_PRS, {
+  const result = runGraphQL<PrListQueryResult>(GRAPHQL_QUERY_PR_LIST, {
     owner,
     name: repo,
     first: limit,
+    states: ["OPEN"],
   });
 
   if (!result.success) return [];
@@ -640,7 +709,7 @@ export function fetchOpenPRs(
   const nodes = result.data?.data?.repository?.pullRequests?.nodes ?? [];
 
   return nodes
-    .filter((n): n is PrNode & { number: number } => !!n?.number)
+    .filter((n): n is PrListNode & { number: number } => !!n?.number)
     .map((n) => ({
       number: n.number,
       title: n.title ?? "",
@@ -649,4 +718,160 @@ export function fetchOpenPRs(
       reviewThreadCount: n.reviewThreads?.totalCount ?? 0,
       reviewCount: n.reviews?.totalCount ?? 0,
     }));
+}
+
+// =============================================================================
+// cmdPrList (#568 — PR 一覧表示)
+// =============================================================================
+
+export async function cmdPrList(
+  options: IssuesPrOptions,
+  logger: Logger
+): Promise<number> {
+  const repoInfo = resolveTargetRepo(options);
+  if (!repoInfo) {
+    logger.error("Could not determine repository");
+    return 1;
+  }
+
+  const { owner, name: repo } = repoInfo;
+  const limit = options.limit ?? 10;
+  const stateInput = options.state ?? "open";
+
+  const states = parsePrStateFilter(stateInput);
+  if (!states) {
+    logger.error(`Invalid state: "${stateInput}". Use: open, closed, merged, all`);
+    return 1;
+  }
+
+  const result = runGraphQL<PrListQueryResult>(GRAPHQL_QUERY_PR_LIST, {
+    owner,
+    name: repo,
+    first: limit,
+    states,
+  });
+
+  if (!result.success) {
+    logger.error("Failed to fetch pull requests");
+    return 1;
+  }
+
+  const nodes = result.data?.data?.repository?.pullRequests?.nodes ?? [];
+
+  const prs = nodes
+    .filter((n): n is PrListNode & { number: number } => !!n?.number)
+    .map((n) => ({
+      number: n.number,
+      title: n.title ?? "",
+      state: n.state ?? "OPEN",
+      head_branch: n.headRefName ?? "",
+      base_branch: n.baseRefName ?? "",
+      author: n.author?.login ?? "",
+      review_decision: n.reviewDecision ?? null,
+      url: n.url ?? "",
+    }));
+
+  const output = {
+    repository: `${owner}/${repo}`,
+    pull_requests: prs,
+    total_count: prs.length,
+  };
+
+  const outputFormat = options.format ?? "json";
+  const formatted = formatOutput(output, outputFormat, {
+    arrayKey: "pull_requests",
+    columns: GH_PR_LIST_COLUMNS,
+  });
+  console.log(formatted);
+  return 0;
+}
+
+// =============================================================================
+// cmdPrShow (#568 — PR 詳細表示)
+// =============================================================================
+
+export async function cmdPrShow(
+  prNumberStr: string,
+  options: IssuesPrOptions,
+  logger: Logger
+): Promise<number> {
+  if (!isIssueNumber(prNumberStr)) {
+    logger.error(`Invalid PR number: ${prNumberStr}`);
+    return 1;
+  }
+
+  const repoInfo = resolveTargetRepo(options);
+  if (!repoInfo) {
+    logger.error("Could not determine repository");
+    return 1;
+  }
+
+  const { owner, name: repo } = repoInfo;
+  const prNumber = parseIssueNumber(prNumberStr);
+
+  interface PrShowNode {
+    number?: number;
+    title?: string;
+    state?: string;
+    url?: string;
+    body?: string;
+    headRefName?: string;
+    baseRefName?: string;
+    author?: { login?: string };
+    reviewDecision?: string | null;
+    reviewThreads?: { totalCount?: number };
+    reviews?: { totalCount?: number };
+    labels?: { nodes?: Array<{ name?: string }> };
+    createdAt?: string;
+    updatedAt?: string;
+    additions?: number;
+    deletions?: number;
+    changedFiles?: number;
+  }
+
+  interface QueryResult {
+    data?: {
+      repository?: {
+        pullRequest?: PrShowNode;
+      };
+    };
+  }
+
+  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_PR_SHOW, {
+    owner,
+    name: repo,
+    number: prNumber,
+  });
+
+  if (!result.success || !result.data?.data?.repository?.pullRequest) {
+    logger.error(`PR #${prNumber} not found`);
+    return 1;
+  }
+
+  const pr = result.data.data.repository.pullRequest;
+  const body = pr.body ?? "";
+
+  const output = {
+    number: pr.number,
+    title: pr.title ?? "",
+    state: pr.state ?? "OPEN",
+    head_branch: pr.headRefName ?? "",
+    base_branch: pr.baseRefName ?? "",
+    author: pr.author?.login ?? "",
+    review_decision: pr.reviewDecision ?? null,
+    url: pr.url ?? "",
+    body,
+    labels: (pr.labels?.nodes ?? []).map((l) => l?.name ?? "").filter(Boolean),
+    created_at: pr.createdAt ?? "",
+    updated_at: pr.updatedAt ?? "",
+    additions: pr.additions ?? 0,
+    deletions: pr.deletions ?? 0,
+    changed_files: pr.changedFiles ?? 0,
+    review_thread_count: pr.reviewThreads?.totalCount ?? 0,
+    review_count: pr.reviews?.totalCount ?? 0,
+    linked_issues: parseLinkedIssues(body),
+  };
+
+  console.log(JSON.stringify(output, null, 2));
+  return 0;
 }
