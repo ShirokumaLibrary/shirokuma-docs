@@ -60,10 +60,16 @@ PROJECT_ID=$(gh project view $PROJECT_NUMBER --owner $OWNER --format json | jq -
 
 ### Step 6: Configure All Fields
 
-Use the setup script with language auto-detected from conversation:
+Use the CLI command to auto-configure fields:
 
 ```bash
-python scripts/setup-project.py \
+shirokuma-docs projects setup --lang={en|ja}
+```
+
+`--project-id` and `--field-id` are auto-detected. To specify manually:
+
+```bash
+shirokuma-docs projects setup \
   --lang={en|ja} \
   --field-id=$FIELD_ID \
   --project-id=$PROJECT_ID
@@ -78,7 +84,7 @@ python scripts/setup-project.py \
 | Type | Feature / Bug / Chore / Docs / Research |
 | Size | XS / S / M / L / XL |
 
-See [scripts/setup-project.py](scripts/setup-project.py) for language dictionaries.
+Language dictionaries are built into the CLI command.
 
 ### Step 7: Issue Types Setup
 
@@ -199,7 +205,7 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 
 ## Related Resources
 
-- [scripts/setup-project.py](scripts/setup-project.py) - Setup script with language dictionaries
+- `shirokuma-docs projects setup` - CLI setup command
 - [reference/status-options.md](reference/status-options.md) - Status workflow and definitions
 - [reference/custom-fields.md](reference/custom-fields.md) - Custom field definitions
 - [reference/issue-types.md](reference/issue-types.md) - Issue Types setup and migration guide

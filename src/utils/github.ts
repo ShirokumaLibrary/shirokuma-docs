@@ -139,13 +139,26 @@ function hasComplexVariables(
  * Run a GraphQL query via gh api graphql
  *
  * For simple variables (strings, numbers, booleans, null), uses -f/-F flags.
+ * - `-f` for strings (raw string, no type inference)
+ * - `-F` for numbers, booleans, null (type-aware)
  * For complex variables (arrays), uses --input stdin to avoid gh CLI array parsing issues.
+ *
+ * Note: Variable name "query" is reserved by gh CLI for the GraphQL query body.
+ * Using "query" as a variable name will cause "unexpected override" errors.
  */
 export function runGraphQL<T = unknown>(
   query: string,
   variables: Record<string, GhVariableValue>,
   options: { silent?: boolean } = {}
 ): GhResult<T> {
+  // Guard: "query" is reserved by gh CLI for the GraphQL query body (#585)
+  if ("query" in variables) {
+    return {
+      success: false,
+      error: 'Variable name "query" is reserved by gh CLI. Use a different name (e.g., "searchQuery").',
+    };
+  }
+
   // If variables contain arrays, use --input mode for reliable JSON serialization
   if (hasComplexVariables(variables)) {
     return runGraphQLWithInput<T>(query, variables, options);
@@ -159,7 +172,9 @@ export function runGraphQL<T = unknown>(
     } else if (typeof value === "number" || typeof value === "boolean") {
       args.push("-F", `${key}=${value}`);
     } else {
-      args.push("-F", `${key}=${value}`);
+      // Use -f for strings to prevent numeric-only values from being
+      // interpreted as integers (e.g., option ID "70524841") (#584)
+      args.push("-f", `${key}=${value}`);
     }
   }
 

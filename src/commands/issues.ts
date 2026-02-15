@@ -231,8 +231,8 @@ query($owner: String!, $name: String!, $number: Int!) {
 `;
 
 const GRAPHQL_QUERY_SEARCH_ISSUES = `
-query($query: String!, $first: Int!) {
-  search(query: $query, type: ISSUE, first: $first) {
+query($searchQuery: String!, $first: Int!) {
+  search(query: $searchQuery, type: ISSUE, first: $first) {
     issueCount
     nodes {
       ... on Issue {
@@ -532,7 +532,7 @@ async function cmdSearch(
   }
 
   const result = runGraphQL<SearchResult>(GRAPHQL_QUERY_SEARCH_ISSUES, {
-    query: searchQuery,
+    searchQuery,
     first: Math.min(limit, 100),
   });
 

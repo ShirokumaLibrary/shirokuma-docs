@@ -799,4 +799,11 @@ function printSummary(
   } else {
     logger.success(`✓ ${T("completedOk")}`);
   }
+
+  // セッション再起動案内（#589）
+  if (!result.dryRun) {
+    logger.info("");
+    logger.warn(T("restartSessionNotice"));
+    logger.info(T("restartSessionHint"));
+  }
 }

@@ -204,11 +204,56 @@ cd - && rm -rf "$TMPDIR"
 
 **重要**: `--force` プッシュ前に必ずユーザーに確認。
 
+## 追加リリース先
+
+### shirokuma-plugins（marketplace）
+
+プラグインを marketplace リポジトリに公開。`staging-publish` ローカルスキルが管理。
+
+```bash
+# ステージング確認
+node publish-staging.mjs plugins --branch main --dry-run
+
+# 公開
+node publish-staging.mjs plugins --branch main
+```
+
+### npm publish
+
+npm レジストリにパッケージを公開。
+
+```bash
+# ドライラン
+npm publish --dry-run
+
+# alpha リリース（prerelease 版）
+npm publish --tag alpha
+
+# latest タグを最新 alpha に設定（安定版リリースまで）
+npm dist-tag add shirokuma-docs@{version} latest
+```
+
+#### npm タグ運用
+
+| フェーズ | npm publish | latest タグ |
+|---------|-------------|-------------|
+| 安定版リリース前（現在） | `--tag alpha` → `dist-tag add ... latest` | 最新 alpha に設定 |
+| 安定版リリース後 | alpha は `--tag alpha` のみ、安定版はタグなし | 安定版に固定 |
+
+### フルリリースチェックリスト
+
+| # | リリース先 | コマンド | 完了 |
+|---|-----------|---------|------|
+| 1 | GitHub Public リポ | `shirokuma-docs repo-pairs release <alias> --tag <version>` | |
+| 2 | shirokuma-plugins | `node publish-staging.mjs plugins --branch main` | |
+| 3 | npm registry | `npm publish --tag alpha` + `npm dist-tag add ... latest` | |
+
 ## 注意事項
 
-- `TodoWrite` で進捗管理（4ステップ）
+- `TodoWrite` で進捗管理（リリース先ごと + 検証）
 - ドライラン（`--dry-run`）なしでリリースを実行しない
 - 作業ディレクトリがクリーンでない状態でリリースしない
+- 3つのリリース先すべてを確認すること
 
 ## クイックコマンド
 

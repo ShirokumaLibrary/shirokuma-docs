@@ -448,6 +448,13 @@ export async function initCommand(options: InitOptions): Promise<void> {
     logger.info(t("commands.init.summaryGitignore", { count: result.gitignore_entries_added }));
   }
 
+  // セッション再起動案内（#589: プラグインインストール後に必須）
+  if (result.plugin_installed && result.cache_registered) {
+    logger.info("");
+    logger.warn(t("commands.init.restartSessionNotice"));
+    logger.info(t("commands.init.restartSessionHint"));
+  }
+
   if (options.verbose) {
     console.log(JSON.stringify(result, null, 2));
   }

@@ -196,8 +196,8 @@ mutation($discussionId: ID!, $body: String!) {
 `;
 
 const GRAPHQL_QUERY_SEARCH_DISCUSSIONS = `
-query($query: String!, $first: Int!) {
-  search(query: $query, type: DISCUSSION, first: $first) {
+query($searchQuery: String!, $first: Int!) {
+  search(query: $searchQuery, type: DISCUSSION, first: $first) {
     discussionCount
     nodes {
       ... on Discussion {
@@ -847,7 +847,7 @@ async function cmdSearch(
   }
 
   const result = runGraphQL<SearchResult>(GRAPHQL_QUERY_SEARCH_DISCUSSIONS, {
-    query: searchQuery,
+    searchQuery,
     first: Math.min(limit, 100),
   });
 

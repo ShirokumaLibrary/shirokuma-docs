@@ -60,10 +60,16 @@ PROJECT_ID=$(gh project view $PROJECT_NUMBER --owner $OWNER --format json | jq -
 
 ### ステップ 6: 全フィールド設定
 
-会話から言語を自動検出してセットアップスクリプトを使用:
+CLI コマンドでフィールドを自動設定:
 
 ```bash
-python scripts/setup-project.py \
+shirokuma-docs projects setup --lang={en|ja}
+```
+
+`--project-id` と `--field-id` は自動検出される。手動指定する場合:
+
+```bash
+shirokuma-docs projects setup \
   --lang={en|ja} \
   --field-id=$FIELD_ID \
   --project-id=$PROJECT_ID
@@ -199,7 +205,7 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 
 ## 関連リソース
 
-- [scripts/setup-project.py](scripts/setup-project.py) - 言語辞書付きセットアップスクリプト
+- `shirokuma-docs projects setup` - CLI セットアップコマンド
 - [reference/status-options.md](reference/status-options.md) - ステータスワークフローと定義
 - [reference/custom-fields.md](reference/custom-fields.md) - カスタムフィールド定義
 - [reference/issue-types.md](reference/issue-types.md) - Issue Types セットアップとマイグレーションガイド

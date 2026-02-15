@@ -149,7 +149,9 @@ function checkDiscussionCategories(
       category: "discussions" as const,
       name: cat,
       ok: existingNames.has(cat),
-      hint: existingNames.has(cat) ? undefined : `Create "${cat}" category in GitHub UI`,
+      hint: existingNames.has(cat)
+        ? undefined
+        : `Create "${cat}" category: Repository → Settings → Features → Discussions → Set up discussions → New category`,
       url: existingNames.has(cat) ? undefined : categoriesUrl,
       recommended,
     };
@@ -178,7 +180,8 @@ function checkProjectFields(projectId: string): SetupCheckItem[] {
       ok: resolved !== null,
       hint: resolved
         ? undefined
-        : `Create "${fieldName}" field in GitHub Project Settings > Fields`,
+        : `Create "${fieldName}" field: Project → Settings → Custom fields → New field (Single Select). ` +
+          `Or run /github-project-setup skill for automated setup.`,
     };
   });
 }
@@ -194,7 +197,9 @@ function checkWorkflows(projectId: string): SetupCheckItem[] {
       category: "workflows" as const,
       name,
       ok,
-      hint: ok ? undefined : `Enable "${name}" workflow in GitHub Project Settings > Workflows`,
+      hint: ok
+        ? undefined
+        : `Enable "${name}" workflow: Project → ⋯ menu → Settings → Workflows → "${name}" → Enable (API not supported)`,
     };
   });
 }
@@ -214,7 +219,8 @@ function checkMetricsFields(
     ok: fieldName in fields && fields[fieldName].type === "TEXT",
     hint: fieldName in fields
       ? undefined
-      : `Create Text field "${fieldName}" in GitHub Project Settings > Fields`,
+      : `Create Text field "${fieldName}": Project → Settings → Custom fields → New field (Text). ` +
+        `Or run 'shirokuma-docs projects setup-metrics' for automated setup.`,
   }));
 }
 

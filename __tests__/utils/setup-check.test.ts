@@ -46,13 +46,14 @@ describe("setup-check types (#345, #527)", () => {
         category: "discussions",
         name: "Research",
         ok: false,
-        hint: 'Create "Research" category in GitHub UI',
+        hint: 'Create "Research" category: Repository → Settings → Features → Discussions → Set up discussions → New category',
         url: "https://github.com/owner/repo/discussions/categories",
         recommended: RECOMMENDED_CATEGORY_SETTINGS["Research"],
       };
 
       expect(item.ok).toBe(false);
       expect(item.hint).toContain("Research");
+      expect(item.hint).toContain("Repository → Settings");
       expect(item.url).toContain("discussions/categories");
       expect(item.recommended).toBeDefined();
       expect(item.recommended!.description).toContain("調査");
@@ -104,12 +105,13 @@ describe("setup-check types (#345, #527)", () => {
         category: "project",
         name: "Type",
         ok: false,
-        hint: 'Create "Type" field in GitHub Project Settings > Fields',
+        hint: 'Create "Type" field: Project → Settings → Custom fields → New field (Single Select). Or run /github-project-setup skill for automated setup.',
       };
 
       expect(item.category).toBe("project");
       expect(item.name).toBe("Type");
       expect(item.ok).toBe(false);
+      expect(item.hint).toContain("/github-project-setup");
     });
   });
 
@@ -144,7 +146,7 @@ describe("setup-check types (#345, #527)", () => {
             category: "discussions",
             name: "Research",
             ok: false,
-            hint: 'Create "Research" category in GitHub UI',
+            hint: 'Create "Research" category: Repository → Settings → Features → Discussions → Set up discussions → New category',
             url: "https://github.com/owner/repo/discussions/categories",
             recommended: RECOMMENDED_CATEGORY_SETTINGS["Research"],
           },
@@ -152,7 +154,7 @@ describe("setup-check types (#345, #527)", () => {
           { category: "project", name: "Status", ok: true },
           { category: "project", name: "Priority", ok: true },
           { category: "project", name: "Type", ok: true },
-          { category: "project", name: "Size", ok: false, hint: 'Create "Size" field in GitHub Project Settings > Fields' },
+          { category: "project", name: "Size", ok: false, hint: 'Create "Size" field: Project → Settings → Custom fields → New field (Single Select). Or run /github-project-setup skill for automated setup.' },
           { category: "workflows", name: "Item closed", ok: true },
           { category: "workflows", name: "Pull request merged", ok: false },
         ],

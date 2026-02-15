@@ -1198,6 +1198,175 @@ async function cmdSetupMetrics(
 }
 
 // =============================================================================
+// setup (#591) - Port of setup-project.py
+// =============================================================================
+
+/** フィールド色定義（全言語共通） */
+const FIELD_COLORS: Record<string, Record<string, string>> = {
+  status: {
+    Icebox: "GRAY", Backlog: "BLUE", Planning: "YELLOW", "Spec Review": "PINK",
+    Ready: "GREEN", "In Progress": "YELLOW", Pending: "RED", Review: "PURPLE",
+    Testing: "ORANGE", Done: "GREEN", "Not Planned": "GRAY", Released: "GREEN",
+  },
+  priority: {
+    Critical: "RED", High: "ORANGE", Medium: "YELLOW", Low: "GRAY",
+  },
+  type: {
+    Feature: "BLUE", Bug: "RED", Chore: "GRAY", Docs: "GREEN", Research: "PURPLE",
+  },
+  size: {
+    XS: "GRAY", S: "GREEN", M: "YELLOW", L: "ORANGE", XL: "RED",
+  },
+};
+
+/** 日付トラッキング用 TEXT フィールド */
+const DATE_TEXT_FIELDS = [
+  "Planning At", "Spec Review At", "In Progress At", "Review At", "Completed At",
+];
+
+/** ロケール辞書 */
+const SETUP_LOCALES: Record<string, Record<string, Record<string, string>>> = {
+  ja: {
+    status: {
+      Icebox: "アイデア・将来検討", Backlog: "やることリスト", Planning: "計画策定中",
+      "Spec Review": "要件・仕様確認中", Ready: "着手可能", "In Progress": "作業中",
+      Pending: "一時保留・ブロック中", Review: "レビュー待ち", Testing: "テスト中",
+      Done: "完了", "Not Planned": "見送り・対応不要", Released: "リリース済み",
+    },
+    priority: { Critical: "緊急・最優先", High: "高優先度", Medium: "通常", Low: "低優先度" },
+    type: { Feature: "新機能", Bug: "バグ修正", Chore: "雑務・リファクタ", Docs: "ドキュメント", Research: "調査・検証" },
+    size: { XS: "数分で完了", S: "1セッションで完了", M: "複数セッション", L: "1日以上", XL: "分割が必要" },
+  },
+  en: {
+    status: {
+      Icebox: "Ideas for future", Backlog: "To do list", Planning: "Planning in progress",
+      "Spec Review": "Requirements review", Ready: "Ready to start", "In Progress": "Working on it",
+      Pending: "Blocked", Review: "Awaiting review", Testing: "Testing",
+      Done: "Completed", "Not Planned": "Explicitly not planned", Released: "Released",
+    },
+    priority: { Critical: "Urgent", High: "High priority", Medium: "Normal", Low: "Low priority" },
+    type: { Feature: "New feature", Bug: "Bug fix", Chore: "Maintenance", Docs: "Documentation", Research: "Research" },
+    size: { XS: "Minutes", S: "Single session", M: "Multiple sessions", L: "Full day+", XL: "Split needed" },
+  },
+};
+
+/**
+ * GraphQL の singleSelectOptions 配列を組み立てる
+ */
+function buildSingleSelectOptions(
+  colors: Record<string, string>,
+  descriptions: Record<string, string>,
+): string {
+  const items = Object.entries(colors).map(([name, color]) => {
+    const desc = descriptions[name] ?? name;
+    return `{name: "${name}", color: ${color}, description: "${desc}"}`;
+  });
+  return `[${items.join(", ")}]`;
+}
+
+/** setup サブコマンドのオプション */
+interface SetupOptions extends ProjectsOptions {
+  lang?: string;
+  fieldId?: string;
+  projectId?: string;
+  statusOnly?: boolean;
+}
+
+/**
+ * setup subcommand - Status/Priority/Type/Size フィールドの初期設定
+ */
+async function cmdSetup(
+  options: SetupOptions,
+  logger: Logger,
+): Promise<number> {
+  const lang = options.lang ?? "en";
+  const locale = SETUP_LOCALES[lang];
+  if (!locale) {
+    logger.error(`Unknown language: ${lang}. Available: ${Object.keys(SETUP_LOCALES).join(", ")}`);
+    return 1;
+  }
+
+  logger.info(`Language: ${lang}`);
+
+  // プロジェクト ID を解決（--project-id 優先、なければ自動検出）
+  let projectId = options.projectId ?? null;
+  let fieldId = options.fieldId ?? null;
+
+  if (!projectId && !fieldId) {
+    const owner = options.owner || getOwner();
+    if (!owner) {
+      logger.error("Could not determine repository owner. Use --owner or --project-id.");
+      return 1;
+    }
+    projectId = getProjectId(owner);
+    if (!projectId) {
+      logger.error(`No project found for owner '${owner}'. Use --project-id.`);
+      return 1;
+    }
+
+    // Status フィールド ID を自動検出
+    const fields = getProjectFields(projectId);
+    const statusField = resolveFieldName("Status", fields);
+    if (statusField) {
+      fieldId = fields[statusField].id;
+    }
+  }
+
+  // Status フィールド更新
+  if (fieldId) {
+    logger.info("\n[Status] Updating field...");
+    const statusOptions = buildSingleSelectOptions(FIELD_COLORS.status, locale.status);
+    const query = `mutation { updateProjectV2Field(input: { fieldId: "${fieldId}", name: "Status", singleSelectOptions: ${statusOptions} }) { projectV2Field { ... on ProjectV2SingleSelectField { name options { name description } } } } }`;
+    const result = runGraphQL(query, {});
+    if (result.success) {
+      logger.success("  Status updated");
+    } else {
+      logger.error("  Status update failed");
+    }
+  }
+
+  // Priority/Type/Size フィールド作成
+  if (projectId && !options.statusOnly) {
+    for (const [fieldName, fieldKey] of [["Priority", "priority"], ["Type", "type"], ["Size", "size"]] as const) {
+      logger.info(`\n[${fieldName}] Creating field...`);
+      const fieldOptions = buildSingleSelectOptions(FIELD_COLORS[fieldKey], locale[fieldKey]);
+      const createQuery = `mutation { createProjectV2Field(input: { projectId: "${projectId}", dataType: SINGLE_SELECT, name: "${fieldName}", singleSelectOptions: ${fieldOptions} }) { projectV2Field { ... on ProjectV2SingleSelectField { name options { name } } } } }`;
+      const result = runGraphQL(createQuery, {});
+      if (result.success) {
+        logger.success(`  ${fieldName} created`);
+      } else if (fieldName === "Type") {
+        // GitHub が "Type" を予約語として拒否する場合、"Item Type" にフォールバック
+        logger.warn(`  "${fieldName}" failed, trying "Item Type"...`);
+        const fallbackQuery = `mutation { createProjectV2Field(input: { projectId: "${projectId}", dataType: SINGLE_SELECT, name: "Item Type", singleSelectOptions: ${fieldOptions} }) { projectV2Field { ... on ProjectV2SingleSelectField { name options { name } } } } }`;
+        const fallbackResult = runGraphQL(fallbackQuery, {});
+        if (fallbackResult.success) {
+          logger.success("  Item Type created (fallback)");
+        } else {
+          logger.error(`  ${fieldName} creation failed`);
+        }
+      } else {
+        logger.error(`  ${fieldName} creation failed`);
+      }
+    }
+
+    // DATE_TEXT_FIELDS 作成
+    for (const fieldName of DATE_TEXT_FIELDS) {
+      logger.info(`\n[${fieldName}] Creating text field...`);
+      const textQuery = `mutation { createProjectV2Field(input: { projectId: "${projectId}", dataType: TEXT, name: "${fieldName}" }) { projectV2Field { ... on ProjectV2Field { name } } } }`;
+      const result = runGraphQL(textQuery, {});
+      if (result.success) {
+        logger.success(`  ${fieldName} created`);
+      } else {
+        logger.warn(`  ${fieldName} may already exist or creation failed`);
+      }
+    }
+  }
+
+  logger.info("\nDone!");
+  return 0;
+}
+
+// =============================================================================
 // Main Command Handler
 // =============================================================================
 
@@ -1211,8 +1380,8 @@ export async function projectsCommand(
 ): Promise<void> {
   const logger = createLogger(options.verbose);
 
-  // Deprecation warning (workflows/setup-metrics subcommands are NOT deprecated)
-  if (action !== "workflows" && action !== "setup-metrics") {
+  // Deprecation warning (workflows/setup-metrics/setup subcommands are NOT deprecated)
+  if (action !== "workflows" && action !== "setup-metrics" && action !== "setup") {
     console.error(
       "[DEPRECATED] projects item commands are deprecated. Use issues instead:\n" +
         "  issues fields     (was: projects fields)\n" +
@@ -1291,9 +1460,13 @@ export async function projectsCommand(
       exitCode = await cmdSetupMetrics(options, logger);
       break;
 
+    case "setup":
+      exitCode = await cmdSetup(options as SetupOptions, logger);
+      break;
+
     default:
       logger.error(`Unknown action: ${action}`);
-      logger.info("Available actions: list, get, fields, create, update, delete, add-issue, workflows, setup-metrics");
+      logger.info("Available actions: list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup");
       exitCode = 1;
   }
 

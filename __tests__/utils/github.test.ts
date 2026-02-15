@@ -16,6 +16,7 @@ import {
   isIssueNumber,
   parseIssueNumber,
   readBodyFile,
+  runGraphQL,
   MAX_TITLE_LENGTH,
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
@@ -387,6 +388,40 @@ describe("readBodyFile", () => {
    */
   it("should throw for non-existent file", () => {
     expect(() => readBodyFile(join(testDir, "nonexistent.md"))).toThrow();
+  });
+});
+
+describe("runGraphQL", () => {
+  /**
+   * @testdoc 変数名 "query" を使用するとエラーを返す
+   * @purpose gh CLI の予約語との衝突を防止（#585）
+   */
+  it("should reject 'query' as variable name", () => {
+    const result = runGraphQL("query($query: String!) { viewer { login } }", {
+      query: "test",
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain("reserved");
+    }
+  });
+
+  /**
+   * @testdoc "query" 以外の変数名は受け入れる（gh CLI へのスポーンは別途テスト）
+   * @purpose 正常な変数名が拒否されないことを確認
+   */
+  it("should accept non-reserved variable names like 'searchQuery'", () => {
+    // spawnSync を呼ぶため gh CLI が必要だが、ガードだけ通過することを確認
+    // gh CLI が利用不可の環境でもガードは通過する
+    const result = runGraphQL(
+      "query($searchQuery: String!) { viewer { login } }",
+      { searchQuery: "test" },
+      { silent: true }
+    );
+    // ガードを通過したので "reserved" エラーではない
+    if (!result.success) {
+      expect(result.error).not.toContain("reserved");
+    }
   });
 });
 

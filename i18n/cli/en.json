@@ -62,7 +62,9 @@
       "gitignoreUpdated": ".gitignore updated ({count} entries added)",
       "summaryGitignore": "✓ Gitignore: {count} entries added",
       "pluginInstallFailed": "Plugin installation failed",
-      "configCreateFailed": "Failed to create config file: {error}"
+      "configCreateFailed": "Failed to create config file: {error}",
+      "restartSessionNotice": "Restart your Claude Code session to use the installed skills.",
+      "restartSessionHint": "  Start a new conversation to make skills available."
     },
     "session": {
       "description": "Session management (start, end, check)",
@@ -143,7 +145,9 @@
       "logItemRemovedFromBundled": "  ⊘ {name} (removed from bundled, use --yes to delete)",
       "logItemWouldRemove": "  - {name} (would remove)",
       "logItemRemoved": "  ✗ {name} (removed)",
-      "logItemRemovalFailed": "  ✗ {name} (removal failed: {reason})"
+      "logItemRemovalFailed": "  ✗ {name} (removal failed: {reason})",
+      "restartSessionNotice": "Restart your Claude Code session to apply the updates.",
+      "restartSessionHint": "  Start a new conversation to use the updated skills."
     }
   },
   "config": {

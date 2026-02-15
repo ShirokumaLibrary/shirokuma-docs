@@ -204,11 +204,56 @@ cd - && rm -rf "$TMPDIR"
 
 **Important**: Always confirm with the user before using `--force` push.
 
+## Additional Release Targets
+
+### shirokuma-plugins (marketplace)
+
+Publish plugins to the marketplace repository. Managed by `staging-publish` local skill.
+
+```bash
+# Preview
+node publish-staging.mjs plugins --branch main --dry-run
+
+# Publish
+node publish-staging.mjs plugins --branch main
+```
+
+### npm publish
+
+Publish package to npm registry.
+
+```bash
+# Dry run
+npm publish --dry-run
+
+# Alpha release (prerelease)
+npm publish --tag alpha
+
+# Set latest tag to newest alpha (until stable release)
+npm dist-tag add shirokuma-docs@{version} latest
+```
+
+#### npm Tag Policy
+
+| Phase | npm publish | latest tag |
+|-------|-------------|------------|
+| Pre-stable (current) | `--tag alpha` → `dist-tag add ... latest` | Points to latest alpha |
+| Post-stable | alpha uses `--tag alpha` only, stable uses no tag | Points to stable |
+
+### Full Release Checklist
+
+| # | Target | Command | Done |
+|---|--------|---------|------|
+| 1 | GitHub Public repo | `shirokuma-docs repo-pairs release <alias> --tag <version>` | |
+| 2 | shirokuma-plugins | `node publish-staging.mjs plugins --branch main` | |
+| 3 | npm registry | `npm publish --tag alpha` + `npm dist-tag add ... latest` | |
+
 ## Notes
 
-- Use `TodoWrite` for progress tracking
+- Use `TodoWrite` for progress tracking (per release target + verification)
 - Do not execute a release without a dry run (`--dry-run`) first
 - Do not release when the working directory is not clean
+- Verify all 3 release targets are covered
 
 ## Quick Commands
 

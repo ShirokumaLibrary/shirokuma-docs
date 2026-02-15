@@ -445,7 +445,7 @@ program
 // GitHub Projects V2 管理 (低レベル API)
 program
   .command("projects <action>")
-  .description("GitHub Projects V2 管理 (list, get, fields, create, update, delete, add-issue, workflows, setup-metrics)")
+  .description("GitHub Projects V2 管理 (list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup)")
   .argument("[target]", "Item ID or Issue number (for get/update/delete/add-issue)")
   .option("--owner <owner>", "Repository owner (default: current repo)")
   .option("--all", "Include all items (Done/Released)")
@@ -453,14 +453,25 @@ program
   .option("--format <format>", "Output format: json, table-json (for list)", "json")
   .option("-s, --field-status <status>", "Set Status field (for create/update/add-issue)")
   .option("--priority <priority>", "Set Priority field (Critical/High/Medium/Low)")
+  .option("--field-priority <priority>", "(alias for --priority)")
   .option("--type <type>", "Set Type field (Feature/Bug/Chore/Docs/Research)")
+  .option("--field-type <type>", "(alias for --type)")
   .option("--size <size>", "Set Size field (XS/S/M/L/XL)")
+  .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Item title (for create)")
   .option("-b, --body <file>", "Item body file path (for create/update)")
   .option("-F, --force", "Skip confirmation (for delete)")
+  .option("--lang <lang>", "Language for field descriptions: en, ja (for setup)")
+  .option("--field-id <fieldId>", "Status field ID (for setup)")
+  .option("--project-id <projectId>", "Project ID (for setup)")
+  .option("--status-only", "Only update Status field (for setup)")
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, target, options) => {
     if (!resolveBodyOption(options)) return;
+    // エイリアスオプションのマージ (#587)
+    options.priority ??= options.fieldPriority;
+    options.type ??= options.fieldType;
+    options.size ??= options.fieldSize;
     projectsCommand(action, target, options);
   });
 
@@ -480,8 +491,11 @@ program
   .option("--format <format>", "Output format: json, table-json (for list)", "json")
   .option("-s, --field-status <status>", "Set Projects Status field")
   .option("--priority <priority>", "Set Projects Priority field (Critical/High/Medium/Low)")
+  .option("--field-priority <priority>", "(alias for --priority)")
   .option("--type <type>", "Set Projects Type field (Feature/Bug/Chore/Docs/Research)")
+  .option("--field-type <type>", "(alias for --type)")
   .option("--size <size>", "Set Projects Size field (XS/S/M/L/XL)")
+  .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Issue title (for create)")
   .option("-b, --body <file>", "Issue body file path (for create/update/comment/close)")
   .option(
@@ -491,6 +505,7 @@ program
   )
   .option("--add-label <labels...>", "Add labels to issue (for update)")
   .option("--remove-label <labels...>", "Remove labels from issue (for update)")
+  .option("--label <labels...>", "(alias for --labels)")
   .option("--public", "Target the public repository (from repoPairs config)")
   .option("--repo <alias>", "Target a cross-repo by alias (from crossRepos config)")
   .option("--from-public <number>", "Import issue from public repo (for import action)")
@@ -506,6 +521,11 @@ program
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, target, options) => {
     if (!resolveBodyOption(options)) return;
+    // エイリアスオプションのマージ (#587)
+    options.priority ??= options.fieldPriority;
+    options.type ??= options.fieldType;
+    options.size ??= options.fieldSize;
+    options.labels ??= options.label;
     // search アクション: target を query にマッピング
     if (action === "search" && target) {
       options.query = target;
