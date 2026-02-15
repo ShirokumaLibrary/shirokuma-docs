@@ -1367,6 +1367,109 @@ async function cmdSetup(
 }
 
 // =============================================================================
+// create-project (#597)
+// =============================================================================
+
+/** create-project サブコマンドのオプション */
+interface CreateProjectOptions extends SetupOptions {
+  // title は ProjectsOptions から継承
+  // lang は SetupOptions から継承
+}
+
+/**
+ * create-project subcommand - Project 作成からフィールド設定まで一括実行
+ *
+ * 1. gh project create で Project を作成
+ * 2. gh project link でリポジトリにリンク
+ * 3. cmdSetup() でフィールド初期設定
+ */
+async function cmdCreateProject(
+  options: CreateProjectOptions,
+  logger: Logger,
+): Promise<number> {
+  if (!options.title) {
+    logger.error("--title is required");
+    logger.info("Usage: shirokuma-docs projects create-project --title \"Project Name\" [--lang ja]");
+    return 1;
+  }
+
+  const owner = options.owner || getOwner();
+  const repo = getRepoName();
+  if (!owner || !repo) {
+    logger.error("Could not determine repository owner/name");
+    return 1;
+  }
+
+  // ステップ 1: Project 作成
+  logger.info(`[1/3] Creating project "${options.title}"...`);
+  const createResult = runGhCommand<{ number: number; id: string; url: string }>(
+    ["project", "create", "--owner", owner, "--title", options.title, "--format", "json"],
+  );
+
+  if (!createResult.success) {
+    logger.error(`Failed to create project: ${createResult.error}`);
+    return 1;
+  }
+
+  const projectNumber = createResult.data?.number;
+  const projectUrl = createResult.data?.url;
+  if (projectNumber === undefined) {
+    logger.error("Failed to get project number from creation response");
+    return 1;
+  }
+  logger.success(`  Project created: #${projectNumber} ${projectUrl ?? ""}`);
+
+  // ステップ 2: リポジトリにリンク
+  logger.info(`[2/3] Linking project to ${owner}/${repo}...`);
+  const linkResult = runGhCommand(
+    ["project", "link", String(projectNumber), "--owner", owner, "--repo", `${owner}/${repo}`],
+  );
+
+  if (!linkResult.success) {
+    logger.error(`Failed to link project to repository`);
+    logger.info(`  Project was created successfully (URL: ${projectUrl ?? "unknown"})`);
+    logger.info(`  Link manually: gh project link ${projectNumber} --owner ${owner} --repo ${owner}/${repo}`);
+    return 1;
+  }
+
+  logger.success("  Project linked to repository");
+
+  // ステップ 3: フィールド設定（cmdSetup を呼び出し）
+  logger.info("[3/3] Setting up project fields...");
+
+  // 新しく作成した Project の ID を取得して setup に渡す
+  const projectId = getProjectId(owner, options.title);
+  if (!projectId) {
+    logger.error("Failed to resolve project ID after creation");
+    logger.info("  Run 'shirokuma-docs projects setup' manually to set up fields");
+    return 1;
+  }
+
+  const setupResult = await cmdSetup(
+    { ...options, projectId, owner },
+    logger,
+  );
+
+  // 出力
+  const output = {
+    project_number: projectNumber,
+    project_url: projectUrl,
+    project_id: projectId,
+    owner,
+    repository: `${owner}/${repo}`,
+    setup: setupResult === 0 ? "completed" : "failed",
+    next_steps: [
+      "Enable recommended workflows: Project → Settings → Workflows",
+      "  - Item closed → Done",
+      "  - Pull request merged → Done",
+    ],
+  };
+
+  console.log(JSON.stringify(output, null, 2));
+  return setupResult;
+}
+
+// =============================================================================
 // Main Command Handler
 // =============================================================================
 
@@ -1380,8 +1483,8 @@ export async function projectsCommand(
 ): Promise<void> {
   const logger = createLogger(options.verbose);
 
-  // Deprecation warning (workflows/setup-metrics/setup subcommands are NOT deprecated)
-  if (action !== "workflows" && action !== "setup-metrics" && action !== "setup") {
+  // Deprecation warning (workflows/setup-metrics/setup/create-project subcommands are NOT deprecated)
+  if (action !== "workflows" && action !== "setup-metrics" && action !== "setup" && action !== "create-project") {
     console.error(
       "[DEPRECATED] projects item commands are deprecated. Use issues instead:\n" +
         "  issues fields     (was: projects fields)\n" +
@@ -1464,9 +1567,13 @@ export async function projectsCommand(
       exitCode = await cmdSetup(options as SetupOptions, logger);
       break;
 
+    case "create-project":
+      exitCode = await cmdCreateProject(options as CreateProjectOptions, logger);
+      break;
+
     default:
       logger.error(`Unknown action: ${action}`);
-      logger.info("Available actions: list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup");
+      logger.info("Available actions: list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup, create-project");
       exitCode = 1;
   }
 

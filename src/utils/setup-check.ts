@@ -165,7 +165,7 @@ function checkProjectExists(projectId: string | null): SetupCheckItem[] {
     ok: projectId !== null,
     hint: projectId
       ? undefined
-      : "Create a GitHub Project with the same name as the repository",
+      : "Create a GitHub Project: shirokuma-docs projects create-project --title \"<repo-name>\" --lang ja",
   }];
 }
 
@@ -180,8 +180,8 @@ function checkProjectFields(projectId: string): SetupCheckItem[] {
       ok: resolved !== null,
       hint: resolved
         ? undefined
-        : `Create "${fieldName}" field: Project → Settings → Custom fields → New field (Single Select). ` +
-          `Or run /github-project-setup skill for automated setup.`,
+        : `Create "${fieldName}" field: Run 'shirokuma-docs projects setup --lang ja' ` +
+          `or Project → Settings → Custom fields → New field (Single Select).`,
     };
   });
 }

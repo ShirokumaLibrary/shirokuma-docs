@@ -331,11 +331,14 @@ export function validateBody(body: string | undefined): string | null {
 }
 
 /**
- * ファイルパスから本文を読み込む。
- * --body オプションでファイルパスを受け取り、内容をテキストとして返す。
+ * ファイルパスまたは stdin から本文を読み込む。
+ * `--body -` の場合は stdin、それ以外はファイルパスとして読み取る。
  */
-export function readBodyFile(filePath: string): string {
-  return readFileSync(filePath, "utf-8");
+export function readBodyFile(source: string): string {
+  if (source === "-") {
+    return readFileSync(0, "utf-8");
+  }
+  return readFileSync(source, "utf-8");
 }
 
 /**

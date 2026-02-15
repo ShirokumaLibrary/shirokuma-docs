@@ -75,7 +75,45 @@ schema:
 **Don't use Drizzle ORM?** Delete the `schema` section entirely.
 Other optional sections (`deps`, `testCases`, `lintDocs`, etc.) can be removed if not needed — only configured sections run with `generate`.
 
-### 3. Generate Documentation
+### 3. GitHub Project Setup
+
+```bash
+# Create project + set up fields in one command
+shirokuma-docs projects create-project --title "Project Name" --lang en
+```
+
+The following require manual configuration due to GitHub API limitations:
+
+| Item | Where to Configure |
+|------|--------------------|
+| Discussion categories (Handovers, ADR, Knowledge, Research) | Repository Settings → Discussions |
+| Project workflows (Item closed → Done, PR merged → Done) | Project Settings → Workflows |
+
+<details>
+<summary>Delegate to AI (copy-paste instructions)</summary>
+
+First, initialize manually to enable skills and rules:
+
+```bash
+cd /path/to/your/project
+shirokuma-docs init --with-skills --with-rules --lang en
+```
+
+Start a new Claude Code session and paste the following:
+
+```
+Set up this project's initial configuration:
+
+1. Run shirokuma-docs projects create-project --title "{Project Name}" --lang en
+2. Edit shirokuma-docs.config.yaml to match the project structure
+3. Guide through manual setup:
+   - Create GitHub Discussion categories (Handovers, ADR, Knowledge, Research)
+   - Enable GitHub Project workflows (Item closed → Done, PR merged → Done)
+```
+
+</details>
+
+### 4. Generate Documentation
 
 ```bash
 # Run all configured commands
@@ -87,7 +125,7 @@ shirokuma-docs deps -p .
 shirokuma-docs portal -p .
 ```
 
-### 4. Start Using with Claude Code
+### 5. Start Using with Claude Code
 
 Start a new Claude Code session. Skills will be available as slash commands (e.g., `/working-on-issue #42`).
 

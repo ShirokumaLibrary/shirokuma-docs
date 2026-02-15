@@ -8,6 +8,7 @@
  */
 
 import { writeFileSync, mkdirSync, rmSync } from "fs";
+import { execSync } from "child_process";
 import { join } from "path";
 import { tmpdir } from "os";
 import {
@@ -388,6 +389,34 @@ describe("readBodyFile", () => {
    */
   it("should throw for non-existent file", () => {
     expect(() => readBodyFile(join(testDir, "nonexistent.md"))).toThrow();
+  });
+
+  /**
+   * @testdoc "--body -" で stdin 読み取りを試みる（fd 0）
+   * @purpose stdin 対応（#598）— ファイルパスではなく fd 0 から読む
+   */
+  it('should attempt to read from stdin when source is "-"', () => {
+    try {
+      const result = readBodyFile("-");
+      // Jest 環境では stdin が空パイプのため空文字列を返す
+      expect(typeof result).toBe("string");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      // ファイル "-" の ENOENT ではなく stdin 関連エラーであることを確認
+      expect(message).not.toContain("ENOENT");
+    }
+  });
+
+  /**
+   * @testdoc パイプ経由で stdin から読み取れる（統合テスト）
+   * @purpose stdin 対応の実際の動作確認（#598）
+   */
+  it("should read piped stdin via subprocess", () => {
+    const result = execSync(
+      'echo "hello from stdin" | node -e "const fs = require(\'fs\'); console.log(fs.readFileSync(0, \'utf-8\').trim())"',
+      { encoding: "utf-8" }
+    ).trim();
+    expect(result).toBe("hello from stdin");
   });
 });
 

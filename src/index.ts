@@ -61,7 +61,8 @@ const packageJson = JSON.parse(
 );
 
 /**
- * --body オプションをファイルパスとして解決し、内容に置換する。
+ * --body オプションをファイルパスまたは stdin から解決し、内容に置換する。
+ * `--body -` の場合は stdin から読み取る。
  * 失敗時は process.exitCode を設定して false を返す。
  */
 function resolveBodyOption(options: Record<string, unknown>): boolean {
@@ -445,7 +446,7 @@ program
 // GitHub Projects V2 管理 (低レベル API)
 program
   .command("projects <action>")
-  .description("GitHub Projects V2 管理 (list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup)")
+  .description("GitHub Projects V2 管理 (list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup, create-project)")
   .argument("[target]", "Item ID or Issue number (for get/update/delete/add-issue)")
   .option("--owner <owner>", "Repository owner (default: current repo)")
   .option("--all", "Include all items (Done/Released)")
@@ -459,7 +460,7 @@ program
   .option("--size <size>", "Set Size field (XS/S/M/L/XL)")
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Item title (for create)")
-  .option("-b, --body <file>", "Item body file path (for create/update)")
+  .option("-b, --body <file>", "Item body file path, or - for stdin (for create/update)")
   .option("-F, --force", "Skip confirmation (for delete)")
   .option("--lang <lang>", "Language for field descriptions: en, ja (for setup)")
   .option("--field-id <fieldId>", "Status field ID (for setup)")
@@ -497,7 +498,7 @@ program
   .option("--size <size>", "Set Projects Size field (XS/S/M/L/XL)")
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Issue title (for create)")
-  .option("-b, --body <file>", "Issue body file path (for create/update/comment/close)")
+  .option("-b, --body <file>", "Issue body file path, or - for stdin (for create/update/comment/close)")
   .option(
     "--state-reason <reason>",
     "Close reason: COMPLETED, NOT_PLANNED (for close)",
@@ -542,7 +543,7 @@ program
   .option("--limit <number>", "Max discussions to fetch (for list/search)", parseInt)
   .option("--format <format>", "Output format: json, table-json (for list/search)", "json")
   .option("-t, --title <title>", "Discussion title (for create/update)")
-  .option("-b, --body <file>", "Discussion body file path (for create/update/comment)")
+  .option("-b, --body <file>", "Discussion body file path, or - for stdin (for create/update/comment)")
   .option("--public", "Target the public repository (from repoPairs config)")
   .option("--repo <alias>", "Target a cross-repo by alias (from crossRepos config)")
   .option("-v, --verbose", "詳細ログ出力")
@@ -603,7 +604,7 @@ program
   .option("--all", "全ユーザーの引き継ぎを表示 (start用)")
   .option("--team", "チームダッシュボード: 全メンバーの引き継ぎと Issue を担当者別に表示 (start用)")
   .option("-t, --title <title>", "引き継ぎタイトル (end用)")
-  .option("-b, --body <file>", "引き継ぎ本文ファイルパス (end用)")
+  .option("-b, --body <file>", "引き継ぎ本文ファイルパス、または - で stdin (end用)")
   .option("--done <numbers...>", "Done にする Issue 番号 (end用)")
   .option("--review <numbers...>", "Review にする Issue 番号 (end用)")
   .option("--fix", "不整合を自動修正 (check用)")

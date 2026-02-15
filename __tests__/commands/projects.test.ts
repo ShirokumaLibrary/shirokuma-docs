@@ -319,6 +319,10 @@ describe("projects command actions", () => {
         "update",
         "delete",
         "add-issue",
+        "workflows",
+        "setup-metrics",
+        "setup",
+        "create-project",
       ];
 
       // These actions are supported by the command
@@ -327,7 +331,7 @@ describe("projects command actions", () => {
       });
 
       // Verify exact count of supported actions
-      expect(supportedActions).toHaveLength(7);
+      expect(supportedActions).toHaveLength(11);
     });
 
     /**
@@ -886,9 +890,9 @@ describe("projects error handling", () => {
      */
     it("should document unknown action error", () => {
       const errorCondition = {
-        cause: "Action not in [list, get, fields, create, update, delete, add-issue]",
+        cause: "Action not in [list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup, create-project]",
         expectedError: "Unknown action: invalid",
-        additionalInfo: "Available actions: list, get, fields, create, update, delete, add-issue",
+        additionalInfo: "Available actions: list, get, fields, create, update, delete, add-issue, workflows, setup-metrics, setup, create-project",
         exitCode: 1,
       };
 
@@ -936,6 +940,170 @@ describe("projects error handling", () => {
       };
 
       expect(behavior.exitCode).toBe(0);
+    });
+  });
+});
+
+describe("projects create-project subcommand", () => {
+  // ===========================================================================
+  // create-project (#597) - Project 作成からセットアップまで一括実行
+  // ===========================================================================
+
+  describe("create-project options", () => {
+    /**
+     * @testdoc create-projectは--titleを必須とする
+     * @purpose タイトル未指定時のエラー条件を文書化
+     */
+    it("should require --title option", () => {
+      const validOptions = { title: "My Project" };
+      const invalidOptions = { title: undefined };
+
+      expect(validOptions.title).toBeDefined();
+      expect(invalidOptions.title).toBeUndefined();
+    });
+
+    /**
+     * @testdoc create-projectは--langオプションをサポートする
+     * @purpose setup に渡す言語オプションが利用可能であることを確認
+     */
+    it("should support --lang option for setup", () => {
+      const options = {
+        title: "My Project",
+        lang: "ja",
+      };
+
+      expect(options.title).toBe("My Project");
+      expect(options.lang).toBe("ja");
+    });
+
+    /**
+     * @testdoc create-projectは--ownerオプションをサポートする
+     * @purpose オーナー指定が利用可能であることを確認
+     */
+    it("should support --owner option", () => {
+      const options = {
+        title: "My Project",
+        owner: "custom-org",
+      };
+
+      expect(options.owner).toBe("custom-org");
+    });
+  });
+
+  describe("create-project output structure", () => {
+    /**
+     * @testdoc create-project出力のJSON構造
+     * @purpose 出力形式を文書化
+     */
+    it("should document create-project output structure", () => {
+      const expectedOutput = {
+        project_number: 1,
+        project_url: "https://github.com/orgs/owner/projects/1",
+        project_id: "PVT_xxx",
+        owner: "owner",
+        repository: "owner/repo",
+        setup: "completed",
+        next_steps: [
+          "Enable recommended workflows: Project → Settings → Workflows",
+          "  - Item closed → Done",
+          "  - Pull request merged → Done",
+        ],
+      };
+
+      expect(expectedOutput.project_number).toBe(1);
+      expect(expectedOutput.project_url).toContain("/projects/");
+      expect(expectedOutput.project_id).toBeDefined();
+      expect(expectedOutput.setup).toBe("completed");
+      expect(expectedOutput.next_steps).toHaveLength(3);
+    });
+
+    /**
+     * @testdoc setup失敗時の出力
+     * @purpose フィールド設定失敗時の出力を文書化
+     */
+    it("should document output when setup fails", () => {
+      const expectedOutput = {
+        project_number: 1,
+        project_url: "https://github.com/orgs/owner/projects/1",
+        project_id: "PVT_xxx",
+        owner: "owner",
+        repository: "owner/repo",
+        setup: "failed",
+        next_steps: [
+          "Enable recommended workflows: Project → Settings → Workflows",
+          "  - Item closed → Done",
+          "  - Pull request merged → Done",
+        ],
+      };
+
+      expect(expectedOutput.setup).toBe("failed");
+    });
+  });
+
+  describe("create-project error conditions", () => {
+    /**
+     * @testdoc タイトル未指定時のエラー
+     * @purpose --title が必須であることを文書化
+     */
+    it("should document title required error", () => {
+      const errorCondition = {
+        cause: "--title option not provided",
+        expectedError: "--title is required",
+        exitCode: 1,
+      };
+
+      expect(errorCondition.exitCode).toBe(1);
+    });
+
+    /**
+     * @testdoc Project作成失敗時のエラー
+     * @purpose gh project create が失敗した場合のエラー条件を文書化
+     */
+    it("should document project creation failure", () => {
+      const errorCondition = {
+        cause: "gh project create command failed",
+        expectedError: "Failed to create project",
+        exitCode: 1,
+        rollbackNeeded: false,
+      };
+
+      expect(errorCondition.exitCode).toBe(1);
+      expect(errorCondition.rollbackNeeded).toBe(false);
+    });
+
+    /**
+     * @testdoc リポジトリリンク失敗時のエラー
+     * @purpose Project 作成済みだがリンク失敗の場合の回復手順を文書化
+     */
+    it("should document link failure with recovery info", () => {
+      const errorCondition = {
+        cause: "gh project link command failed",
+        expectedError: "Failed to link project to repository",
+        exitCode: 1,
+        recoveryInfo: "Project was created, link manually with gh project link",
+      };
+
+      expect(errorCondition.exitCode).toBe(1);
+      expect(errorCondition.recoveryInfo).toContain("link manually");
+    });
+  });
+
+  describe("create-project workflow", () => {
+    /**
+     * @testdoc 実行ステップの順序
+     * @purpose 3段階のワークフローを文書化
+     */
+    it("should document the 3-step workflow", () => {
+      const steps = [
+        { step: 1, action: "gh project create", description: "Create GitHub Project" },
+        { step: 2, action: "gh project link", description: "Link project to repository" },
+        { step: 3, action: "projects setup", description: "Set up fields (Status, Priority, Type, Size)" },
+      ];
+
+      expect(steps).toHaveLength(3);
+      steps.forEach((s, i) => {
+        expect(s.step).toBe(i + 1);
+      });
     });
   });
 });

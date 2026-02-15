@@ -75,7 +75,45 @@ schema:
 **Drizzle ORM を使わない場合**は `schema` セクションをまるごと削除してください。
 `deps`、`testCases`、`lintDocs` 等のオプションセクションも不要なら削除できます。`generate` 実行時は設定されたセクションのみ動作します。
 
-### 3. ドキュメント生成
+### 3. GitHub Project セットアップ
+
+```bash
+# Project 作成 + フィールド設定を一括実行
+shirokuma-docs projects create-project --title "プロジェクト名" --lang ja
+```
+
+以下は GitHub API の制限により手動設定が必要です:
+
+| 項目 | 設定場所 |
+|------|---------|
+| Discussion カテゴリ（Handovers, ADR, Knowledge, Research） | リポジトリ Settings → Discussions |
+| Project ワークフロー（Item closed → Done, PR merged → Done） | Project Settings → Workflows |
+
+<details>
+<summary>AI に委任する場合（コピペ用）</summary>
+
+まず手動で初期化を実行し、スキルとルールを有効にします:
+
+```bash
+cd /path/to/your/project
+shirokuma-docs init --with-skills --with-rules --lang ja
+```
+
+新しい Claude Code セッションを開始し、以下を貼り付けてください:
+
+```
+このプロジェクトの初期セットアップを行ってください。
+
+1. shirokuma-docs projects create-project --title "{プロジェクト名}" --lang ja を実行
+2. shirokuma-docs.config.yaml をプロジェクト構成に合わせて編集
+3. 以下の手動設定が必要な項目を案内:
+   - GitHub Discussion カテゴリの作成（Handovers, ADR, Knowledge, Research）
+   - GitHub Project ワークフローの有効化（Item closed → Done, PR merged → Done）
+```
+
+</details>
+
+### 4. ドキュメント生成
 
 ```bash
 # 全コマンド一括実行
@@ -87,7 +125,7 @@ shirokuma-docs deps -p .
 shirokuma-docs portal -p .
 ```
 
-### 4. Claude Code との連携
+### 5. Claude Code との連携
 
 新しい Claude Code セッションを開始するとスキルが利用可能になります（例: `/working-on-issue #42`）。
 
