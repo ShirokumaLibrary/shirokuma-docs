@@ -76,8 +76,24 @@ Discussions and required labels (feature, bug, chore, docs, research) are automa
 
 | Item | Where to Configure |
 |------|--------------------|
-| Discussion categories (Handovers, ADR, Knowledge, Research) | Repository Settings → Discussions |
-| Project workflows (Item closed → Done, PR merged → Done) | Project Settings → Workflows |
+| Discussion categories | Repository Settings → Discussions |
+| Project workflows | Project Settings → Workflows |
+
+**Discussion categories** (Repository Settings → Discussions → New category):
+
+| Category | Emoji | Format | Purpose |
+|----------|-------|--------|---------|
+| Handovers | 🔄 | Open-ended discussion | Session handover records |
+| ADR | 📋 | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 📚 | Open-ended discussion | Confirmed patterns and solutions |
+| Research | 🔍 | Open-ended discussion | Items requiring investigation |
+
+**Project workflows** (Project Settings → Workflows):
+
+| Workflow | Target Status |
+|----------|--------------|
+| Item closed | Done |
+| Pull request merged | Done |
 
 <details>
 <summary>Delegate to AI (copy-paste instructions)</summary>
@@ -92,14 +108,10 @@ shirokuma-docs init --with-skills --with-rules --lang en
 Start a new Claude Code session and paste the following:
 
 ```
-Set up this project's initial configuration:
-
-1. Run shirokuma-docs projects create-project --title "{Project Name}" --lang en
-2. Edit shirokuma-docs.config.yaml to match the project structure
-3. Guide through manual setup:
-   - Create GitHub Discussion categories (Handovers, ADR, Knowledge, Research)
-   - Enable GitHub Project workflows (Item closed → Done, PR merged → Done)
+/github-project-setup Please set up this project
 ```
+
+The skill will interactively guide you through project creation, field setup, and manual configuration steps.
 
 </details>
 

@@ -1,6 +1,6 @@
 ---
 name: github-project-setup
-description: GitHub ProjectのStatus、Priority、Type、Sizeフィールド初期設定を自動化します。「project setup」「プロジェクト作成」「GitHub Project初期設定」、カンバンワークフローで新規プロジェクト開始時に使用。
+description: GitHub ProjectのStatus、Priority、Type、Sizeフィールド初期設定を自動化します。「project setup」「プロジェクト作成」「GitHub Project初期設定」「初期セットアップ」「プロジェクトのセットアップ」、カンバンワークフローで新規プロジェクト開始時に使用。
 allowed-tools: Bash, Read, Glob
 ---
 
@@ -12,7 +12,7 @@ GitHub Project の初期設定を実施。`create-project` コマンドで自動
 
 - 新しい GitHub Project を作成する場合
 - カンバンワークフローをセットアップする場合
-- 「project setup」「プロジェクト作成」「GitHub Project 初期設定」
+- 「project setup」「プロジェクト作成」「GitHub Project 初期設定」「初期セットアップ」「プロジェクトのセットアップ」
 
 ## 責務分担
 
@@ -94,33 +94,7 @@ Discussion カテゴリの作成は GitHub API 未対応のため、GitHub UI �
 
 **重要**: Format は必ず **Open-ended discussion** を選択する。Announcement や Poll ではない。
 
-### ステップ 4: Issue Types セットアップ
-
-GitHub Issue Types は組織レベルの設定（プロジェクトレベルではない）。GitHub UI で組織オーナーが設定。
-
-**注意**: Issue Types は組織リポジトリでのみ利用可能。個人リポジトリでは不可。
-
-**既に設定済みか確認:**
-
-ユーザーに確認: 「組織で Issue Types は設定済みですか?（Settings → Issue Types）」
-
-**未設定の場合、ガイド:**
-
-1. `https://github.com/organizations/{org}/settings/issue-types` に移動
-2. デフォルトタイプ（既存）: Task, Bug, Feature
-3. カスタムタイプを追加:
-
-| タイプ | 説明 | 色 |
-|--------|------|----|
-| Chore | メンテナンス、設定、ツール、リファクタリング | Gray |
-| Docs | ドキュメント改善・追加 | Blue |
-| Research | 調査、スパイク、探索 | Purple |
-
-**重要**: Issue Types は組織全体の設定。組織内の全リポジトリで共有される。このステップは組織ごとに1回のみ必要。
-
-詳細は [reference/issue-types.md](reference/issue-types.md) 参照。
-
-### ステップ 5: ビルトイン自動化の有効化
+### ステップ 4: ビルトイン自動化の有効化
 
 プロジェクトの推奨自動化を有効化。API では設定不可 — GitHub UI をガイド。
 
@@ -145,7 +119,7 @@ shirokuma-docs projects workflows
 
 **注意**: `session end --review` CLI コマンドとこれらの自動化は冪等に協調動作。両方有効でも競合しない。
 
-### ステップ 6: セットアップ検証
+### ステップ 5: セットアップ検証
 
 全ステップの完了を検証:
 
@@ -198,7 +172,7 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 ## 注意事項
 
 - **プロジェクト名規約**: プロジェクト名 = リポジトリ名（例: repo `shirokuma-docs` → project `shirokuma-docs`）。CLI の `getProjectId()` がリポジトリ名で検索するため
-- 6ステップのため `TodoWrite` で進捗管理
+- 5ステップのため `TodoWrite` で進捗管理
 - 既存プロジェクトがある場合は `AskUserQuestion` で上書き確認
 - 権限リフレッシュにはインタラクティブモードが必要（ユーザーが手動実行）
 - 言語は会話から自動検出（日本語または英語）
@@ -212,5 +186,4 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 - `shirokuma-docs session check --setup` - セットアップ検証コマンド
 - [reference/status-options.md](reference/status-options.md) - ステータスワークフローと定義
 - [reference/custom-fields.md](reference/custom-fields.md) - カスタムフィールド定義
-- [reference/issue-types.md](reference/issue-types.md) - Issue Types セットアップとマイグレーションガイド
 - [reference/labels.md](reference/labels.md) - ラベル分類体系とセットアップガイド

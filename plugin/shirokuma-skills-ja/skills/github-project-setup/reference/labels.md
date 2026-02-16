@@ -6,7 +6,7 @@
 
 | 仕組み | 役割 | 軸 | 例 |
 |--------|------|-----|-----|
-| Type（Project フィールド / Issue Types） | 作業の**種類** | カテゴリ | Bug, Feature, Chore |
+| Type（Project フィールド） | 作業の**種類** | カテゴリ | Bug, Feature, Chore |
 | Labels | 作業の**影響範囲** | 横断的属性 | area:cli, area:plugin |
 
 ラベルは Type と重複させないこと。ラベルが Type 値と1:1対応する場合、ラベルを削除して Type を使用する。
@@ -79,7 +79,7 @@ gh label create "area:lint" --color "fbca04" --description "Lint and validation 
 
 ## 注意事項
 
-- ラベルはリポジトリレベルの設定（Issue Types は組織レベル）
+- ラベルはリポジトリレベルの設定
 - ラベルは Issue 一覧に表示され、視覚的なフィルタリングに有用
 - `gh label` コマンドは特別な OAuth スコープ不要（標準の `repo` スコープで十分）
 - Type 重複ラベルから移行する場合、ラベル定義を削除する前に既存 Issue からラベルを外す

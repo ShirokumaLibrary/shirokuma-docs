@@ -1,6 +1,6 @@
 ---
 name: github-project-setup
-description: Automates GitHub Project initial setup with Status, Priority, Type, and Size fields. Use when "project setup", "GitHub Project setup", or starting a new project with kanban workflow.
+description: Automates GitHub Project initial setup with Status, Priority, Type, and Size fields. Use when "project setup", "initial setup", "set up project", "GitHub Project setup", or starting a new project with kanban workflow.
 allowed-tools: Bash, Read, Glob
 ---
 
@@ -12,7 +12,7 @@ Performs GitHub Project initial setup. Runs `create-project` command for automat
 
 - Creating a new GitHub Project
 - Setting up a kanban workflow
-- When user says "project setup", "GitHub Project setup", or "create project"
+- When user says "project setup", "initial setup", "set up project", "GitHub Project setup", or "create project"
 
 ## Responsibility Split
 
@@ -94,33 +94,7 @@ Discussion category creation is not supported by the GitHub API. Guide the user 
 
 **Important**: Format must be **Open-ended discussion**, not Announcement or Poll.
 
-### Step 4: Issue Types Setup
-
-GitHub Issue Types are organization-level settings (not project-level). They are configured via the GitHub UI by organization owners.
-
-**Note**: Issue Types are only available for organization repositories, not personal repositories.
-
-**Check if already configured:**
-
-Ask the user: "Has your organization set up Issue Types? (Settings → Issue Types)"
-
-**If not configured, guide the user:**
-
-1. Navigate to `https://github.com/organizations/{org}/settings/issue-types`
-2. Default types (already exist): Task, Bug, Feature
-3. Add custom types:
-
-| Type | Description | Color |
-|------|-------------|-------|
-| Chore | Maintenance, config, tooling, or refactoring | Gray |
-| Docs | Documentation improvements or additions | Blue |
-| Research | Investigation, spike, or exploration | Purple |
-
-**Important**: Issue Types are an organization-wide setting. All repositories in the organization share the same types. This step only needs to be done once per organization.
-
-See [reference/issue-types.md](reference/issue-types.md) for details.
-
-### Step 5: Enable Built-in Automations
+### Step 4: Enable Built-in Automations
 
 Enable recommended automations for the project. These cannot be set via API — guide the user to the GitHub UI.
 
@@ -145,7 +119,7 @@ shirokuma-docs projects workflows
 
 **Note**: The `session end --review` CLI command and these automations are designed to work together (idempotent). No conflict arises from having both enabled.
 
-### Step 6: Verify Setup
+### Step 5: Verify Setup
 
 Verify all steps are complete:
 
@@ -198,7 +172,7 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 ## Notes
 
 - **Project name convention**: Project name = repository name (e.g., repo `shirokuma-docs` → project `shirokuma-docs`). This matches the CLI's `getProjectId()` lookup which searches by repository name.
-- Use `TodoWrite` for progress tracking (6 steps)
+- Use `TodoWrite` for progress tracking (5 steps)
 - Use `AskUserQuestion` to confirm overwrite when an existing project is found
 - Permission refresh requires interactive mode (user must run manually)
 - Language auto-detected from conversation (Japanese or English)
@@ -212,5 +186,4 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 - `shirokuma-docs session check --setup` - Setup verification command
 - [reference/status-options.md](reference/status-options.md) - Status workflow and definitions
 - [reference/custom-fields.md](reference/custom-fields.md) - Custom field definitions
-- [reference/issue-types.md](reference/issue-types.md) - Issue Types setup and migration guide
 - [reference/labels.md](reference/labels.md) - Label taxonomy and setup guide

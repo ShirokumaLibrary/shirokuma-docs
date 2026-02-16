@@ -6,7 +6,7 @@ Labels and Type fields serve different purposes:
 
 | Mechanism | Role | Axis | Example |
 |-----------|------|------|---------|
-| Type (Project field / Issue Types) | **What** kind of work | Category | Bug, Feature, Chore |
+| Type (Project field) | **What** kind of work | Category | Bug, Feature, Chore |
 | Labels | **Where** the work applies | Cross-cutting attribute | area:cli, area:plugin |
 
 Labels should NOT duplicate Type. If a label maps 1:1 to a Type value, delete the label and use Type instead.
@@ -80,7 +80,7 @@ gh label create "area:lint" --color "fbca04" --description "Lint and validation 
 
 ## Notes
 
-- Labels are repository-level settings (unlike Issue Types which are organization-level)
+- Labels are repository-level settings
 - Labels appear in issue lists, making them useful for quick visual filtering
 - The `gh label` commands work without special OAuth scopes (standard `repo` scope is sufficient)
 - When migrating from Type-duplicate labels, remove the labels from existing issues first, then delete the label definitions

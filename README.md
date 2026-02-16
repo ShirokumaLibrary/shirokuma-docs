@@ -78,8 +78,24 @@ Discussions と必須ラベル（feature, bug, chore, docs, research）はコマ
 
 | 項目 | 設定場所 |
 |------|---------|
-| Discussion カテゴリ（Handovers, ADR, Knowledge, Research） | リポジトリ Settings → Discussions（カテゴリの作成は API 未対応） |
-| Project ワークフロー（Item closed → Done, PR merged → Done） | Project Settings → Workflows |
+| Discussion カテゴリ | リポジトリ Settings → Discussions |
+| Project ワークフロー | Project Settings → Workflows |
+
+**Discussion カテゴリ**（リポジトリ Settings → Discussions → カテゴリ新規作成）:
+
+| カテゴリ | Emoji | Format | 用途 |
+|---------|-------|--------|------|
+| Handovers | 🔄 | Open-ended discussion | セッション間の引き継ぎ記録 |
+| ADR | 📋 | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 📚 | Open-ended discussion | 確認されたパターン・解決策 |
+| Research | 🔍 | Open-ended discussion | 調査が必要な事項 |
+
+**Project ワークフロー**（Project Settings → Workflows）:
+
+| ワークフロー | ターゲットステータス |
+|-------------|-------------------|
+| Item closed | Done |
+| Pull request merged | Done |
 
 セットアップ後の検証:
 
@@ -102,14 +118,10 @@ shirokuma-docs init --with-skills --with-rules --lang ja
 新しい Claude Code セッションを開始し、以下を貼り付けてください:
 
 ```
-このプロジェクトの初期セットアップを行ってください。
-
-1. shirokuma-docs projects create-project --title "{プロジェクト名}" --lang ja を実行
-2. shirokuma-docs.config.yaml をプロジェクト構成に合わせて編集
-3. 以下の手動設定が必要な項目を案内:
-   - GitHub Discussion カテゴリの作成（Handovers, ADR, Knowledge, Research）
-   - GitHub Project ワークフローの有効化（Item closed → Done, PR merged → Done）
+/github-project-setup このプロジェクトのセットアップをお願いします
 ```
+
+スキルが対話的に Project 作成、フィールド設定、手動設定のガイドを実行します。
 
 </details>
 
