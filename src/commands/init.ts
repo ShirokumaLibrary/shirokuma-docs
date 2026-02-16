@@ -36,7 +36,6 @@ import {
   isSelfRepo,
   isClaudeCliAvailable,
   hasJaPlugin,
-  hasHooksPlugin,
   getLanguageSetting,
   getBundledPluginPath,
   getBundledPluginPathJa,
@@ -279,8 +278,8 @@ export async function initCommand(options: InitOptions): Promise<void> {
         logger.info("\n" + t("commands.init.registeringCache"));
         const marketplaceOk = ensureMarketplace();
         if (marketplaceOk) {
-          // 言語に応じたスキルプラグインを登録（#495）
-          if (effectiveLang === "japanese" && hasJaPlugin()) {
+          // 言語に応じたスキルプラグインを登録（#495, #636: marketplace パスでは hasJaPlugin() 不要）
+          if (effectiveLang === "japanese") {
             const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
             if (jaCacheResult.success) {
               logger.success(t("commands.init.jaCacheRegistered"));
@@ -298,12 +297,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
             }
           }
 
-          // Hooks プラグイン: 言語に関わらず常に登録
-          if (hasHooksPlugin()) {
-            const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
-            if (hooksCacheResult.success) {
-              logger.success(t("commands.init.hooksCacheRegistered"));
-            }
+          // Hooks プラグイン: 言語に関わらず常に登録（#636: marketplace パスでは hasHooksPlugin() 不要）
+          const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
+          if (hooksCacheResult.success) {
+            logger.success(t("commands.init.hooksCacheRegistered"));
           }
         } else {
           logger.warn("Marketplace registration failed");
@@ -320,7 +317,8 @@ export async function initCommand(options: InitOptions): Promise<void> {
       // Deploy rules to .claude/rules/shirokuma/ (#254: 言語設定に基づき単一ディレクトリに統一)
       logger.info("\n" + t("commands.init.deployingRules"));
 
-      const useJaRules = effectiveLang === "japanese" && hasJaPlugin();
+      // #636: 外部プロジェクトでは marketplace キャッシュからデプロイするため hasJaPlugin() 不要
+      const useJaRules = effectiveLang === "japanese" && (isExternal || hasJaPlugin());
 
       let deployedNames: string[];
 

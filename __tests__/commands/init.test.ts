@@ -622,4 +622,67 @@ describe("init command", () => {
       expect(result.stdout).toContain("discussion-templates generate");
     });
   });
+
+  describe("language-based rule deployment (#636)", () => {
+    /**
+     * @testdoc --lang ja でルールが日本語プラグインからデプロイされる
+     * @purpose --lang ja 指定時に JA プラグインのルールがデプロイされることを確認
+     */
+    it("should deploy JA rules when --lang ja is specified", () => {
+      const result = runCli([
+        "init",
+        "--project", TEST_OUTPUT_DIR,
+        "--with-skills",
+        "--with-rules",
+        "--lang", "ja",
+        "--verbose",
+      ]);
+
+      expect(result.status).toBe(0);
+      const output = extractJson<InitResult>(result.stdout);
+      expect(output.rules_installed.length).toBeGreaterThan(0);
+
+      // デプロイされたルールに日本語コンテンツが含まれることを確認
+      const rulesDir = join(TEST_OUTPUT_DIR, ".claude", "rules", "shirokuma");
+      expect(existsSync(rulesDir)).toBe(true);
+
+      // best-practices-first.md は JA/EN 共通で存在するルール
+      const bestPracticesPath = join(rulesDir, "best-practices-first.md");
+      if (existsSync(bestPracticesPath)) {
+        const content = readFileSync(bestPracticesPath, "utf-8");
+        // JA ルールには日本語が含まれる
+        expect(content).toMatch(/[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/);
+      }
+    });
+
+    /**
+     * @testdoc --lang en でルールが英語プラグインからデプロイされる
+     * @purpose --lang en 指定時に EN プラグインのルールがデプロイされることを確認
+     */
+    it("should deploy EN rules when --lang en is specified", () => {
+      const result = runCli([
+        "init",
+        "--project", TEST_OUTPUT_DIR,
+        "--with-skills",
+        "--with-rules",
+        "--lang", "en",
+        "--verbose",
+      ]);
+
+      expect(result.status).toBe(0);
+      const output = extractJson<InitResult>(result.stdout);
+      expect(output.rules_installed.length).toBeGreaterThan(0);
+
+      // デプロイされたルールが英語であることを確認
+      const rulesDir = join(TEST_OUTPUT_DIR, ".claude", "rules", "shirokuma");
+      expect(existsSync(rulesDir)).toBe(true);
+
+      const bestPracticesPath = join(rulesDir, "best-practices-first.md");
+      if (existsSync(bestPracticesPath)) {
+        const content = readFileSync(bestPracticesPath, "utf-8");
+        // EN ルールのタイトルは英語
+        expect(content).toContain("Best Practices");
+      }
+    });
+  });
 });

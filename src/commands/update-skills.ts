@@ -604,11 +604,12 @@ async function updateExternalProject(
     if (!options.dryRun && marketplaceOk) {
       logger.info(T("updatingGlobalCache"));
 
+      // #636: 外部プロジェクトでは marketplace からインストールするため hasJaPlugin()/hasHooksPlugin() 不要
       const registryIds = [
-        ...(languageSetting === "japanese" && hasJaPlugin()
+        ...(languageSetting === "japanese"
           ? [PLUGIN_REGISTRY_ID_JA]
           : [PLUGIN_REGISTRY_ID]),
-        ...(hasHooksPlugin() ? [PLUGIN_REGISTRY_ID_HOOKS] : []),
+        PLUGIN_REGISTRY_ID_HOOKS,
       ];
 
       for (const registryId of registryIds) {
@@ -626,7 +627,8 @@ async function updateExternalProject(
   }
 
   // ルール展開（キャッシュ → bundled フォールバック）
-  const useJaRules = languageSetting === "japanese" && hasJaPlugin();
+  // #636: 外部プロジェクトではキャッシュからデプロイするため hasJaPlugin() 不要
+  const useJaRules = languageSetting === "japanese";
 
   if (useJaRules) {
     logger.info(T("deployingRulesJa"));
@@ -667,7 +669,8 @@ async function updateExternalProject(
     version: newVersion,
     pluginVersion: newPluginVersion,
     dryRun: options.dryRun ?? false,
-    hooksStatus: hasHooksPlugin() ? "updated" : "not-applicable",
+    // #636: 外部プロジェクトでは marketplace 経由で hooks を更新するため常に "updated"
+    hooksStatus: "updated",
   };
 
   printSummary(result, logger);
