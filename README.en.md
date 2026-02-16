@@ -12,17 +12,7 @@ Next.js + TypeScript project documentation generator CLI with bundled Claude Cod
 curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash
 ```
 
-To pre-select a language:
-
-```bash
-# Japanese
-curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash -s -- --lang ja
-
-# English
-curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash -s -- --lang en
-```
-
-This installs shirokuma-docs to `~/.local/` with a symlink in `~/.local/bin/`. Claude Code users already have `~/.local/bin` in PATH.
+This installs shirokuma-docs to `~/.local/` with a symlink in `~/.local/bin/`. Claude Code users already have `~/.local/bin` in PATH. The installer prompts for language selection interactively (or use `--lang en` to pre-select).
 
 ### Alternative: npm / pnpm global install
 
@@ -38,7 +28,7 @@ pnpm add -g @shirokuma-library/shirokuma-docs
 
 ```bash
 shirokuma-docs --version
-# => 0.1.0-alpha.1
+# => 0.1.0-alpha.11
 ```
 
 ## Getting Started
@@ -82,7 +72,7 @@ Other optional sections (`deps`, `testCases`, `lintDocs`, etc.) can be removed i
 shirokuma-docs projects create-project --title "Project Name" --lang en
 ```
 
-The following require manual configuration due to GitHub API limitations:
+Discussions and required labels (feature, bug, chore, docs, research) are automatically created. The following require manual configuration due to GitHub API limitations:
 
 | Item | Where to Configure |
 |------|--------------------|

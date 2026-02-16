@@ -106,7 +106,7 @@ mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $text: String!) {
 }
 `;
 
-const GRAPHQL_MUTATION_ADD_TO_PROJECT = `
+export const GRAPHQL_MUTATION_ADD_TO_PROJECT = `
 mutation($projectId: ID!, $contentId: ID!) {
   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
     item { id }

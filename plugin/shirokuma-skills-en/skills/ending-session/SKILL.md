@@ -84,9 +84,15 @@ Save the PR URL for inclusion in the handover body.
 
 If on the base branch (no feature branch), skip this step entirely.
 
+### Step 3.5: Create Handover Body
+
+Use the Write tool to create `/tmp/handover.md` with the handover content (use the template from the "Handover Body Format" section).
+
+Step 4 will reference this file via `--body /tmp/handover.md`.
+
 ### Step 4: Save Handover + Update Statuses (Single Command)
 
-Build the handover body using the template below, then run:
+Using the file created in Step 3.5, run:
 
 ```bash
 shirokuma-docs session end \
@@ -141,10 +147,7 @@ Use `shirokuma-docs issues show {number}` to check PR state.
 
 **Local fallback** (if `session end` fails):
 
-```bash
-mkdir -p .claude/sessions
-echo "$HANDOVER_BODY" > .claude/sessions/$(date +%Y-%m-%d-%H%M%S)-handover.md
-```
+Use the Write tool to save the handover body to `.claude/sessions/{YYYY-MM-DD-HHMMSS}-handover.md` (use the template from the "Handover Body Format" section). Run `mkdir -p .claude/sessions` first if the directory does not exist.
 
 On success, `session end` automatically cleans up any PreCompact backups in `.claude/sessions/`.
 

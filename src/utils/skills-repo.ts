@@ -763,14 +763,19 @@ export function getGlobalCachePath(pluginName: string, version?: string): string
 
   // version 未指定: ディレクトリをスキャンし最新を返す
   // NOTE: 辞書順ソート。0.10.x 以降では semver ソートが必要になる
-  const versions = readdirSync(cacheBase)
-    .filter(name => {
-      try { return statSync(join(cacheBase, name)).isDirectory(); }
-      catch { return false; }
-    })
-    .sort()
-    .reverse();
-  return versions.length > 0 ? join(cacheBase, versions[0]) : null;
+  // TOCTOU 防御: existsSync と readdirSync の間にディレクトリが削除される可能性 (#632)
+  try {
+    const versions = readdirSync(cacheBase)
+      .filter(name => {
+        try { return statSync(join(cacheBase, name)).isDirectory(); }
+        catch { return false; }
+      })
+      .sort()
+      .reverse();
+    return versions.length > 0 ? join(cacheBase, versions[0]) : null;
+  } catch {
+    return null;
+  }
 }
 
 // ========================================
@@ -858,6 +863,9 @@ export function registerPluginCache(
  * @returns true if claude CLI is installed and accessible
  */
 export function isClaudeCliAvailable(): boolean {
+  // テスト並列実行時のグローバルキャッシュ競合を防ぐため、
+  // 環境変数で claude CLI 呼び出しを無効化できる (#632)
+  if (process.env.SHIROKUMA_NO_CLAUDE_CLI) return false;
   try {
     execFileSync("claude", ["--version"], { stdio: "pipe", timeout: 5000 });
     return true;

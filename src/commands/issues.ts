@@ -54,6 +54,11 @@ import {
   validateCrossRepoAlias,
 } from "../utils/repo-pairs.js";
 import {
+  GRAPHQL_MUTATION_DELETE_ITEM,
+  GRAPHQL_MUTATION_CLOSE_ISSUE,
+  getRepoId,
+} from "../utils/graphql-queries.js";
+import {
   FIELD_FALLBACKS,
   resolveFieldName,
   getProjectFields,
@@ -260,14 +265,6 @@ query($searchQuery: String!, $first: Int!) {
 }
 `;
 
-const GRAPHQL_QUERY_REPO_ID = `
-query($owner: String!, $name: String!) {
-  repository(owner: $owner, name: $name) {
-    id
-  }
-}
-`;
-
 const GRAPHQL_QUERY_LABELS = `
 query($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
@@ -325,14 +322,6 @@ mutation($subjectId: ID!, $body: String!) {
 }
 `;
 
-const GRAPHQL_MUTATION_CLOSE_ISSUE = `
-mutation($issueId: ID!, $stateReason: IssueClosedStateReason) {
-  closeIssue(input: {issueId: $issueId, stateReason: $stateReason}) {
-    issue { id number state }
-  }
-}
-`;
-
 const GRAPHQL_MUTATION_REOPEN_ISSUE = `
 mutation($issueId: ID!) {
   reopenIssue(input: {issueId: $issueId}) {
@@ -377,13 +366,6 @@ query($owner: String!, $name: String!, $number: Int!) {
 }
 `;
 
-const GRAPHQL_MUTATION_DELETE_ITEM = `
-mutation($projectId: ID!, $itemId: ID!) {
-  deleteProjectV2Item(input: {projectId: $projectId, itemId: $itemId}) {
-    deletedItemId
-  }
-}
-`;
 
 // =============================================================================
 // Helper Functions
@@ -410,19 +392,6 @@ export function getProjectId(owner: string, projectName?: string): string | null
   }
 
   return result.data.projects[0]?.id ?? null;
-}
-
-/**
- * Get repository ID
- */
-function getRepoId(owner: string, repo: string): string | null {
-  interface QueryResult {
-    data?: { repository?: { id?: string } };
-  }
-
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_ID, { owner, name: repo });
-  if (!result.success) return null;
-  return result.data?.data?.repository?.id ?? null;
 }
 
 /**

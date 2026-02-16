@@ -120,6 +120,9 @@ gh repo view --json nameWithOwner -q '.nameWithOwner'
 # Authentication
 gh auth login
 gh auth status
+
+# PR creation (not in shirokuma-docs CLI — single operation, gh direct use allowed)
+gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/body.md)"
 ```
 
 ## Status Workflow

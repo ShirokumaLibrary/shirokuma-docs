@@ -29,6 +29,10 @@ import {
 } from "../utils/formatters.js";
 import { resolveTargetRepo, validateCrossRepoAlias } from "../utils/repo-pairs.js";
 import { stripDoubleQuotes } from "../utils/sanitize.js";
+import {
+  GRAPHQL_MUTATION_CREATE_DISCUSSION,
+  getRepoId,
+} from "../utils/graphql-queries.js";
 
 // =============================================================================
 // Types
@@ -149,27 +153,6 @@ query($id: ID!) {
 }
 `;
 
-const GRAPHQL_QUERY_REPO_ID = `
-query($owner: String!, $name: String!) {
-  repository(owner: $owner, name: $name) {
-    id
-  }
-}
-`;
-
-const GRAPHQL_MUTATION_CREATE_DISCUSSION = `
-mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
-  createDiscussion(input: {repositoryId: $repositoryId, categoryId: $categoryId, title: $title, body: $body}) {
-    discussion {
-      id
-      number
-      url
-      title
-    }
-  }
-}
-`;
-
 const GRAPHQL_MUTATION_UPDATE_DISCUSSION = `
 mutation($discussionId: ID!, $title: String, $body: String) {
   updateDiscussion(input: {discussionId: $discussionId, title: $title, body: $body}) {
@@ -277,22 +260,6 @@ function findCategory(
       (c) => c.name.toLowerCase() === categoryName.toLowerCase()
     ) ?? null
   );
-}
-
-/**
- * Get repository ID
- */
-function getRepoId(owner: string, repo: string): string | null {
-  interface QueryResult {
-    data?: { repository?: { id?: string } };
-  }
-
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_ID, {
-    owner,
-    name: repo,
-  });
-  if (!result.success) return null;
-  return result.data?.data?.repository?.id ?? null;
 }
 
 /**

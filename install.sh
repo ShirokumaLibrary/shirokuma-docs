@@ -37,6 +37,9 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
 # Parse command-line arguments
+# Note: --lang only affects the post-install "Next steps" message
+# (e.g., which --lang value is shown in the `shirokuma-docs init` command).
+# Actual language configuration happens during `shirokuma-docs init`.
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in

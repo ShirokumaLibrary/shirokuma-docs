@@ -56,6 +56,8 @@ function runCli(args: string[]): { stdout: string; stderr: string; status: numbe
     encoding: "utf-8",
     cwd: join(__dirname, "..", ".."),
     timeout: 30000,
+    // 並列テスト実行時の claude CLI グローバルキャッシュ競合を防止 (#632)
+    env: { ...process.env, SHIROKUMA_NO_CLAUDE_CLI: "1" },
   });
   return {
     stdout: result.stdout ?? "",

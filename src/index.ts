@@ -462,7 +462,7 @@ program
   .option("-t, --title <title>", "Item title (for create)")
   .option("-b, --body <file>", "Item body file path, or - for stdin (for create/update)")
   .option("-F, --force", "Skip confirmation (for delete)")
-  .option("--lang <lang>", "Language for field descriptions: en, ja (for setup)")
+  .option("--lang <lang>", "Language for field descriptions (option names stay in English): en, ja (for setup/create-project)")
   .option("--field-id <fieldId>", "Status field ID (for setup)")
   .option("--project-id <projectId>", "Project ID (for setup)")
   .option("--status-only", "Only update Status field (for setup)")

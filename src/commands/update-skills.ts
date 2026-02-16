@@ -589,40 +589,40 @@ async function updateExternalProject(
 ): Promise<void> {
   const deployedRuleResults: DeployedRuleItem[] = [];
 
-  if (!isClaudeCliAvailable()) {
-    logger.warn(T("errorNoClaudeCli"));
-    logger.info("Install: https://docs.anthropic.com/en/docs/claude-code/overview");
-    return;
-  }
-
-  // Marketplace 登録確認
-  const marketplaceOk = ensureMarketplace();
-  if (!marketplaceOk) {
-    logger.warn("Marketplace registration failed, proceeding with bundled fallback");
-  }
-
   // 言語設定を確認（#495: キャッシュ登録とルール展開の両方で使用）
   const languageSetting = getLanguageSetting(projectPath);
 
-  // claude plugin update でキャッシュ更新
-  if (!options.dryRun && marketplaceOk) {
-    logger.info(T("updatingGlobalCache"));
+  // claude CLI が利用可能な場合のみキャッシュ更新を実行 (#632: graceful degradation)
+  if (isClaudeCliAvailable()) {
+    // Marketplace 登録確認
+    const marketplaceOk = ensureMarketplace();
+    if (!marketplaceOk) {
+      logger.warn("Marketplace registration failed, proceeding with bundled fallback");
+    }
 
-    const registryIds = [
-      ...(languageSetting === "japanese" && hasJaPlugin()
-        ? [PLUGIN_REGISTRY_ID_JA]
-        : [PLUGIN_REGISTRY_ID]),
-      ...(hasHooksPlugin() ? [PLUGIN_REGISTRY_ID_HOOKS] : []),
-    ];
+    // claude plugin update でキャッシュ更新
+    if (!options.dryRun && marketplaceOk) {
+      logger.info(T("updatingGlobalCache"));
 
-    for (const registryId of registryIds) {
-      const cacheResult = registerPluginCache(projectPath, { reinstall: true, registryId });
-      if (cacheResult.success) {
-        logger.success(`${registryId}: ${T("globalCacheUpdated")}`);
-      } else {
-        logger.warn(`${registryId}: ${cacheResult.message ?? "update failed"}`);
+      const registryIds = [
+        ...(languageSetting === "japanese" && hasJaPlugin()
+          ? [PLUGIN_REGISTRY_ID_JA]
+          : [PLUGIN_REGISTRY_ID]),
+        ...(hasHooksPlugin() ? [PLUGIN_REGISTRY_ID_HOOKS] : []),
+      ];
+
+      for (const registryId of registryIds) {
+        const cacheResult = registerPluginCache(projectPath, { reinstall: true, registryId });
+        if (cacheResult.success) {
+          logger.success(`${registryId}: ${T("globalCacheUpdated")}`);
+        } else {
+          logger.warn(`${registryId}: ${cacheResult.message ?? "update failed"}`);
+        }
       }
     }
+  } else {
+    logger.warn(T("errorNoClaudeCli"));
+    logger.info("Proceeding with bundled fallback for rule deployment");
   }
 
   // ルール展開（キャッシュ → bundled フォールバック）

@@ -13,6 +13,10 @@ import {
   getRepoInfo,
   GhResult,
 } from "../utils/github.js";
+import {
+  GRAPHQL_MUTATION_CREATE_LABEL,
+  getRepoId,
+} from "../utils/graphql-queries.js";
 
 // =============================================================================
 // Types
@@ -100,47 +104,6 @@ query($owner: String!, $name: String!, $first: Int!, $cursor: String) {
   }
 }
 `;
-
-const GRAPHQL_MUTATION_CREATE_LABEL = `
-mutation($repositoryId: ID!, $name: String!, $color: String!, $description: String) {
-  createLabel(input: {repositoryId: $repositoryId, name: $name, color: $color, description: $description}) {
-    label {
-      id
-      name
-      color
-      description
-    }
-  }
-}
-`;
-
-const GRAPHQL_QUERY_REPO_ID = `
-query($owner: String!, $name: String!) {
-  repository(owner: $owner, name: $name) {
-    id
-  }
-}
-`;
-
-// =============================================================================
-// Helper Functions
-// =============================================================================
-
-/**
- * Get repository ID
- */
-function getRepoId(owner: string, repo: string): string | null {
-  interface QueryResult {
-    data?: { repository?: { id?: string } };
-  }
-
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_ID, {
-    owner,
-    name: repo,
-  });
-  if (!result.success) return null;
-  return result.data?.data?.repository?.id ?? null;
-}
 
 // =============================================================================
 // Subcommand Handlers

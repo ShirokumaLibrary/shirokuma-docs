@@ -16,6 +16,7 @@
 import { createLogger, Logger } from "../utils/logger.js";
 import {
   runGhCommand,
+  runGhCommandRaw,
   runGraphQL,
   getOwner,
   getRepoName,
@@ -40,9 +41,15 @@ import {
   resolveFieldName,
   autoSetTimestamps,
   generateTimestamp,
+  GRAPHQL_MUTATION_ADD_TO_PROJECT,
   type ProjectField,
   type ProjectFieldType,
 } from "../utils/project-fields.js";
+import {
+  GRAPHQL_MUTATION_DELETE_ITEM,
+  GRAPHQL_MUTATION_CREATE_LABEL,
+  getRepoId,
+} from "../utils/graphql-queries.js";
 
 /** Default statuses to exclude when listing (typically completed items) */
 const DEFAULT_EXCLUDE_STATUSES = ["Done", "Released"];
@@ -211,22 +218,6 @@ const GRAPHQL_MUTATION_UPDATE_ISSUE = `
 mutation($id: ID!, $body: String!) {
   updateIssue(input: {id: $id, body: $body}) {
     issue { id number title body }
-  }
-}
-`;
-
-const GRAPHQL_MUTATION_DELETE_ITEM = `
-mutation($projectId: ID!, $itemId: ID!) {
-  deleteProjectV2Item(input: {projectId: $projectId, itemId: $itemId}) {
-    deletedItemId
-  }
-}
-`;
-
-const GRAPHQL_MUTATION_ADD_ISSUE_TO_PROJECT = `
-mutation($projectId: ID!, $contentId: ID!) {
-  addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
-    item { id }
   }
 }
 `;
@@ -951,7 +942,7 @@ async function cmdAddIssue(
     };
   }
 
-  const result = runGraphQL<AddResult>(GRAPHQL_MUTATION_ADD_ISSUE_TO_PROJECT, {
+  const result = runGraphQL<AddResult>(GRAPHQL_MUTATION_ADD_TO_PROJECT, {
     projectId,
     contentId: issue.id,
   });
@@ -1376,12 +1367,24 @@ interface CreateProjectOptions extends SetupOptions {
   // lang は SetupOptions から継承
 }
 
+// 必須ラベル定義（create-project で自動作成）
+const REQUIRED_LABELS = [
+  { name: "feature", color: "0E8A16", description: "New feature or enhancement" },
+  { name: "bug", color: "d73a4a", description: "Something isn't working" },
+  { name: "chore", color: "f9d0c4", description: "Maintenance and housekeeping" },
+  { name: "docs", color: "0075ca", description: "Documentation improvements" },
+  { name: "research", color: "5319e7", description: "Research and investigation" },
+] as const;
+
+
 /**
  * create-project subcommand - Project 作成からフィールド設定まで一括実行
  *
  * 1. gh project create で Project を作成
  * 2. gh project link でリポジトリにリンク
- * 3. cmdSetup() でフィールド初期設定
+ * 3. Discussions を自動有効化
+ * 4. cmdSetup() でフィールド初期設定
+ * 5. 必須ラベルを作成
  */
 async function cmdCreateProject(
   options: CreateProjectOptions,
@@ -1401,7 +1404,7 @@ async function cmdCreateProject(
   }
 
   // ステップ 1: Project 作成
-  logger.info(`[1/3] Creating project "${options.title}"...`);
+  logger.info(`[1/5] Creating project "${options.title}"...`);
   const createResult = runGhCommand<{ number: number; id: string; url: string }>(
     ["project", "create", "--owner", owner, "--title", options.title, "--format", "json"],
   );
@@ -1420,7 +1423,7 @@ async function cmdCreateProject(
   logger.success(`  Project created: #${projectNumber} ${projectUrl ?? ""}`);
 
   // ステップ 2: リポジトリにリンク
-  logger.info(`[2/3] Linking project to ${owner}/${repo}...`);
+  logger.info(`[2/5] Linking project to ${owner}/${repo}...`);
   const linkResult = runGhCommand(
     ["project", "link", String(projectNumber), "--owner", owner, "--repo", `${owner}/${repo}`],
   );
@@ -1434,8 +1437,22 @@ async function cmdCreateProject(
 
   logger.success("  Project linked to repository");
 
-  // ステップ 3: フィールド設定（cmdSetup を呼び出し）
-  logger.info("[3/3] Setting up project fields...");
+  // ステップ 3: Discussions 有効化
+  logger.info(`[3/5] Enabling Discussions for ${owner}/${repo}...`);
+  const discussionsResult = runGhCommandRaw(
+    ["api", "-X", "PATCH", `/repos/${owner}/${repo}`, "-f", "has_discussions=true"],
+    { silent: true },
+  );
+
+  if (!discussionsResult.success) {
+    logger.warn("  Failed to enable Discussions automatically");
+    logger.info(`  Enable manually: gh api -X PATCH /repos/${owner}/${repo} -f has_discussions=true`);
+  } else {
+    logger.success("  Discussions enabled");
+  }
+
+  // ステップ 4: フィールド設定（cmdSetup を呼び出し）
+  logger.info("[4/5] Setting up project fields...");
 
   // 新しく作成した Project の ID を取得して setup に渡す
   const projectId = getProjectId(owner, options.title);
@@ -1450,6 +1467,44 @@ async function cmdCreateProject(
     logger,
   );
 
+  // ステップ 5: 必須ラベル作成
+  logger.info("[5/5] Creating required labels...");
+
+  const repoId = getRepoId(owner, repo);
+
+  if (!repoId) {
+    logger.warn("  Failed to get repository ID for label creation");
+    logger.info("  Create labels manually: shirokuma-docs repo labels --create <name> --color <hex>");
+  } else {
+    let created = 0;
+    let skipped = 0;
+    for (const label of REQUIRED_LABELS) {
+      interface CreateLabelResult {
+        data?: { createLabel?: { label?: { id?: string; name?: string } } };
+        errors?: Array<{ message?: string }>;
+      }
+      const result = runGraphQL<CreateLabelResult>(GRAPHQL_MUTATION_CREATE_LABEL, {
+        repositoryId: repoId,
+        name: label.name,
+        color: label.color,
+        description: label.description,
+      });
+      if (result.success && result.data?.data?.createLabel?.label?.id) {
+        created++;
+      } else {
+        // "already exists" はスキップ、その他はエラーとして警告
+        const errorMsg = !result.success ? result.error : "";
+        if (errorMsg.includes("already exist")) {
+          skipped++;
+        } else {
+          logger.warn(`  Failed to create label '${label.name}': ${errorMsg || "unknown error"}`);
+          skipped++;
+        }
+      }
+    }
+    logger.success(`  Labels: ${created} created, ${skipped} skipped`);
+  }
+
   // 出力
   const output = {
     project_number: projectNumber,
@@ -1462,6 +1517,11 @@ async function cmdCreateProject(
       "Enable recommended workflows: Project → Settings → Workflows",
       "  - Item closed → Done",
       "  - Pull request merged → Done",
+      `Create Discussion categories: https://github.com/${owner}/${repo}/settings (Discussions section)`,
+      "  - Handovers (🔄, Open-ended discussion)",
+      "  - ADR (📋, Open-ended discussion)",
+      "  - Knowledge (📚, Open-ended discussion)",
+      "  - Research (🔍, Open-ended discussion)",
     ],
   };
 

@@ -84,9 +84,15 @@ EOF
 
 ベースブランチにいる場合（フィーチャーブランチなし）、このステップ全体をスキップ。
 
+### ステップ 3.5: 引き継ぎ本文作成
+
+Write ツールで `/tmp/handover.md` に引き継ぎ本文を作成する（「引き継ぎ本文テンプレート」セクションのテンプレートを使用）。
+
+ステップ 4 の `--body /tmp/handover.md` でこのファイルを参照する。
+
 ### ステップ 4: 引き継ぎ保存 + ステータス更新（単一コマンド）
 
-下記テンプレートで引き継ぎ本文を構築し、実行:
+ステップ 3.5 で作成したファイルを使い、実行:
 
 ```bash
 shirokuma-docs session end \
@@ -141,10 +147,7 @@ shirokuma-docs session end \
 
 **ローカルフォールバック**（`session end` 失敗時）:
 
-```bash
-mkdir -p .claude/sessions
-echo "$HANDOVER_BODY" > .claude/sessions/$(date +%Y-%m-%d-%H%M%S)-handover.md
-```
+Write ツールで `.claude/sessions/{YYYY-MM-DD-HHMMSS}-handover.md` に引き継ぎ本文を保存する（テンプレートは「引き継ぎ本文テンプレート」セクション参照）。事前にディレクトリが存在しない場合は `mkdir -p .claude/sessions` を実行する。
 
 成功時、`session end` は `.claude/sessions/` 内の PreCompact バックアップを自動クリーンアップする。
 

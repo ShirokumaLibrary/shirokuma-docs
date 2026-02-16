@@ -6,13 +6,20 @@ allowed-tools: Bash, Read, Glob
 
 # GitHub プロジェクトセットアップ
 
-GitHub Project の初期設定を自動化。Status ワークフロー、Priority、Type、Size カスタムフィールドを含む。
+GitHub Project の初期設定を実施。`create-project` コマンドで自動化可能な範囲を一括実行し、API 未対応の手動設定をガイドする。
 
 ## いつ使うか
 
 - 新しい GitHub Project を作成する場合
 - カンバンワークフローをセットアップする場合
 - 「project setup」「プロジェクト作成」「GitHub Project 初期設定」
+
+## 責務分担
+
+| レイヤー | 責務 | 内容 |
+|---------|------|------|
+| `create-project` コマンド | API で自動化できる操作を一括実行 | Project 作成、リポジトリリンク、Discussions 有効化、フィールド設定、ラベル作成 |
+| このスキル | コマンド実行 + 手動設定のガイド + 検証 | `create-project` の実行、Discussion カテゴリ作成案内、ワークフロー有効化案内、検証 |
 
 ## ワークフロー
 
@@ -28,54 +35,25 @@ gh auth status
 gh auth refresh -s project,read:project
 ```
 
-### ステップ 2: リポジトリ情報取得
+### ステップ 2: プロジェクト作成（自動化）
+
+`create-project` コマンドで以下を一括実行:
 
 ```bash
-OWNER=$(gh repo view --json owner -q '.owner.login' 2>/dev/null)
-REPO=$(gh repo view --json name -q '.name' 2>/dev/null)
+shirokuma-docs projects create-project --title "{プロジェクト名}" --lang={en|ja}
 ```
 
-### ステップ 3: プロジェクト作成
+**自動実行される内容:**
 
-```bash
-PROJECT_NAME="${1:-$REPO}"
-gh project create --owner $OWNER --title "$PROJECT_NAME" --format json
-```
+| 操作 | 詳細 |
+|------|------|
+| Project 作成 | GitHub Projects V2 を作成 |
+| リポジトリリンク | Projects タブからアクセス可能に |
+| Discussions 有効化 | リポジトリで Discussions を有効化 |
+| フィールド設定 | Status, Priority, Type, Size の全オプションを設定 |
+| ラベル作成 | 必須ラベル 5 種（feature, bug, chore, docs, research）を作成 |
 
-### ステップ 4: リポジトリにリンク
-
-```bash
-gh project link $PROJECT_NUMBER --owner $OWNER --repo $OWNER/$REPO
-```
-
-リポジトリの Projects タブからアクセス可能になる。
-
-### ステップ 5: フィールド ID 取得
-
-```bash
-PROJECT_NUMBER=$(gh project list --owner $OWNER --format json | jq -r '.projects[0].number')
-FIELD_ID=$(gh project field-list $PROJECT_NUMBER --owner $OWNER --format json | jq -r '.fields[] | select(.name=="Status") | .id')
-PROJECT_ID=$(gh project view $PROJECT_NUMBER --owner $OWNER --format json | jq -r '.id')
-```
-
-### ステップ 6: 全フィールド設定
-
-CLI コマンドでフィールドを自動設定:
-
-```bash
-shirokuma-docs projects setup --lang={en|ja}
-```
-
-`--project-id` と `--field-id` は自動検出される。手動指定する場合:
-
-```bash
-shirokuma-docs projects setup \
-  --lang={en|ja} \
-  --field-id=$FIELD_ID \
-  --project-id=$PROJECT_ID
-```
-
-**作成されるフィールド**:
+**作成されるフィールド:**
 
 | フィールド | オプション |
 |-----------|-----------|
@@ -84,9 +62,39 @@ shirokuma-docs projects setup \
 | Type | Feature / Bug / Chore / Docs / Research |
 | Size | XS / S / M / L / XL |
 
-[scripts/setup-project.py](scripts/setup-project.py) に言語辞書あり。
+> **Note:** `--lang` はフィールドの説明文（description）のみ翻訳する。オプション名（Backlog, Critical 等）は CLI コマンド互換性のため常に英語。
 
-### ステップ 7: Issue Types セットアップ
+**ラベル確認（任意）:**
+
+コマンド完了後、必要に応じてラベルを整理:
+
+1. **必須ラベルの存在確認**: `shirokuma-docs repo labels list` で 5 種が存在することを確認
+2. **不要ラベルの整理**（任意）: Type フィールドと重複するもの（enhancement, documentation）や該当しないもの（good first issue, help wanted, question）を削除
+3. **エリアラベルの作成**（任意）: プロジェクトのモジュール構造に合わせて `area:` プレフィックス付きラベルを追加
+
+**運用ラベルは保持**: `duplicate`, `invalid`, `wontfix`（ライフサイクル/トリアージ用）。
+
+詳細は [reference/labels.md](reference/labels.md) 参照。
+
+### ステップ 3: Discussion カテゴリ作成（手動）
+
+Discussion カテゴリの作成は GitHub API 未対応のため、GitHub UI で手動作成をガイドする。
+
+**ユーザーをガイド:**
+
+1. `https://github.com/{owner}/{repo}/settings` に移動（Discussions セクション）
+2. 以下の 4 カテゴリを作成:
+
+| カテゴリ | Emoji | Format | 用途 |
+|---------|-------|--------|------|
+| Handovers | 🔄 | Open-ended discussion | セッション間の引き継ぎ記録 |
+| ADR | 📋 | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 📚 | Open-ended discussion | 確認されたパターン・解決策 |
+| Research | 🔍 | Open-ended discussion | 調査が必要な事項 |
+
+**重要**: Format は必ず **Open-ended discussion** を選択する。Announcement や Poll ではない。
+
+### ステップ 4: Issue Types セットアップ
 
 GitHub Issue Types は組織レベルの設定（プロジェクトレベルではない）。GitHub UI で組織オーナーが設定。
 
@@ -112,23 +120,7 @@ GitHub Issue Types は組織レベルの設定（プロジェクトレベルで�
 
 詳細は [reference/issue-types.md](reference/issue-types.md) 参照。
 
-### ステップ 8: ラベルセットアップ（任意）
-
-デフォルトラベルを整理し、プロジェクト構造に合わせたエリアラベルを作成。
-
-1. **重複ラベルを削除**: Type フィールドと重複するもの（bug, enhancement, documentation）
-2. **該当しないラベルを削除**: good first issue, help wanted, question
-3. **エリアラベルを作成**: プロジェクトのモジュール構造に合わせて
-
-```bash
-gh label create "area:{module}" --color "{color}" --description "{description}"
-```
-
-**運用ラベルは保持**: `duplicate`, `invalid`, `wontfix`（ライフサイクル/トリアージ用）。
-
-詳細は [reference/labels.md](reference/labels.md) 参照。
-
-### ステップ 9: ビルトイン自動化の有効化
+### ステップ 5: ビルトイン自動化の有効化
 
 プロジェクトの推奨自動化を有効化。API では設定不可 — GitHub UI をガイド。
 
@@ -153,14 +145,24 @@ shirokuma-docs projects workflows
 
 **注意**: `session end --review` CLI コマンドとこれらの自動化は冪等に協調動作。両方有効でも競合しない。
 
-### ステップ 10: 結果報告
+### ステップ 6: セットアップ検証
 
-完了後に表示:
+全ステップの完了を検証:
 
-- プロジェクト名と URL
-- 設定された Status 一覧
-- 追加されたカスタムフィールド
-- ラベルサマリー（削除/作成件数）
+```bash
+shirokuma-docs session check --setup
+```
+
+**検証項目:**
+
+| 項目 | 内容 |
+|------|------|
+| Discussion カテゴリ | Handovers, ADR, Knowledge, Research の存在 |
+| Project | Project の存在 |
+| 必須フィールド | Status, Priority, Type, Size の存在 |
+| ワークフロー自動化 | Item closed → Done, PR merged → Done の有効状態 |
+
+未設定の項目がある場合、推奨設定（Description, Emoji, Format）が表示される。
 
 ## ステータスワークフロー
 
@@ -196,7 +198,7 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 ## 注意事項
 
 - **プロジェクト名規約**: プロジェクト名 = リポジトリ名（例: repo `shirokuma-docs` → project `shirokuma-docs`）。CLI の `getProjectId()` がリポジトリ名で検索するため
-- 10ステップのため `TodoWrite` で進捗管理
+- 6ステップのため `TodoWrite` で進捗管理
 - 既存プロジェクトがある場合は `AskUserQuestion` で上書き確認
 - 権限リフレッシュにはインタラクティブモードが必要（ユーザーが手動実行）
 - 言語は会話から自動検出（日本語または英語）
@@ -205,7 +207,9 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 
 ## 関連リソース
 
-- `shirokuma-docs projects setup` - CLI セットアップコマンド
+- `shirokuma-docs projects create-project` - プロジェクト一括作成コマンド
+- `shirokuma-docs projects setup` - フィールド設定コマンド（`create-project` が内部で使用）
+- `shirokuma-docs session check --setup` - セットアップ検証コマンド
 - [reference/status-options.md](reference/status-options.md) - ステータスワークフローと定義
 - [reference/custom-fields.md](reference/custom-fields.md) - カスタムフィールド定義
 - [reference/issue-types.md](reference/issue-types.md) - Issue Types セットアップとマイグレーションガイド

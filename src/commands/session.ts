@@ -59,6 +59,11 @@ import {
   printSetupCheckResults,
   type SetupCheckResult,
 } from "../utils/setup-check.js";
+import {
+  GRAPHQL_MUTATION_CREATE_DISCUSSION,
+  GRAPHQL_MUTATION_CLOSE_ISSUE,
+  getRepoId,
+} from "../utils/graphql-queries.js";
 
 // =============================================================================
 // Types
@@ -226,29 +231,6 @@ query($owner: String!, $name: String!, $categoryId: ID) {
 }
 `;
 
-/** Get repository ID for mutations */
-const GRAPHQL_QUERY_REPO_ID = `
-query($owner: String!, $name: String!) {
-  repository(owner: $owner, name: $name) {
-    id
-  }
-}
-`;
-
-/** Create a discussion */
-const GRAPHQL_MUTATION_CREATE_DISCUSSION = `
-mutation($repositoryId: ID!, $categoryId: ID!, $title: String!, $body: String!) {
-  createDiscussion(input: {repositoryId: $repositoryId, categoryId: $categoryId, title: $title, body: $body}) {
-    discussion {
-      id
-      number
-      url
-      title
-    }
-  }
-}
-`;
-
 // =============================================================================
 // GraphQL Queries - Issues with Projects
 // =============================================================================
@@ -346,23 +328,6 @@ function getHandoversCategoryId(
   const nodes = result.data?.data?.repository?.discussionCategories?.nodes ?? [];
   const category = nodes.find((n) => n?.name === categoryName);
   return category?.id ?? null;
-}
-
-// =============================================================================
-// Helper: Get repository GraphQL ID
-// =============================================================================
-
-function getRepoId(owner: string, repo: string): string | null {
-  interface QueryResult {
-    data?: { repository?: { id?: string } };
-  }
-
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_ID, {
-    owner,
-    name: repo,
-  });
-  if (!result.success) return null;
-  return result.data?.data?.repository?.id ?? null;
 }
 
 // =============================================================================
@@ -1513,14 +1478,6 @@ export function classifyMetricsInconsistencies(
 // =============================================================================
 // session check - Integrity check
 // =============================================================================
-
-const GRAPHQL_MUTATION_CLOSE_ISSUE = `
-mutation($issueId: ID!, $stateReason: IssueClosedStateReason) {
-  closeIssue(input: {issueId: $issueId, stateReason: $stateReason}) {
-    issue { id number state }
-  }
-}
-`;
 
 function closeIssueById(issueId: string): boolean {
   const result = runGraphQL(GRAPHQL_MUTATION_CLOSE_ISSUE, {

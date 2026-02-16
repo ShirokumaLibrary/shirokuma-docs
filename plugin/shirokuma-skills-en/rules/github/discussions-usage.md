@@ -11,12 +11,12 @@ Discussions store human-readable knowledge; Rules store AI-readable extracts.
 
 ## Categories
 
-| Category | When to Use |
-|----------|-------------|
-| Handovers | Session end - create via `/ending-session` |
-| ADR | Architecture decisions confirmed |
-| Knowledge | Patterns/solutions confirmed |
-| Research | Investigation needed |
+| Category | Emoji | Format | When to Use |
+|----------|-------|--------|-------------|
+| Handovers | 🔄 | Open-ended discussion | Session end - create via `/ending-session` |
+| ADR | 📋 | Open-ended discussion | Architecture decisions confirmed |
+| Knowledge | 📚 | Open-ended discussion | Patterns/solutions confirmed |
+| Research | 🔍 | Open-ended discussion | Investigation needed |
 
 ## Workflow
 

@@ -12,17 +12,7 @@ Next.js + TypeScript プロジェクト向けのドキュメント自動生成 C
 curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash
 ```
 
-言語を事前に指定する場合:
-
-```bash
-# 日本語
-curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash -s -- --lang ja
-
-# 英語
-curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash -s -- --lang en
-```
-
-`~/.local/` にインストールされます。Claude Code ユーザーは `~/.local/bin` が PATH に含まれているため追加設定不要です。
+`~/.local/` にインストールされます。Claude Code ユーザーは `~/.local/bin` が PATH に含まれているため追加設定不要です。インストーラが言語を対話的に確認します（`--lang ja` で事前指定も可）。
 
 ### npm / pnpm でグローバルインストール
 
@@ -38,7 +28,7 @@ pnpm add -g @shirokuma-library/shirokuma-docs
 
 ```bash
 shirokuma-docs --version
-# => 0.1.0-alpha.1
+# => 0.1.0-alpha.11
 ```
 
 ## はじめかた
@@ -82,12 +72,22 @@ schema:
 shirokuma-docs projects create-project --title "プロジェクト名" --lang ja
 ```
 
-以下は GitHub API の制限により手動設定が必要です:
+> **Note:** `--lang` はフィールドの説明文（description）のみ翻訳します。オプション名（Backlog, Critical 等）は CLI コマンド互換性のため常に英語です。
+
+Discussions と必須ラベル（feature, bug, chore, docs, research）はコマンド実行時に自動で作成されます。以下は GitHub API の制限により手動設定が必要です:
 
 | 項目 | 設定場所 |
 |------|---------|
-| Discussion カテゴリ（Handovers, ADR, Knowledge, Research） | リポジトリ Settings → Discussions |
+| Discussion カテゴリ（Handovers, ADR, Knowledge, Research） | リポジトリ Settings → Discussions（カテゴリの作成は API 未対応） |
 | Project ワークフロー（Item closed → Done, PR merged → Done） | Project Settings → Workflows |
+
+セットアップ後の検証:
+
+```bash
+shirokuma-docs session check --setup
+```
+
+Discussion カテゴリ、Project フィールド、ワークフロー自動化の設定状況を確認できます。
 
 <details>
 <summary>AI に委任する場合（コピペ用）</summary>
