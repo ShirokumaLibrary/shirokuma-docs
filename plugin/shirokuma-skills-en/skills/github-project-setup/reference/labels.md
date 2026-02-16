@@ -2,18 +2,19 @@
 
 ## Design Principle
 
-Labels and Type fields serve different purposes:
+Work type classification is primarily handled by **Issue Types** (Organization-level Type field). Labels indicate the **affected area** as a supplementary mechanism:
 
-| Mechanism | Role | Axis | Example |
-|-----------|------|------|---------|
-| Type (Project field) | **What** kind of work | Category | Bug, Feature, Chore |
-| Labels | **Where** the work applies | Cross-cutting attribute | area:cli, area:plugin |
+| Mechanism | Role | Example |
+|-----------|------|---------|
+| Issue Types | **What** kind of work | Feature, Bug, Chore, Docs, Research |
+| Area labels | **Where** the work applies | `area:cli`, `area:plugin` |
+| Operational labels | Triage / lifecycle | `duplicate`, `invalid`, `wontfix` |
 
-Labels should NOT duplicate Type. If a label maps 1:1 to a Type value, delete the label and use Type instead.
+Labels are not auto-created by `create-project`. Add them manually based on the project's structure.
 
 ## Recommended Label Taxonomy
 
-### Area Labels (required)
+### Area Labels (optional)
 
 Define areas based on the project's module structure. Prefix with `area:`.
 
@@ -34,17 +35,15 @@ Define areas based on the project's module structure. Prefix with `area:`.
 | `invalid` | `#e4e669` | This doesn't seem right |
 | `wontfix` | `#ffffff` | This will not be worked on |
 
-These serve a lifecycle/triage purpose that Type does not cover.
-
 ## Default Labels to Remove
 
-These GitHub default labels overlap with Type or are not applicable:
+These GitHub default labels overlap with Issue Types or are not applicable:
 
 | Label | Reason to Remove |
 |-------|-----------------|
-| `bug` | Redundant with Type: Bug |
-| `enhancement` | Redundant with Type: Feature |
-| `documentation` | Redundant with Type: Docs |
+| `bug` | Use Issue Types (Bug) instead |
+| `enhancement` | Use Issue Types (Feature) instead |
+| `documentation` | Use Issue Types (Docs) instead |
 | `good first issue` | Not applicable (private repo / AI-assisted) |
 | `help wanted` | Not applicable (private repo / AI-assisted) |
 | `question` | Use Discussions instead |
@@ -56,31 +55,9 @@ These GitHub default labels overlap with Type or are not applicable:
 3. **Operational labels are applied during triage** - `duplicate`, `invalid`, `wontfix` are set when closing or redirecting issues.
 4. **AI should suggest area labels** - When creating issues, suggest an area label if the scope is clear.
 
-## Setup
-
-**Note**: The commands below use `gh label` directly. If `shirokuma-docs` CLI is installed, use `shirokuma-docs repo labels --create` instead for consistency with other GitHub operations.
-
-### Delete Redundant Labels
-
-```bash
-# Remove labels that overlap with Type
-for label in bug enhancement documentation "good first issue" "help wanted" question; do
-  gh label delete "$label" --yes
-done
-```
-
-### Create Area Labels
-
-```bash
-gh label create "area:cli" --color "0e8a16" --description "Core CLI and commands"
-gh label create "area:plugin" --color "5319e7" --description "Plugin system (skills, rules, agents)"
-gh label create "area:github" --color "1d76db" --description "GitHub integration commands"
-gh label create "area:lint" --color "fbca04" --description "Lint and validation commands"
-```
-
 ## Notes
 
 - Labels are repository-level settings
 - Labels appear in issue lists, making them useful for quick visual filtering
 - The `gh label` commands work without special OAuth scopes (standard `repo` scope is sufficient)
-- When migrating from Type-duplicate labels, remove the labels from existing issues first, then delete the label definitions
+- Work type classification is primarily handled by Issue Types

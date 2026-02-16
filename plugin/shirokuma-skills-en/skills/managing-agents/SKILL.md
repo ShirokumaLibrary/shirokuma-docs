@@ -283,6 +283,19 @@ Task({
 | Medium | `--agents` CLI flag | Dynamic, session-only |
 | Lowest | `~/.claude/agents/` | Personal, not shared |
 
+## Completion Report
+
+```markdown
+## Agent {Created | Updated}
+
+**Name:** {agent-name}
+**Location:** `.claude/agents/{name}.md`
+**Model:** {model}
+**Tools:** {tools}
+```
+
+When run standalone, suggest next steps (testing methods, invocation phrase examples).
+
 ## Notes
 
 - AGENT.md must be under 500 lines; references one level deep only

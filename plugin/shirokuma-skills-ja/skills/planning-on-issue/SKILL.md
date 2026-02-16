@@ -199,12 +199,7 @@ NEEDS_REVISION が返された場合:
 計画の判断根拠を**一次記録**としてコメントに投稿する。本文の要約ではなく、コメントでしか残らない判断プロセスを記録する。
 
 ```bash
-# Write ツールでファイル作成後
-shirokuma-docs issues comment {number} --body /tmp/comment.md
-```
-
-コメントファイルの内容:
-```markdown
+shirokuma-docs issues comment {number} --body - <<'EOF'
 ## 計画の判断根拠
 
 ### 選定アプローチ
@@ -215,6 +210,7 @@ shirokuma-docs issues comment {number} --body /tmp/comment.md
 
 ### 調査で判明した制約
 {コードベース調査で発見した技術的制約や依存関係。なければ省略}
+EOF
 ```
 
 **テンプレートの意図**: コメントが「なぜこのアプローチを選んだか」の記録になる。本文の計画セクションは「何をするか」を構造化して記載するため、コメントと本文で役割が分かれる。

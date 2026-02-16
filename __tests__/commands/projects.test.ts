@@ -237,7 +237,6 @@ describe("projects command options", () => {
         body: "Please implement this feature",
         fieldStatus: "Backlog",
         priority: "High",
-        type: "Feature",
         size: "M",
       };
 
@@ -245,7 +244,6 @@ describe("projects command options", () => {
       expect(options.body).toBe("Please implement this feature");
       expect(options.fieldStatus).toBe("Backlog");
       expect(options.priority).toBe("High");
-      expect(options.type).toBe("Feature");
       expect(options.size).toBe("M");
     });
 
@@ -253,7 +251,6 @@ describe("projects command options", () => {
       const options = {
         fieldStatus: "Done",
         priority: "Low",
-        type: "Bug",
         size: "S",
         body: "Updated body content",
       };
@@ -277,14 +274,12 @@ describe("projects command options", () => {
       const options = {
         fieldStatus: "Backlog",
         priority: "Medium",
-        type: "Feature",
         size: "L",
         owner: "custom-owner",
       };
 
       expect(options.fieldStatus).toBe("Backlog");
       expect(options.priority).toBe("Medium");
-      expect(options.type).toBe("Feature");
       expect(options.size).toBe("L");
     });
 
@@ -499,18 +494,6 @@ describe("projects Project fields", () => {
     });
 
     /**
-     * @testdoc Typeフィールドの有効値
-     * @purpose 一般的なType値を文書化
-     */
-    it("should document common Type field values", () => {
-      const commonTypes = ["Feature", "Bug", "Chore", "Docs", "Research"];
-
-      commonTypes.forEach((type) => {
-        expect(typeof type).toBe("string");
-      });
-    });
-
-    /**
      * @testdoc Sizeフィールドの有効値
      * @purpose 一般的なSize値を文書化
      */
@@ -565,7 +548,6 @@ describe("projects output format", () => {
             title: "Item Title",
             status: "In Progress",
             priority: "High",
-            type: "Feature",
             size: "M",
             issue_number: 42, // null for draft issues
           },
@@ -597,10 +579,8 @@ describe("projects output format", () => {
         status_option_id: "opt-1",
         priority: "High",
         priority_option_id: "opt-2",
-        type: "Feature",
-        type_option_id: "opt-3",
         size: "M",
-        size_option_id: "opt-4",
+        size_option_id: "opt-3",
         issue_number: 42, // null for draft issues
         issue_url: "https://github.com/owner/repo/issues/42",
         draft_issue_id: null, // set for draft issues
@@ -629,8 +609,6 @@ describe("projects output format", () => {
         status_option_id: "opt-1",
         priority: null,
         priority_option_id: null,
-        type: null,
-        type_option_id: null,
         size: null,
         size_option_id: null,
         issue_number: null, // null for draft issues
@@ -675,15 +653,6 @@ describe("projects output format", () => {
             Low: "opt-4",
           },
         },
-        Type: {
-          id: "PVTSSF_zzz",
-          name: "Type",
-          options: {
-            Feature: "opt-1",
-            Bug: "opt-2",
-            Chore: "opt-3",
-          },
-        },
         Size: {
           id: "PVTSSF_aaa",
           name: "Size",
@@ -701,7 +670,6 @@ describe("projects output format", () => {
       expect(expectedOutput.Status.id).toBeDefined();
       expect(expectedOutput.Status.options).toBeDefined();
       expect(expectedOutput.Priority).toBeDefined();
-      expect(expectedOutput.Type).toBeDefined();
       expect(expectedOutput.Size).toBeDefined();
     });
   });
@@ -718,7 +686,6 @@ describe("projects output format", () => {
         body: "Description",
         status: "Backlog",
         priority: "High",
-        type: "Feature",
         size: "M",
         issue_number: null, // always null for created draft issues
         draft_issue_id: "DI_xxx",
@@ -781,7 +748,6 @@ describe("projects output format", () => {
         title: "Issue Title",
         status: "Backlog",
         priority: "High",
-        type: "Feature",
         size: "M",
         issue_number: 42,
         issue_url: "https://github.com/owner/repo/issues/42",
@@ -1004,14 +970,18 @@ describe("projects create-project subcommand", () => {
         repository: "owner/repo",
         setup: "completed",
         next_steps: [
+          "Add Issue Types: https://github.com/organizations/owner/settings/issue-types",
+          "  - Chore, Docs, Research (in addition to Feature / Bug / Task)",
           "Enable recommended workflows: Project → Settings → Workflows",
           "  - Item closed → Done",
           "  - Pull request merged → Done",
           "Create Discussion categories: https://github.com/owner/repo/settings (Discussions section)",
-          "  - Handovers (🔄, Open-ended discussion)",
-          "  - ADR (📋, Open-ended discussion)",
-          "  - Knowledge (📚, Open-ended discussion)",
-          "  - Research (🔍, Open-ended discussion)",
+          "  - Handovers (🤝, Open-ended discussion)",
+          "  - ADR (📐, Open-ended discussion)",
+          "  - Knowledge (💡, Open-ended discussion)",
+          "  - Research (🔬, Open-ended discussion)",
+          'Rename default View "View 1" in GitHub UI (API not supported):',
+          '  - TABLE → "Board", BOARD → "Kanban", ROADMAP → "Roadmap"',
         ],
       };
 
@@ -1019,7 +989,7 @@ describe("projects create-project subcommand", () => {
       expect(expectedOutput.project_url).toContain("/projects/");
       expect(expectedOutput.project_id).toBeDefined();
       expect(expectedOutput.setup).toBe("completed");
-      expect(expectedOutput.next_steps).toHaveLength(8);
+      expect(expectedOutput.next_steps).toHaveLength(12);
     });
 
     /**
@@ -1035,14 +1005,18 @@ describe("projects create-project subcommand", () => {
         repository: "owner/repo",
         setup: "failed",
         next_steps: [
+          "Add Issue Types: https://github.com/organizations/owner/settings/issue-types",
+          "  - Chore, Docs, Research (in addition to Feature / Bug / Task)",
           "Enable recommended workflows: Project → Settings → Workflows",
           "  - Item closed → Done",
           "  - Pull request merged → Done",
           "Create Discussion categories: https://github.com/owner/repo/settings (Discussions section)",
-          "  - Handovers (🔄, Open-ended discussion)",
-          "  - ADR (📋, Open-ended discussion)",
-          "  - Knowledge (📚, Open-ended discussion)",
-          "  - Research (🔍, Open-ended discussion)",
+          "  - Handovers (🤝, Open-ended discussion)",
+          "  - ADR (📐, Open-ended discussion)",
+          "  - Knowledge (💡, Open-ended discussion)",
+          "  - Research (🔬, Open-ended discussion)",
+          'Rename default View "View 1" in GitHub UI (API not supported):',
+          '  - TABLE → "Board", BOARD → "Kanban", ROADMAP → "Roadmap"',
         ],
       };
 
@@ -1101,148 +1075,23 @@ describe("projects create-project subcommand", () => {
   describe("create-project workflow", () => {
     /**
      * @testdoc 実行ステップの順序
-     * @purpose 5段階のワークフローを文書化
+     * @purpose 4段階のワークフローを文書化
      */
-    it("should document the 5-step workflow", () => {
+    it("should document the 4-step workflow", () => {
       const steps = [
         { step: 1, action: "gh project create", description: "Create GitHub Project" },
         { step: 2, action: "gh project link", description: "Link project to repository" },
         { step: 3, action: "gh api PATCH", description: "Enable Discussions for repository" },
-        { step: 4, action: "projects setup", description: "Set up fields (Status, Priority, Type, Size)" },
-        { step: 5, action: "createLabel", description: "Create required labels (feature, bug, chore, docs, research)" },
+        { step: 4, action: "projects setup", description: "Set up fields (Status, Priority, Size)" },
       ];
 
-      expect(steps).toHaveLength(5);
+      expect(steps).toHaveLength(4);
       steps.forEach((s, i) => {
         expect(s.step).toBe(i + 1);
       });
     });
   });
 
-  describe("create-project label creation", () => {
-    /**
-     * @testdoc 必須ラベル定義の検証
-     * @purpose 5種のラベルが正しく定義されていることを確認
-     */
-    it("should define 5 required labels with name, color, and description", () => {
-      const requiredLabels = [
-        { name: "feature", color: "0E8A16", description: "New feature or enhancement" },
-        { name: "bug", color: "d73a4a", description: "Something isn't working" },
-        { name: "chore", color: "f9d0c4", description: "Maintenance and housekeeping" },
-        { name: "docs", color: "0075ca", description: "Documentation improvements" },
-        { name: "research", color: "5319e7", description: "Research and investigation" },
-      ];
-
-      expect(requiredLabels).toHaveLength(5);
-      requiredLabels.forEach((label) => {
-        expect(label.name).toBeTruthy();
-        expect(label.color).toMatch(/^[0-9a-fA-F]{6}$/);
-        expect(label.description).toBeTruthy();
-      });
-    });
-
-    // create-project ステップ 5 のラベル作成ロジックをテスト用に再現
-    // 実装（projects.ts L1516-1539）と同じ判定ロジック
-    type LabelGhResult =
-      | { success: true; data: { data?: { createLabel?: { label?: { id?: string; name?: string } } | null } } }
-      | { success: false; error: string };
-
-    function processLabelResult(result: LabelGhResult): { created: boolean; warned: boolean } {
-      if (result.success && result.data?.data?.createLabel?.label?.id) {
-        return { created: true, warned: false };
-      }
-      const errorMsg = !result.success ? result.error : "";
-      if (errorMsg.includes("already exist")) {
-        return { created: false, warned: false };
-      }
-      return { created: false, warned: true };
-    }
-
-    /**
-     * @testdoc ラベル作成成功時のカウンタ動作
-     * @purpose 成功レスポンスで created が true になること
-     */
-    it("should count created labels on success response", () => {
-      const result = processLabelResult({
-        success: true,
-        data: { data: { createLabel: { label: { id: "LA_123", name: "feature" } } } },
-      });
-
-      expect(result.created).toBe(true);
-      expect(result.warned).toBe(false);
-    });
-
-    /**
-     * @testdoc "already exists" エラーのスキップ処理
-     * @purpose 既存ラベルの場合はスキップし警告を出さないこと
-     */
-    it("should skip labels that already exist without warning", () => {
-      const result = processLabelResult({
-        success: false,
-        error: 'GraphQL error: Name already exists: Label "feature" already exists in this repository',
-      });
-
-      expect(result.created).toBe(false);
-      expect(result.warned).toBe(false);
-    });
-
-    /**
-     * @testdoc 真のエラー時の警告処理
-     * @purpose "already exists" 以外のエラーは警告付きでスキップすること
-     */
-    it("should warn on non-already-exists errors", () => {
-      const result = processLabelResult({
-        success: false,
-        error: "GraphQL error: Insufficient permissions",
-      });
-
-      expect(result.created).toBe(false);
-      expect(result.warned).toBe(true);
-    });
-
-    /**
-     * @testdoc GraphQL 成功だがラベル ID なしの場合
-     * @purpose success: true でも label.id がない場合は warned として処理
-     */
-    it("should handle success response without label id as unknown error", () => {
-      const result = processLabelResult({
-        success: true,
-        data: { data: { createLabel: null } },
-      });
-
-      expect(result.created).toBe(false);
-      expect(result.warned).toBe(true);
-    });
-
-    /**
-     * @testdoc 混合結果のカウンタ検証
-     * @purpose 複数ラベル処理で成功・スキップ・エラーが混在した場合のカウンタ
-     */
-    it("should correctly count mixed results across multiple labels", () => {
-      const results: LabelGhResult[] = [
-        { success: true, data: { data: { createLabel: { label: { id: "LA_1", name: "feature" } } } } },
-        { success: false, error: 'Name already exists: Label "bug" already exists' },
-        { success: true, data: { data: { createLabel: { label: { id: "LA_3", name: "chore" } } } } },
-        { success: false, error: "Insufficient permissions" },
-        { success: true, data: { data: { createLabel: { label: { id: "LA_5", name: "research" } } } } },
-      ];
-
-      let created = 0;
-      let skipped = 0;
-
-      for (const r of results) {
-        const res = processLabelResult(r);
-        if (res.created) {
-          created++;
-        } else {
-          skipped++;
-        }
-      }
-
-      expect(created).toBe(3);
-      expect(skipped).toBe(2);
-    });
-  });
 });
 
 describe("projects GraphQL queries", () => {
@@ -1266,7 +1115,6 @@ describe("projects GraphQL queries", () => {
         { name: "GRAPHQL_MUTATION_UPDATE_BODY", purpose: "Update draft issue body" },
         { name: "GRAPHQL_MUTATION_UPDATE_ISSUE", purpose: "Update linked issue body" },
         { name: "GRAPHQL_QUERY_ISSUE_BY_NUMBER", purpose: "Get issue by number for add-issue" },
-        { name: "GRAPHQL_MUTATION_CREATE_LABEL", purpose: "Create required label for repository" },
         { name: "GRAPHQL_MUTATION_CREATE_FIELD", purpose: "Create project field (setup)" },
         { name: "GRAPHQL_QUERY_WORKFLOWS", purpose: "List project workflows" },
         // 共通モジュールから import
@@ -1280,7 +1128,7 @@ describe("projects GraphQL queries", () => {
         expect(op.purpose).toBeDefined();
       });
 
-      expect(operations).toHaveLength(14);
+      expect(operations).toHaveLength(13);
     });
   });
 });

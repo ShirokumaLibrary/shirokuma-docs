@@ -214,7 +214,7 @@ mkdir -p .claude/rules
 
 | カテゴリ | アイコン | 形式 | 用途 |
 |---------|--------|------|------|
-| Handovers | 🔄 | Announcement | セッション継続性 |
+| Handovers | 🤝 | Announcement | セッション継続性 |
 | ADR | 📐 | Announcement | 設計決定 |
 | Knowledge | 💡 | Announcement | 確認済みパターン |
 | Research | 🔬 | Open-ended | 調査 |

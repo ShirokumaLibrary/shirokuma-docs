@@ -215,7 +215,7 @@ When setting up a new project, configure Discussions categories for knowledge ma
 
 | Category | Icon | Format | Purpose |
 |----------|------|--------|---------|
-| Handovers | 🔄 | Announcement | Session continuity |
+| Handovers | 🤝 | Announcement | Session continuity |
 | ADR | 📐 | Announcement | Design decisions |
 | Knowledge | 💡 | Announcement | Confirmed patterns |
 | Research | 🔬 | Open-ended | Investigations |

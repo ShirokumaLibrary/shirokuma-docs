@@ -57,7 +57,7 @@ describe("setup-check types (#345, #527)", () => {
       expect(item.url).toContain("discussions/categories");
       expect(item.recommended).toBeDefined();
       expect(item.recommended!.description).toContain("調査");
-      expect(item.recommended!.emoji).toBe("🔍");
+      expect(item.recommended!.emoji).toBe("🔬");
       expect(item.recommended!.format).toBe("Open-ended discussion");
     });
 
@@ -103,13 +103,13 @@ describe("setup-check types (#345, #527)", () => {
     it("should document project field check item structure", () => {
       const item: SetupCheckItem = {
         category: "project",
-        name: "Type",
+        name: "Priority",
         ok: false,
-        hint: 'Create "Type" field: Project → Settings → Custom fields → New field (Single Select). Or run /github-project-setup skill for automated setup.',
+        hint: 'Create "Priority" field: Project → Settings → Custom fields → New field (Single Select). Or run /github-project-setup skill for automated setup.',
       };
 
       expect(item.category).toBe("project");
-      expect(item.name).toBe("Type");
+      expect(item.name).toBe("Priority");
       expect(item.ok).toBe(false);
       expect(item.hint).toContain("/github-project-setup");
     });
@@ -153,22 +153,21 @@ describe("setup-check types (#345, #527)", () => {
           { category: "project", name: "Project", ok: true },
           { category: "project", name: "Status", ok: true },
           { category: "project", name: "Priority", ok: true },
-          { category: "project", name: "Type", ok: true },
           { category: "project", name: "Size", ok: false, hint: 'Create "Size" field: Project → Settings → Custom fields → New field (Single Select). Or run /github-project-setup skill for automated setup.' },
           { category: "workflows", name: "Item closed", ok: true },
           { category: "workflows", name: "Pull request merged", ok: false },
         ],
         summary: {
-          total: 11,
-          ok: 8,
+          total: 10,
+          ok: 7,
           missing: 3,
         },
       };
 
       expect(result.repository).toBe("owner/repo");
-      expect(result.items).toHaveLength(11);
-      expect(result.summary.total).toBe(11);
-      expect(result.summary.ok).toBe(8);
+      expect(result.items).toHaveLength(10);
+      expect(result.summary.total).toBe(10);
+      expect(result.summary.ok).toBe(7);
       expect(result.summary.missing).toBe(3);
 
       // Discussion アイテムには recommended が付与される
@@ -314,12 +313,12 @@ describe("setup-check types (#345, #527)", () => {
     it("should document RecommendedCategorySetting structure", () => {
       const setting: RecommendedCategorySetting = {
         description: "Test description",
-        emoji: "🔍",
+        emoji: "🔬",
         format: "Open-ended discussion",
       };
 
       expect(setting.description).toBe("Test description");
-      expect(setting.emoji).toBe("🔍");
+      expect(setting.emoji).toBe("🔬");
       expect(setting.format).toBe("Open-ended discussion");
     });
   });
@@ -330,12 +329,11 @@ describe("setup-check types (#345, #527)", () => {
      * @purpose チェック対象フィールドを文書化
      */
     it("should check these project fields", () => {
-      const requiredFields = ["Status", "Priority", "Type", "Size"];
+      const requiredFields = ["Status", "Priority", "Size"];
 
-      expect(requiredFields).toHaveLength(4);
+      expect(requiredFields).toHaveLength(3);
       expect(requiredFields).toContain("Status");
       expect(requiredFields).toContain("Priority");
-      expect(requiredFields).toContain("Type");
       expect(requiredFields).toContain("Size");
     });
   });

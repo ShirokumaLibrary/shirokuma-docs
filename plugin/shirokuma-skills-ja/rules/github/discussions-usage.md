@@ -13,10 +13,10 @@ Discussions は人間向けの知識を蓄積し、Rules は AI 向けの抽出�
 
 | カテゴリ | Emoji | Format | 用途 |
 |---------|-------|--------|------|
-| Handovers | 🔄 | Open-ended discussion | セッション終了時 - `/ending-session` で作成 |
-| ADR | 📋 | Open-ended discussion | 確定したアーキテクチャ決定 |
-| Knowledge | 📚 | Open-ended discussion | 確認されたパターン・解決策 |
-| Research | 🔍 | Open-ended discussion | 調査が必要な事項 |
+| Handovers | 🤝 | Open-ended discussion | セッション終了時 - `/ending-session` で作成 |
+| ADR | 📐 | Open-ended discussion | 確定したアーキテクチャ決定 |
+| Knowledge | 💡 | Open-ended discussion | 確認されたパターン・解決策 |
+| Research | 🔬 | Open-ended discussion | 調査が必要な事項 |
 
 ## ワークフロー
 

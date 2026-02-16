@@ -1,7 +1,7 @@
 /**
  * workflow-issue-fields rule
  *
- * Checks open issues for missing Project fields (Priority, Type, Size).
+ * Checks open issues for missing Project fields (Priority, Size).
  * Uses shirokuma-docs issues list output (JSON with project fields).
  */
 
@@ -16,7 +16,7 @@ export interface TableJsonResponse {
   rows: Array<Array<string | number | string[] | null>>;
 }
 
-const REQUIRED_FIELDS = ["priority", "type", "size"] as const;
+const REQUIRED_FIELDS = ["priority", "size"] as const;
 
 /**
  * Pure validation: check issue data for missing fields.

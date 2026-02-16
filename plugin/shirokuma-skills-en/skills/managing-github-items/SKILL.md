@@ -45,6 +45,6 @@ Create Issues / Discussions and manage spec Discussions.
 
 ## Notes
 
-- Always set required fields (Status, Priority, Type) on new items
+- Always set required fields (Status, Priority) on new items
 - XL items should prompt user to consider splitting
 - Prefix spec titles with "[Spec]" for filtering

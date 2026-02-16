@@ -113,9 +113,9 @@ Total: 4 active items
 
 ```markdown
 ## Ready Items (2)
-| # | Title | Priority | Type | Size |
-|---|-------|----------|------|------|
-| #10 | Feature A | High | Feature | M |
+| # | Title | Priority | Size |
+|---|-------|----------|------|
+| #10 | Feature A | High | M |
 ```
 
 ---

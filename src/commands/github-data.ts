@@ -25,7 +25,6 @@ interface GithubIssue {
   labels: string[];
   status: string | null;
   priority: string | null;
-  type: string | null;
   size: string | null;
   createdAt: string;
   updatedAt: string;
@@ -238,7 +237,6 @@ function parseIssueNode(issue: GraphQLIssueNode): GithubIssue {
     labels: issue.labels?.nodes?.map((l) => l.name) || [],
     status: getFieldValue("Status"),
     priority: getFieldValue("Priority"),
-    type: getFieldValue("Type"),
     size: getFieldValue("Size"),
     createdAt: issue.createdAt,
     updatedAt: issue.updatedAt,

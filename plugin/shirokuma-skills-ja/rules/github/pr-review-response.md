@@ -9,7 +9,12 @@
 
 1. コードを修正
 2. コミットしてプッシュ
-3. コミットを参照して返信: `shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body /tmp/reply.md`
+3. コミットを参照して返信:
+   ```bash
+   shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body - <<'EOF'
+   返信内容
+   EOF
+   ```
 4. 解決: `shirokuma-docs issues resolve <PR#> --thread-id <PRRT_id>`
 
 ### 質問またはディスカッション

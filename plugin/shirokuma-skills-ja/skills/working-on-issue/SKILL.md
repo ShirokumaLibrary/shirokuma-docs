@@ -56,7 +56,7 @@ Issue の種類やタスク説明に基づいて、適切なスキルに作業�
 
 ### ステップ 1: 作業の分析
 
-**Issue 番号あり**: `shirokuma-docs issues show {number}` で取得し、title/body/type/status/priority/size を抽出。
+**Issue 番号あり**: `shirokuma-docs issues show {number}` で取得し、title/body/labels/status/priority/size を抽出。
 
 #### 計画済み判定（Issue 番号ありの場合）
 
@@ -109,7 +109,7 @@ git checkout develop && git pull origin develop
 git checkout -b {type}/{number}-{slug}
 ```
 
-ブランチタイプ: Feature→`feat`, Bug→`fix`, Chore/Research→`chore`, Docs→`docs`
+ブランチタイプ: ラベル / Issue コンテキストから判断（feature→`feat`, bug→`fix`, chore/research→`chore`, docs→`docs`）
 
 ### ステップ 3b: ADR 提案（Feature M+ のみ）
 
@@ -138,6 +138,7 @@ Feature タイプでサイズ M 以上の場合、ADR 作成を提案（AskUserQ
 | リファクタリング / Chore | Work → Commit → PR → Review |
 | 調査 | Research → Discussion |
 
+- **マージはチェーンに含まない**。マージはユーザーの明示的な指示（「マージして」等）でのみ実行する。チェーン完了後に自動マージしてはならない
 - ステップ間で確認しない、進捗を1行で報告
 - **セルフレビューループ**: PR 作成後に `reviewing-on-issue` を実行。`creating-pr-on-issue` のセルフレビューチェーン（ステップ 6）として実行される
   - FAIL + Auto-fixable → 自動修正 → コミット・プッシュ（PR自動更新）→ 再レビュー
@@ -161,7 +162,7 @@ Feature タイプでサイズ M 以上の場合、ADR 作成を提案（AskUserQ
 ```markdown
 ## 作業対象: #{number} {title}
 
-**タイプ:** {type} → **スキル:** {skill-name}
+**ラベル:** {label} → **スキル:** {skill-name}
 **ブランチ:** {branch-name}
 **優先度:** {priority}
 ```
@@ -203,6 +204,7 @@ Feature タイプでサイズ M 以上の場合、ADR 作成を提案（AskUserQ
 - このスキルは作業の**プライマリエントリーポイント**
 - 作業開始前に Issue ステータスを更新
 - 正しいフィーチャーブランチを確保
-- ワークフローは常に順次実行（Commit → PR → Review）
+- ワークフローは常に順次実行（Commit → PR → Review）。**マージは含まない**
+- チェーン完了後、マージはユーザーの明示的な指示を待つ（自動マージ禁止）
 - チェーン実行はエラー発生時に停止し、ユーザーに制御を返す
 - 直接作業（リファクタリング/Chore）ではスキル委任不要

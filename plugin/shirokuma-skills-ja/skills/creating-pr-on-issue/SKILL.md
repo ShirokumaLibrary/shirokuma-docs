@@ -68,7 +68,7 @@ shirokuma-docs issues update {number} --field-status "Review"
 
 Issue 番号なしの場合はこのステップをスキップ（`ending-session` のセーフティネットでカバー）。
 
-### ステップ 5: 確認表示
+### ステップ 5: 完了レポート
 
 PR URL、ブランチ、コミット数、概要、リンクされた Issue を表示。
 

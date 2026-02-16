@@ -263,12 +263,6 @@ query($owner: String!, $name: String!, $first: Int!, $cursor: String, $states: [
             priority: fieldValueByName(name: "Priority") {
               ... on ProjectV2ItemFieldSingleSelectValue { name }
             }
-            type: fieldValueByName(name: "Type") {
-              ... on ProjectV2ItemFieldSingleSelectValue { name }
-            }
-            itemType: fieldValueByName(name: "Item Type") {
-              ... on ProjectV2ItemFieldSingleSelectValue { name }
-            }
             size: fieldValueByName(name: "Size") {
               ... on ProjectV2ItemFieldSingleSelectValue { name }
             }
@@ -472,7 +466,6 @@ export interface IssueData {
   assignees: string[];
   status: string | null;
   priority: string | null;
-  type: string | null;
   size: string | null;
   projectItemId: string | null;
   projectId: string | null;
@@ -498,8 +491,6 @@ function fetchActiveIssues(
         project?: { id?: string; title?: string };
         status?: { name?: string };
         priority?: { name?: string };
-        type?: { name?: string };
-        itemType?: { name?: string };
         size?: { name?: string };
       }>;
     };
@@ -565,7 +556,6 @@ function fetchActiveIssues(
         assignees: issueAssignees,
         status: matchingItem?.status?.name ?? null,
         priority: matchingItem?.priority?.name ?? null,
-        type: matchingItem?.type?.name ?? matchingItem?.itemType?.name ?? null,
         size: matchingItem?.size?.name ?? null,
         projectItemId: matchingItem?.id ?? null,
         projectId: matchingItem?.project?.id ?? null,
@@ -914,7 +904,7 @@ async function cmdStart(
   }
 
   // 6. Build output (TableJSON for lists, plain object for single items)
-  const issueColumns = ["number", "title", "status", "priority", "type", "size", "assignees", "labels"];
+  const issueColumns = ["number", "title", "status", "priority", "size", "assignees", "labels"];
   const prColumns = ["number", "title", "review_decision", "review_thread_count", "review_count"];
 
   const output = {
@@ -945,7 +935,6 @@ async function cmdStart(
         title: i.title,
         status: i.status,
         priority: i.priority,
-        type: i.type,
         size: i.size,
         assignees: i.assignees,
         labels: i.labels,
@@ -1034,7 +1023,7 @@ async function cmdStartTeam(
   const openPRs = fetchOpenPRs(owner, repo);
 
   // 5. Build team dashboard output
-  const issueColumns = ["number", "title", "status", "priority", "type", "size"];
+  const issueColumns = ["number", "title", "status", "priority", "size"];
 
   const memberDashboards: Record<string, {
     handover: { number: number; title: string; body: string; url: string } | null;
@@ -1070,7 +1059,6 @@ async function cmdStartTeam(
           title: i.title,
           status: i.status,
           priority: i.priority,
-          type: i.type,
           size: i.size,
         })),
         issueColumns

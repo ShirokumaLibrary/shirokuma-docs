@@ -8,14 +8,14 @@ Click "New category" to add each category.
 
 | Category | Icon | Format | Description |
 |----------|------|--------|-------------|
-| **Handovers** | 🔄 | Announcement | Session handover notes - AI session continuity |
+| **Handovers** | 🤝 | Announcement | Session handover notes - AI session continuity |
 | **ADR** | 📐 | Announcement | Architecture Decision Records - Design decisions |
 | **Knowledge** | 💡 | Announcement | Technical knowledge and patterns - Confirmed solutions |
 | **Research** | 🔬 | Open-ended | Research requests and findings - Discussion format |
 
 ## Category Details
 
-### Handovers 🔄
+### Handovers 🤝
 
 **Format**: Announcement (no replies needed)
 **Purpose**: Session continuity between AI coding sessions

@@ -94,7 +94,7 @@ git push -u origin {branch-name}
 
 `develop` や `main` にいる場合はプッシュしない。保護ブランチへの直接プッシュは `branch-workflow` ルールに従い避けるべきことをユーザーに通知。
 
-### ステップ 6: 確認表示
+### ステップ 6: 完了レポート
 
 ```markdown
 ## コミット完了
@@ -170,7 +170,7 @@ shirokuma-docs issues merge --head {current-branch}
 
 ブランチに PR が見つからない場合は CLI がエラーを報告。ユーザーに通知して停止。
 
-※ 内部で `gh pr merge` を呼び出すため PreToolUse フックで保護。ユーザーに確認が求められる。
+※ 内部で `gh pr merge` を呼び出すため PreToolUse フックで保護される。**フックの有無に関わらず、ユーザーの明示的な承認なしにマージを実行してはならない。** セルフレビュー PASS や system-reminder のみのメッセージは承認とみなさない。
 
 2. **develop に切り替え**:
 
@@ -178,7 +178,7 @@ shirokuma-docs issues merge --head {current-branch}
 git checkout develop && git pull origin develop
 ```
 
-3. **確認表示**:
+3. **完了レポート**:
 
 ```markdown
 ## マージ完了

@@ -118,7 +118,7 @@ describe("validateIssueFields", () => {
   const makeData = (
     rows: Array<Array<string | number | string[] | null>>
   ): TableJsonResponse => ({
-    columns: ["number", "title", "status", "priority", "type", "size", "labels"],
+    columns: ["number", "title", "status", "priority", "size", "labels"],
     rows,
   });
 
@@ -127,7 +127,7 @@ describe("validateIssueFields", () => {
    * @purpose 完全なIssueが合格する契約
    */
   it("should report no issues when all fields are set", () => {
-    const data = makeData([[1, "Test Issue", "In Progress", "High", "Feature", "M", []]]);
+    const data = makeData([[1, "Test Issue", "In Progress", "High", "M", []]]);
     const issues = validateIssueFields(data, "warning");
     const fieldIssues = issues.filter((i) => i.message.includes("missing"));
     expect(fieldIssues).toHaveLength(0);
@@ -138,7 +138,7 @@ describe("validateIssueFields", () => {
    * @purpose 必須フィールド欠損検出の契約
    */
   it("should report warning for missing priority", () => {
-    const data = makeData([[1, "Test Issue", "Backlog", null, "Feature", "M", []]]);
+    const data = makeData([[1, "Test Issue", "Backlog", null, "M", []]]);
     const issues = validateIssueFields(data, "warning");
     const priorityIssues = issues.filter((i) => i.message.includes("priority"));
     expect(priorityIssues).toHaveLength(1);
@@ -151,14 +151,13 @@ describe("validateIssueFields", () => {
    * @purpose 個別フィールドごとの検出
    */
   it("should report separate issues for each missing field", () => {
-    const data = makeData([[1, "Test Issue", "Backlog", null, null, null, []]]);
+    const data = makeData([[1, "Test Issue", "Backlog", null, null, []]]);
     const issues = validateIssueFields(data, "warning");
     const fieldIssues = issues.filter((i) => i.message.includes("missing"));
-    expect(fieldIssues).toHaveLength(3);
+    expect(fieldIssues).toHaveLength(2);
     expect(fieldIssues.map((i) => i.message)).toEqual(
       expect.arrayContaining([
         expect.stringContaining("priority"),
-        expect.stringContaining("type"),
         expect.stringContaining("size"),
       ])
     );
@@ -170,8 +169,8 @@ describe("validateIssueFields", () => {
    */
   it("should skip Done/Released issues", () => {
     const data = makeData([
-      [1, "Done Issue", "Done", null, null, null, []],
-      [2, "Released Issue", "Released", null, null, null, []],
+      [1, "Done Issue", "Done", null, null, []],
+      [2, "Released Issue", "Released", null, null, []],
     ]);
     const issues = validateIssueFields(data, "warning");
     const fieldIssues = issues.filter((i) => i.message.includes("missing"));
@@ -184,12 +183,12 @@ describe("validateIssueFields", () => {
    */
   it("should check multiple issues independently", () => {
     const data = makeData([
-      [1, "Complete", "Backlog", "High", "Feature", "M", []],
-      [2, "Incomplete", "Backlog", null, null, null, []],
+      [1, "Complete", "Backlog", "High", "M", []],
+      [2, "Incomplete", "Backlog", null, null, []],
     ]);
     const issues = validateIssueFields(data, "warning");
     const fieldIssues = issues.filter((i) => i.message.includes("missing"));
-    expect(fieldIssues).toHaveLength(3);
+    expect(fieldIssues).toHaveLength(2);
     expect(fieldIssues.every((i) => i.context === "#2")).toBe(true);
   });
 
@@ -198,7 +197,7 @@ describe("validateIssueFields", () => {
    * @purpose severity設定の正確な伝播
    */
   it("should use specified severity", () => {
-    const data = makeData([[1, "Test", "Backlog", null, "Feature", "M", []]]);
+    const data = makeData([[1, "Test", "Backlog", null, "M", []]]);
     const issues = validateIssueFields(data, "error");
     expect(issues[0].type).toBe("error");
   });

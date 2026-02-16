@@ -32,13 +32,11 @@ export interface ProjectField {
 // =============================================================================
 // Field Name Fallbacks
 // =============================================================================
-// GitHub Projects V2 reserves certain field names (e.g., "Type").
-// Users must create them with alternative names (e.g., "Item Type").
+// GitHub Projects V2 reserves certain field names.
+// Users must create them with alternative names.
 // This mapping provides fallback names for field resolution.
 
-export const FIELD_FALLBACKS: Record<string, string[]> = {
-  Type: ["Item Type", "ItemType"],
-};
+export const FIELD_FALLBACKS: Record<string, string[]> = {};
 
 /**
  * Resolve a field name against project fields, trying fallbacks if needed.

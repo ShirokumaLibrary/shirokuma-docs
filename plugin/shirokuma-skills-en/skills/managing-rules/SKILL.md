@@ -353,6 +353,18 @@ ln -s ~/company-standards/security.md .claude/rules/security.md
 | [path-rule.md.template](templates/path-rule.md.template) | Path-specific rule |
 | [tech-stack.md.template](templates/tech-stack.md.template) | Project tech stack reference |
 
+## Completion Report
+
+```markdown
+## Rule {Created | Updated}
+
+**File:** `.claude/rules/{name}.md`
+**Type:** {path-specific | always loaded}
+**Paths:** {paths frontmatter value | "None (applies to all files)"}
+```
+
+When run standalone, suggest next steps (verification commands, testing methods).
+
 ## Notes
 
 - Rules are loaded **automatically** - no invocation needed

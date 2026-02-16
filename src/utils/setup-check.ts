@@ -3,7 +3,7 @@
  *
  * Checks whether manual GitHub configuration steps have been completed:
  * - Discussion categories (Handovers, ADR, Knowledge, Research) with recommended settings
- * - Project existence and required fields (Status, Priority, Type, Size)
+ * - Project existence and required fields (Status, Priority, Size)
  * - Project workflow automations (Item closed → Done, PR merged → Done)
  * - Metrics text fields (if metrics enabled)
  */
@@ -57,7 +57,7 @@ export interface SetupCheckResult {
 const REQUIRED_DISCUSSION_CATEGORIES = ["Handovers", "ADR", "Knowledge", "Research"];
 
 /** 必須 Project フィールド */
-const REQUIRED_PROJECT_FIELDS = ["Status", "Priority", "Type", "Size"];
+const REQUIRED_PROJECT_FIELDS = ["Status", "Priority", "Size"];
 
 /**
  * 各 Discussion カテゴリの推奨設定
@@ -66,22 +66,22 @@ const REQUIRED_PROJECT_FIELDS = ["Status", "Priority", "Type", "Size"];
 export const RECOMMENDED_CATEGORY_SETTINGS: Record<string, RecommendedCategorySetting> = {
   Handovers: {
     description: "セッション間の引き継ぎ記録",
-    emoji: "🔄",
+    emoji: "🤝",
     format: "Open-ended discussion",
   },
   ADR: {
     description: "Architecture Decision Records — 設計判断の記録",
-    emoji: "📋",
+    emoji: "📐",
     format: "Open-ended discussion",
   },
   Knowledge: {
     description: "確認されたパターン・解決策の蓄積",
-    emoji: "📚",
+    emoji: "💡",
     format: "Open-ended discussion",
   },
   Research: {
     description: "調査が必要な事項の記録と追跡",
-    emoji: "🔍",
+    emoji: "🔬",
     format: "Open-ended discussion",
   },
 };

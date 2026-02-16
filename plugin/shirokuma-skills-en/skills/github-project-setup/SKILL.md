@@ -1,6 +1,6 @@
 ---
 name: github-project-setup
-description: Automates GitHub Project initial setup with Status, Priority, Type, and Size fields. Use when "project setup", "initial setup", "set up project", "GitHub Project setup", or starting a new project with kanban workflow.
+description: Automates GitHub Project initial setup with Status, Priority, and Size fields. Use when "project setup", "initial setup", "set up project", "GitHub Project setup", or starting a new project with kanban workflow.
 allowed-tools: Bash, Read, Glob
 ---
 
@@ -18,7 +18,7 @@ Performs GitHub Project initial setup. Runs `create-project` command for automat
 
 | Layer | Responsibility | Details |
 |-------|---------------|---------|
-| `create-project` command | Batch-execute all API-automatable operations | Project creation, repository link, Discussions enablement, field setup, label creation |
+| `create-project` command | Batch-execute all API-automatable operations | Project creation, repository link, Discussions enablement, field setup |
 | This skill | Command execution + manual setup guidance + verification | Running `create-project`, Discussion category creation guidance, workflow enablement guidance, verification |
 
 ## Workflow
@@ -50,8 +50,7 @@ shirokuma-docs projects create-project --title "{project-name}" --lang={en|ja}
 | Project creation | Creates a GitHub Projects V2 |
 | Repository link | Makes project accessible from Projects tab |
 | Discussions enablement | Enables Discussions on the repository |
-| Field setup | Configures all options for Status, Priority, Type, Size |
-| Label creation | Creates 5 required labels (feature, bug, chore, docs, research) |
+| Field setup | Configures all options for Status, Priority, Size |
 
 **Fields created:**
 
@@ -59,24 +58,28 @@ shirokuma-docs projects create-project --title "{project-name}" --lang={en|ja}
 |-------|---------|
 | Status | Icebox → Backlog → Spec Review → Ready → In Progress ⇄ Pending → Review → Testing → Done / Not Planned → Released |
 | Priority | Critical / High / Medium / Low |
-| Type | Feature / Bug / Chore / Docs / Research |
 | Size | XS / S / M / L / XL |
 
 > **Note:** `--lang` only translates field descriptions. Option names (Backlog, Critical, etc.) remain in English for CLI command compatibility.
 
-**Label verification (optional):**
+### Step 3: Configure Issue Types (Manual)
 
-After command completion, optionally clean up labels:
+Add custom Issue Types to the Organization. In addition to the defaults (Feature / Bug / Task):
 
-1. **Verify required labels**: Run `shirokuma-docs repo labels list` to confirm all 5 exist
-2. **Clean up redundant labels** (optional): Delete labels that duplicate the Type field (enhancement, documentation) or are inapplicable (good first issue, help wanted, question)
-3. **Create area labels** (optional): Add `area:` prefixed labels matching the project's module structure
+| Type | Purpose |
+|------|---------|
+| Chore | Config, tooling, refactoring |
+| Docs | Documentation |
+| Research | Investigation and research |
 
-**Keep operational labels**: `duplicate`, `invalid`, `wontfix` (lifecycle/triage purpose).
+**Guide the user:**
 
-See [reference/labels.md](reference/labels.md) for full taxonomy.
+1. Navigate to `https://github.com/organizations/{org}/settings/issue-types`
+2. Click "Create new type" for each of the 3 types above
 
-### Step 3: Create Discussion Categories (Manual)
+Once added, they become available in the Projects V2 Type field automatically.
+
+### Step 4: Create Discussion Categories (Manual)
 
 Discussion category creation is not supported by the GitHub API. Guide the user to create them manually in the GitHub UI.
 
@@ -87,14 +90,14 @@ Discussion category creation is not supported by the GitHub API. Guide the user 
 
 | Category | Emoji | Format | Purpose |
 |----------|-------|--------|---------|
-| Handovers | 🔄 | Open-ended discussion | Session handover records |
-| ADR | 📋 | Open-ended discussion | Architecture Decision Records |
-| Knowledge | 📚 | Open-ended discussion | Confirmed patterns and solutions |
-| Research | 🔍 | Open-ended discussion | Items requiring investigation |
+| Handovers | 🤝 | Open-ended discussion | Session handover records |
+| ADR | 📐 | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 💡 | Open-ended discussion | Confirmed patterns and solutions |
+| Research | 🔬 | Open-ended discussion | Items requiring investigation |
 
 **Important**: Format must be **Open-ended discussion**, not Announcement or Poll.
 
-### Step 4: Enable Built-in Automations
+### Step 5: Enable Built-in Automations
 
 Enable recommended automations for the project. These cannot be set via API — guide the user to the GitHub UI.
 
@@ -119,7 +122,25 @@ shirokuma-docs projects workflows
 
 **Note**: The `session end --review` CLI command and these automations are designed to work together (idempotent). No conflict arises from having both enabled.
 
-### Step 5: Verify Setup
+### Step 6: Rename Views (Manual)
+
+The GitHub Projects V2 GraphQL API does not support View mutations. Guide the user to rename views manually in the GitHub UI.
+
+**Recommended View names:**
+
+| Layout | Recommended Name | Purpose |
+|--------|-----------------|---------|
+| TABLE | Board | All items list (default) |
+| BOARD | Kanban | Grouped by Status |
+| ROADMAP | Roadmap | Timeline view |
+
+**Guide the user:**
+
+1. Open the Project page
+2. Double-click the "View 1" tab (or use dropdown → Rename)
+3. Rename to the recommended name above
+
+### Step 7: Verify Setup
 
 Verify all steps are complete:
 
@@ -133,7 +154,7 @@ shirokuma-docs session check --setup
 |------|---------|
 | Discussion categories | Existence of Handovers, ADR, Knowledge, Research |
 | Project | Project existence |
-| Required fields | Existence of Status, Priority, Type, Size |
+| Required fields | Existence of Status, Priority, Size |
 | Workflow automations | Item closed → Done, PR merged → Done enabled |
 
 If any items are missing, recommended settings (Description, Emoji, Format) are displayed.
@@ -172,7 +193,7 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 ## Notes
 
 - **Project name convention**: Project name = repository name (e.g., repo `shirokuma-docs` → project `shirokuma-docs`). This matches the CLI's `getProjectId()` lookup which searches by repository name.
-- Use `TodoWrite` for progress tracking (5 steps)
+- Use `TodoWrite` for progress tracking (7 steps)
 - Use `AskUserQuestion` to confirm overwrite when an existing project is found
 - Permission refresh requires interactive mode (user must run manually)
 - Language auto-detected from conversation (Japanese or English)

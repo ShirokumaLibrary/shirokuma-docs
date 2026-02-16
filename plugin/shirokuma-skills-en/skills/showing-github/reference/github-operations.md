@@ -7,8 +7,8 @@ Shared reference for all session/GitHub skills. Single source of truth for CLI c
 | Component | Purpose |
 |-----------|---------|
 | **Issues** | Task management, `#123` references, history |
-| **Projects** | Status/Priority/Type/Size field management |
-| **Labels** | Type identification only (`feature`, `bug`, `chore`) |
+| **Projects** | Status/Priority/Size field management |
+| **Labels** | Supplementary area classification (`area:cli`, `area:plugin`, etc.) |
 | **Discussions** | Handovers, Specs, Decisions, Q&A |
 
 **Status is managed via Projects fields** (not Labels).
@@ -47,9 +47,11 @@ shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
   --title "Title" --body /tmp/body.md \
   --labels feature \
-  --field-status "Backlog" --priority "Medium" --type "Feature" --size "M"
+  --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
-shirokuma-docs issues comment {number} --body /tmp/comment.md
+shirokuma-docs issues comment {number} --body - <<'EOF'
+Comment content
+EOF
 shirokuma-docs issues comments {number}                 # List comments
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
@@ -63,7 +65,9 @@ shirokuma-docs issues pr-list --state merged --limit 5     # Filtering
 shirokuma-docs issues pr-show {number}                      # PR details (body, diff stats, linked issues)
 shirokuma-docs issues pr-comments {number}                  # Review comments and threads
 shirokuma-docs issues merge {number} --squash               # Merge + status update
-shirokuma-docs issues pr-reply {number} --reply-to {id} --body /tmp/reply.md  # Reply to review comment
+shirokuma-docs issues pr-reply {number} --reply-to {id} --body - <<'EOF'
+Reply content
+EOF
 shirokuma-docs issues resolve {number} --thread-id {id}    # Resolve thread
 ```
 
@@ -122,6 +126,15 @@ gh auth login
 gh auth status
 ```
 
+## `--body` Usage Guide
+
+| Tier | Pattern | Usage |
+|------|---------|-------|
+| Tier 1 (stdin) | `--body - <<'EOF'...EOF` | Comments, replies, short reasons |
+| Tier 2 (file) | Write → `--body /tmp/xxx.md` | Issue/Discussion body, handovers |
+
+Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion).
+
 ## Status Workflow
 
 ```mermaid
@@ -146,17 +159,15 @@ graph LR
 
 ## Labels Convention
 
-Labels are used for **Type identification only** (Status is via Projects fields):
+Work type classification is primarily handled by **Issue Types** (Organization-level Type field). Labels indicate the **affected area** as a supplementary mechanism:
 
-| Label | Purpose |
-|-------|---------|
-| `feature` | New functionality |
-| `bug` | Bug fix |
-| `chore` | Maintenance |
-| `docs` | Documentation |
-| `research` | Investigation |
+| Mechanism | Role | Example |
+|-----------|------|---------|
+| Issue Types | **What** kind of work | Feature, Bug, Chore, Docs, Research |
+| Area labels | **Where** the work applies | `area:cli`, `area:plugin` |
+| Operational labels | Triage / lifecycle | `duplicate`, `invalid`, `wontfix` |
 
-Optional priority labels: `priority:critical`, `priority:high`
+Labels are added manually based on project structure. Status is managed via Projects fields.
 
 ## Common Error Handling
 

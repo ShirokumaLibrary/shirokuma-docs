@@ -199,12 +199,7 @@ Follow the comment-first workflow (see `project-items` rule, "Workflow Order" se
 Post the planning decision rationale as a **primary record** in a comment. Record the decision process that would only exist in comments, not a summary of the body.
 
 ```bash
-# Write tool でファイル作成後
-shirokuma-docs issues comment {number} --body /tmp/comment.md
-```
-
-Comment file content:
-```markdown
+shirokuma-docs issues comment {number} --body - <<'EOF'
 ## Plan Decision Rationale
 
 ### Selected Approach
@@ -215,6 +210,7 @@ Comment file content:
 
 ### Constraints Discovered
 {Technical constraints or dependencies found during codebase investigation. Omit if none}
+EOF
 ```
 
 **Template intent**: The comment records "why this approach was chosen". The body's plan section documents "what will be done" in a structured format, so comments and body serve distinct roles.

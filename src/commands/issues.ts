@@ -15,7 +15,7 @@
  *
  * Key design:
  * - Issues provide: #number references, comments, PR links
- * - Projects provide: Status/Priority/Type/Size field management
+ * - Projects provide: Status/Priority/Size field management
  * - This command unifies both for a seamless experience
  */
 
@@ -105,7 +105,6 @@ export interface IssuesOptions {
   // Fields for create/update
   fieldStatus?: string;
   priority?: string;
-  type?: string;
   size?: string;
   title?: string;
   body?: string;
@@ -143,7 +142,6 @@ interface IssueWithProjects {
   projectItemId?: string;
   status?: string;
   priority?: string;
-  type?: string;
   size?: string;
 }
 
@@ -176,12 +174,6 @@ query($owner: String!, $name: String!, $first: Int!, $cursor: String) {
               ... on ProjectV2ItemFieldSingleSelectValue { name }
             }
             priority: fieldValueByName(name: "Priority") {
-              ... on ProjectV2ItemFieldSingleSelectValue { name }
-            }
-            type: fieldValueByName(name: "Type") {
-              ... on ProjectV2ItemFieldSingleSelectValue { name }
-            }
-            itemType: fieldValueByName(name: "Item Type") {
               ... on ProjectV2ItemFieldSingleSelectValue { name }
             }
             size: fieldValueByName(name: "Size") {
@@ -217,12 +209,6 @@ query($owner: String!, $name: String!, $number: Int!) {
             ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
           }
           priority: fieldValueByName(name: "Priority") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
-          }
-          type: fieldValueByName(name: "Type") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
-          }
-          itemType: fieldValueByName(name: "Item Type") {
             ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
           }
           size: fieldValueByName(name: "Size") {
@@ -579,8 +565,6 @@ async function cmdList(
         project?: { title?: string };
         status?: { name?: string };
         priority?: { name?: string };
-        type?: { name?: string };
-        itemType?: { name?: string };
         size?: { name?: string };
       }>;
     };
@@ -656,7 +640,6 @@ async function cmdList(
         projectItemId: matchingItem?.id,
         status: matchingItem?.status?.name,
         priority: matchingItem?.priority?.name,
-        type: matchingItem?.type?.name ?? matchingItem?.itemType?.name,
         size: matchingItem?.size?.name,
       };
 
@@ -686,7 +669,6 @@ async function cmdList(
       labels: i.labels,
       status: i.status,
       priority: i.priority,
-      type: i.type,
       size: i.size,
       project_item_id: i.projectItemId,
     })),
@@ -735,8 +717,6 @@ async function cmdGet(
         project?: { id?: string; title?: string };
         status?: { name?: string; optionId?: string };
         priority?: { name?: string; optionId?: string };
-        type?: { name?: string; optionId?: string };
-        itemType?: { name?: string; optionId?: string };
         size?: { name?: string; optionId?: string };
       }>;
     };
@@ -765,9 +745,6 @@ async function cmdGet(
   const projectItems = node.projectItems?.nodes ?? [];
   const matchingItem = projectItems.find((p) => p?.project?.title === projectName);
 
-  // Merge "Type" and "Item Type" fields (GitHub reserves "Type" name)
-  const typeField = matchingItem?.type ?? matchingItem?.itemType;
-
   const output = {
     number: node.number,
     title: node.title,
@@ -784,8 +761,6 @@ async function cmdGet(
     status_option_id: matchingItem?.status?.optionId,
     priority: matchingItem?.priority?.name,
     priority_option_id: matchingItem?.priority?.optionId,
-    type: typeField?.name,
-    type_option_id: typeField?.optionId,
     size: matchingItem?.size?.name,
     size_option_id: matchingItem?.size?.optionId,
   };
@@ -896,7 +871,6 @@ async function cmdCreate(
       const fields: Record<string, string> = {};
       if (createStatusValue) fields["Status"] = createStatusValue;
       if (options.priority) fields["Priority"] = options.priority;
-      if (options.type) fields["Type"] = options.type;
       if (options.size) fields["Size"] = options.size;
 
       if (Object.keys(fields).length > 0) {
@@ -910,7 +884,6 @@ async function cmdCreate(
   // Warn about missing fields (field completeness check)
   const missingFields: string[] = [];
   if (!options.priority) missingFields.push("Priority");
-  if (!options.type) missingFields.push("Type");
   if (!options.size) missingFields.push("Size");
   if (missingFields.length > 0) {
     logger.warn(
@@ -1067,7 +1040,6 @@ async function cmdUpdate(
   const fields: Record<string, string> = {};
   if (statusValue) fields["Status"] = statusValue;
   if (options.priority) fields["Priority"] = options.priority;
-  if (options.type) fields["Type"] = options.type;
   if (options.size) fields["Size"] = options.size;
 
   if (Object.keys(fields).length > 0) {
@@ -1721,7 +1693,6 @@ async function cmdImport(
       const fields: Record<string, string> = {};
       if (importStatusValue) fields["Status"] = importStatusValue;
       if (options.priority) fields["Priority"] = options.priority;
-      if (options.type) fields["Type"] = options.type;
       if (options.size) fields["Size"] = options.size;
       if (Object.keys(fields).length > 0) {
         setItemFields(projectId, itemId, fields, logger);

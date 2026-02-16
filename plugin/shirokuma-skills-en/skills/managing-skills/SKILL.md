@@ -355,29 +355,18 @@ One term per concept throughout.
 | Ignores content | Add TOC, improve structure |
 | Conflicts with other skills | Use distinct terminology |
 
-## Output Format
+## Completion Report
 
 ```markdown
-## Generating Skill: [name]
+## Skill {Created | Updated}
 
-- Name: skill-name
-- Description: [description]
-- Location: [path]
-- Size: ~[X] lines
-
-## Structure
-
-- `SKILL.md` (required)
-- `reference.md` (optional)
-- `examples.md` (optional)
-
-## Next Steps
-
-1. Review and confirm
-2. Create files
-3. Restart Claude Code
-4. Test with trigger phrases
+**Name:** {skill-name}
+**Description:** {description}
+**Location:** {path}
+**Size:** ~{X} lines
 ```
+
+When run standalone, suggest next steps (review, testing methods).
 
 ## Scripts
 

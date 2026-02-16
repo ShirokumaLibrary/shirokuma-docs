@@ -20,7 +20,7 @@
 {type}/{issue-number}-{slug}
 ```
 
-- **type**: Issue の Type から決定（Feature→`feat`, Bug→`fix`, Chore/Research→`chore`, Docs→`docs`）
+- **type**: ラベル / Issue コンテキストから判断（feature→`feat`, bug→`fix`, chore/research→`chore`, docs→`docs`）
 - **slug**: Issue タイトルから生成、小文字ケバブケース、最大40文字、英語のみ
 
 ## 日常ワークフロー

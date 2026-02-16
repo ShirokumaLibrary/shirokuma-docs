@@ -378,6 +378,19 @@ See [examples.md](examples.md#comprehensive-plugin) for complete example combini
 - Rename skill/command in one plugin
 - Check plugin descriptions for overlaps
 
+## Completion Report
+
+```markdown
+## Plugin {Created | Updated}
+
+**Name:** {plugin-name}
+**Version:** {version}
+**Location:** {path}
+**Components:** {Skills: N, Agents: N, Commands: N}
+```
+
+When run standalone, suggest next steps (testing procedure, distribution method).
+
 ## Notes
 
 - Plugin names must be lowercase with hyphens only

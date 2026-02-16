@@ -6,8 +6,8 @@
 |-----------|------|-----------|
 | Status | はい | 下記ワークフロー参照 |
 | Priority | はい | Critical / High / Medium / Low |
-| Type | はい | Feature / Bug / Chore / Docs / Research |
 | Size | 推奨 | XS / S / M / L / XL |
+| Type | はい | Organization Issue Types で管理（手動セットアップ） |
 
 ## ステータスワークフロー
 
@@ -76,7 +76,12 @@ CLI と冪等に協調動作。確認: `shirokuma-docs projects workflows`
 
 ## ラベル
 
-Type を補完し、**どこ**に影響するかを示す。`area:` プレフィックス使用。Type と重複するラベルは作成しない。
+ラベルは**どこ**に影響するかを示す横断的属性。作業種別は Issue Types（Type フィールド）で分類する。
+
+| ラベル種別 | 役割 | 例 |
+|-----------|------|-----|
+| エリアラベル | 影響範囲 | `area:cli`, `area:plugin` |
+| 運用ラベル | トリアージ | `duplicate`, `invalid`, `wontfix` |
 
 ## アイテム本文メンテナンス（Issues / Discussions / PRs 共通）
 

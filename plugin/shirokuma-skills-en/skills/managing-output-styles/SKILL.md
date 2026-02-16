@@ -214,6 +214,29 @@ description: Brief description
 ---
 ```
 
+## Completion Report
+
+### Style Switch
+
+```markdown
+## Style Switch Complete
+
+**Style:** {style-name}
+**Scope:** {user-level | project-level}
+```
+
+### Style Creation
+
+```markdown
+## Style Created
+
+**Name:** {style-name}
+**Location:** {path}
+**Description:** {description}
+```
+
+When run standalone, suggest next steps (activation command, testing method).
+
 ## Notes
 
 - Settings stored in `.claude/settings.local.json` (project-level)

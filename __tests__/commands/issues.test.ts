@@ -238,7 +238,6 @@ describe("issues command options", () => {
         body: "Please implement this",
         fieldStatus: "Backlog",
         priority: "High",
-        type: "Feature",
         size: "M",
         labels: ["enhancement"],
       };
@@ -247,7 +246,6 @@ describe("issues command options", () => {
       expect(options.body).toBe("Please implement this");
       expect(options.fieldStatus).toBe("Backlog");
       expect(options.priority).toBe("High");
-      expect(options.type).toBe("Feature");
       expect(options.size).toBe("M");
     });
 
@@ -257,7 +255,6 @@ describe("issues command options", () => {
         body: "Updated body",
         fieldStatus: "Done",
         priority: "Low",
-        type: "Bug",
         size: "S",
       };
 
@@ -854,18 +851,6 @@ describe("issues Project integration", () => {
     });
 
     /**
-     * @testdoc Typeフィールドの有効値
-     * @purpose 一般的なType値を文書化
-     */
-    it("should document common Type field values", () => {
-      const commonTypes = ["Feature", "Bug", "Chore", "Docs", "Research"];
-
-      commonTypes.forEach((type) => {
-        expect(typeof type).toBe("string");
-      });
-    });
-
-    /**
      * @testdoc Sizeフィールドの有効値
      * @purpose 一般的なSize値を文書化
      */
@@ -914,7 +899,6 @@ describe("issues output format", () => {
             labels: ["bug"],
             status: "In Progress",
             priority: "High",
-            type: "Bug",
             size: "M",
             project_item_id: "item-id",
           },
@@ -951,10 +935,8 @@ describe("issues output format", () => {
         status_option_id: "opt-1",
         priority: "High",
         priority_option_id: "opt-2",
-        type: "Feature",
-        type_option_id: "opt-3",
         size: "M",
-        size_option_id: "opt-4",
+        size_option_id: "opt-3",
       };
 
       expect(expectedOutput.number).toBe(42);

@@ -8,8 +8,8 @@ Every project item MUST have:
 |-------|----------|---------|
 | Status | Yes | See workflow below |
 | Priority | Yes | Critical / High / Medium / Low |
-| Type | Yes | Feature / Bug / Chore / Docs / Research |
 | Size | Recommended | XS / S / M / L / XL |
+| Type | Yes | Organization Issue Types (manual setup) |
 
 ## Status Workflow
 
@@ -164,19 +164,18 @@ Reports all workflows with their enabled/disabled status and recommendations.
 
 ## Labels
 
-Labels complement Type by indicating **where** work applies, not **what** kind of work it is.
+Labels indicate **where** work applies (cross-cutting attribute). Work type classification uses Issue Types (Type field).
 
-| Mechanism | Role | Example |
-|-----------|------|---------|
-| Type | Work category | Bug, Feature, Chore |
-| Labels | Cross-cutting attribute | area:cli, area:plugin |
+| Label type | Role | Example |
+|------------|------|---------|
+| Area labels | Scope of impact | `area:cli`, `area:plugin` |
+| Operational labels | Triage | `duplicate`, `invalid`, `wontfix` |
 
 ### Label Rules
 
-1. **Labels do NOT duplicate Type** - Never create labels that mirror Type values (e.g., no `bug` label when Type: Bug exists)
-2. **Area labels are optional** - Use when the affected area is not obvious from the title
-3. **Multiple area labels allowed** - Cross-cutting issues may have multiple areas
-4. **Operational labels for triage** - `duplicate`, `invalid`, `wontfix` are set when closing or redirecting
+1. **Area labels are optional** - Use when the affected area is not obvious from the title
+2. **Multiple area labels allowed** - Cross-cutting issues may have multiple areas
+3. **Operational labels for triage** - `duplicate`, `invalid`, `wontfix` are set when closing or redirecting
 
 ### Label Categories
 

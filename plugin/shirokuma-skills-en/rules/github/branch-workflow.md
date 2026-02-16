@@ -96,7 +96,7 @@ git pull origin develop
 git checkout -b {type}/{issue-number}-{slug}
 ```
 
-- Determine `{type}` from issue's Type field (Feature->feat, Bug->fix, Chore->chore, Docs->docs)
+- Determine `{type}` from issue's labels or context (feature->feat, bug->fix, chore->chore, docs->docs)
 - Generate `{slug}` from issue title
 
 ### 2. Development (During Session)

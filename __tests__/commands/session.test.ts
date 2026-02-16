@@ -61,7 +61,6 @@ function makeIssue(overrides: {
     assignees: overrides.assignees ?? [],
     status: overrides.status,
     priority: null,
-    type: null,
     size: null,
     projectItemId: `PVTI_${overrides.number}`,
     projectId: "PVT_1",
@@ -129,9 +128,9 @@ describe("session start - output structure", () => {
    */
   it("should output issues in TableJSON format with columns and rows", () => {
     const issues = {
-      columns: ["number", "title", "status", "priority", "type", "size", "labels"],
+      columns: ["number", "title", "status", "priority", "size", "labels"],
       rows: [
-        [27, "Feature request", "In Progress", "High", "Feature", "M", ["enhancement"]],
+        [27, "Feature request", "In Progress", "High", "M", ["enhancement"]],
       ],
     };
 
@@ -141,7 +140,6 @@ describe("session start - output structure", () => {
     expect(issues.columns).toContain("title");
     expect(issues.columns).toContain("status");
     expect(issues.columns).toContain("priority");
-    expect(issues.columns).toContain("type");
     expect(issues.columns).toContain("size");
     expect(issues.columns).toContain("labels");
   });
@@ -151,7 +149,7 @@ describe("session start - output structure", () => {
    * @purpose url（number+repoから復元可能）とstate（statusと重複）の除外契約
    */
   it("should not include url or state in issues columns", () => {
-    const columns = ["number", "title", "status", "priority", "type", "size", "labels"];
+    const columns = ["number", "title", "status", "priority", "size", "labels"];
 
     expect(columns).not.toContain("url");
     expect(columns).not.toContain("state");
@@ -1154,8 +1152,8 @@ describe("session start --team - output structure", () => {
         url: "https://github.com/owner/repo/discussions/30",
       },
       issues: {
-        columns: ["number", "title", "status", "priority", "type", "size"],
-        rows: [[1, "Feature A", "In Progress", "High", "Feature", "M"]],
+        columns: ["number", "title", "status", "priority", "size"],
+        rows: [[1, "Feature A", "In Progress", "High", "M"]],
       },
       issue_count: 1,
     };
@@ -1609,7 +1607,6 @@ describe("session check - metrics inconsistency classification (#342)", () => {
       assignees: [],
       status: "Done",
       priority: null,
-      type: null,
       size: null,
       projectItemId: null,
       projectId: null,

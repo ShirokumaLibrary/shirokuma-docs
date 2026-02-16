@@ -2,18 +2,19 @@
 
 ## 設計原則
 
-ラベルと Type フィールドは異なる目的を持つ:
+作業種別の分類は **Issue Types**（Organization レベルの Type フィールド）が主な手段。ラベルは作業の**影響範囲**を示す補助的な仕組み:
 
-| 仕組み | 役割 | 軸 | 例 |
-|--------|------|-----|-----|
-| Type（Project フィールド） | 作業の**種類** | カテゴリ | Bug, Feature, Chore |
-| Labels | 作業の**影響範囲** | 横断的属性 | area:cli, area:plugin |
+| 仕組み | 役割 | 例 |
+|--------|------|-----|
+| Issue Types | 作業の**種類** | Feature, Bug, Chore, Docs, Research |
+| エリアラベル | 作業の**影響範囲** | `area:cli`, `area:plugin` |
+| 運用ラベル | トリアージ・ライフサイクル | `duplicate`, `invalid`, `wontfix` |
 
-ラベルは Type と重複させないこと。ラベルが Type 値と1:1対応する場合、ラベルを削除して Type を使用する。
+ラベルは `create-project` コマンドでは自動作成されない。プロジェクトの構造に合わせて手動で追加する。
 
 ## 推奨ラベル分類
 
-### エリアラベル（必須）
+### エリアラベル（任意）
 
 プロジェクトのモジュール構造に基づいてエリアを定義。`area:` プレフィックスを使用。
 
@@ -34,17 +35,15 @@
 | `invalid` | `#e4e669` | 正しくないと思われる |
 | `wontfix` | `#ffffff` | 対応しない |
 
-これらはライフサイクル・トリアージ目的であり、Type ではカバーできない。
+## 不要なデフォルトラベルの削除
 
-## 削除すべきデフォルトラベル
-
-以下の GitHub デフォルトラベルは Type と重複するか、適用外:
+以下の GitHub デフォルトラベルは Issue Types と重複するか、適用外:
 
 | ラベル | 削除理由 |
 |-------|---------|
-| `bug` | Type: Bug と重複 |
-| `enhancement` | Type: Feature と重複 |
-| `documentation` | Type: Docs と重複 |
+| `bug` | Issue Types (Bug) を使用 |
+| `enhancement` | Issue Types (Feature) を使用 |
+| `documentation` | Issue Types (Docs) を使用 |
 | `good first issue` | 非該当（プライベートリポ / AI 支援） |
 | `help wanted` | 非該当（プライベートリポ / AI 支援） |
 | `question` | Discussions を使用 |
@@ -56,30 +55,9 @@
 3. **運用ラベルはトリアージ時に適用** - `duplicate`, `invalid`, `wontfix` はクローズやリダイレクト時に設定
 4. **AI はエリアラベルを提案すべき** - Issue 作成時、スコープが明確ならエリアラベルを提案
 
-## セットアップ
-
-**注意**: 以下のコマンドは `gh label` を直接使用。`shirokuma-docs` CLI がインストール済みの場合は `shirokuma-docs repo labels --create` を使用して他の GitHub 操作との一貫性を保つ。
-
-### 重複ラベルの削除
-
-```bash
-for label in bug enhancement documentation "good first issue" "help wanted" question; do
-  gh label delete "$label" --yes
-done
-```
-
-### エリアラベルの作成
-
-```bash
-gh label create "area:cli" --color "0e8a16" --description "Core CLI and commands"
-gh label create "area:plugin" --color "5319e7" --description "Plugin system (skills, rules, agents)"
-gh label create "area:github" --color "1d76db" --description "GitHub integration commands"
-gh label create "area:lint" --color "fbca04" --description "Lint and validation commands"
-```
-
 ## 注意事項
 
 - ラベルはリポジトリレベルの設定
 - ラベルは Issue 一覧に表示され、視覚的なフィルタリングに有用
 - `gh label` コマンドは特別な OAuth スコープ不要（標準の `repo` スコープで十分）
-- Type 重複ラベルから移行する場合、ラベル定義を削除する前に既存 Issue からラベルを外す
+- 作業種別の分類は Issue Types が主な手段

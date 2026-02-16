@@ -85,7 +85,9 @@ When updating skills, replace local log references:
 Review results targeting a PR should be posted directly as PR comments.
 
 ```bash
-shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md
+shirokuma-docs issues comment {PR#} --body - <<'EOF'
+Review summary content
+EOF
 ```
 
 | Condition | Destination |

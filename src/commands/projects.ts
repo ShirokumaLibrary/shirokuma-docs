@@ -47,8 +47,6 @@ import {
 } from "../utils/project-fields.js";
 import {
   GRAPHQL_MUTATION_DELETE_ITEM,
-  GRAPHQL_MUTATION_CREATE_LABEL,
-  getRepoId,
 } from "../utils/graphql-queries.js";
 
 /** Default statuses to exclude when listing (typically completed items) */
@@ -69,7 +67,6 @@ export interface ProjectsOptions {
   // Field options for create/update
   fieldStatus?: string;
   priority?: string;
-  type?: string;
   size?: string;
   title?: string;
   body?: string;
@@ -89,8 +86,6 @@ interface ProjectItem {
   statusOptionId?: string | null;
   priority: string | null;
   priorityOptionId?: string | null;
-  type: string | null;
-  typeOptionId?: string | null;
   size: string | null;
   sizeOptionId?: string | null;
   issueNumber: number | null;
@@ -154,9 +149,6 @@ query($projectId: ID!, $cursor: String) {
           priority: fieldValueByName(name: "Priority") {
             ... on ProjectV2ItemFieldSingleSelectValue { name }
           }
-          type: fieldValueByName(name: "Type") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name }
-          }
           size: fieldValueByName(name: "Size") {
             ... on ProjectV2ItemFieldSingleSelectValue { name }
           }
@@ -180,9 +172,6 @@ query($itemId: ID!) {
         ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
       }
       priority: fieldValueByName(name: "Priority") {
-        ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
-      }
-      type: fieldValueByName(name: "Type") {
         ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
       }
       size: fieldValueByName(name: "Size") {
@@ -279,7 +268,6 @@ function fetchAllItems(
     id?: string;
     status?: { name?: string };
     priority?: { name?: string };
-    type?: { name?: string };
     size?: { name?: string };
     content?: { title?: string; number?: number };
   }
@@ -321,7 +309,6 @@ function fetchAllItems(
         title: item.content?.title ?? null,
         status: item.status?.name ?? null,
         priority: item.priority?.name ?? null,
-        type: item.type?.name ?? null,
         size: item.size?.name ?? null,
         issueNumber: item.content?.number ?? null,
       });
@@ -343,7 +330,6 @@ function fetchItem(itemId: string): ProjectItem | null {
     id?: string;
     status?: { name?: string; optionId?: string };
     priority?: { name?: string; optionId?: string };
-    type?: { name?: string; optionId?: string };
     size?: { name?: string; optionId?: string };
     content?: {
       id?: string;
@@ -376,8 +362,6 @@ function fetchItem(itemId: string): ProjectItem | null {
     statusOptionId: node.status?.optionId ?? null,
     priority: node.priority?.name ?? null,
     priorityOptionId: node.priority?.optionId ?? null,
-    type: node.type?.name ?? null,
-    typeOptionId: node.type?.optionId ?? null,
     size: node.size?.name ?? null,
     sizeOptionId: node.size?.optionId ?? null,
     issueNumber: content.number ?? null,
@@ -488,7 +472,6 @@ async function cmdList(
       title: i.title,
       status: i.status,
       priority: i.priority,
-      type: i.type,
       size: i.size,
       issue_number: i.issueNumber,
     })),
@@ -553,8 +536,6 @@ async function cmdGet(
     status_option_id: item.statusOptionId,
     priority: item.priority,
     priority_option_id: item.priorityOptionId,
-    type: item.type,
-    type_option_id: item.typeOptionId,
     size: item.size,
     size_option_id: item.sizeOptionId,
     issue_number: item.issueNumber,
@@ -658,7 +639,6 @@ async function cmdCreate(
   const fields: Record<string, string> = {};
   if (options.fieldStatus) fields["Status"] = options.fieldStatus;
   if (options.priority) fields["Priority"] = options.priority;
-  if (options.type) fields["Type"] = options.type;
   if (options.size) fields["Size"] = options.size;
 
   if (Object.keys(fields).length > 0) {
@@ -673,7 +653,6 @@ async function cmdCreate(
       body: item.body,
       status: item.status,
       priority: item.priority,
-      type: item.type,
       size: item.size,
       issue_number: item.issueNumber,
       draft_issue_id: item.draftIssueId,
@@ -742,7 +721,6 @@ async function cmdUpdate(
   const fields: Record<string, string> = {};
   if (options.fieldStatus) fields["Status"] = options.fieldStatus;
   if (options.priority) fields["Priority"] = options.priority;
-  if (options.type) fields["Type"] = options.type;
   if (options.size) fields["Size"] = options.size;
 
   let updated = setItemFields(projectId, itemId, fields, logger) > 0;
@@ -785,7 +763,6 @@ async function cmdUpdate(
       status: item.status,
       status_option_id: item.statusOptionId,
       priority: item.priority,
-      type: item.type,
       size: item.size,
       issue_number: item.issueNumber,
       issue_url: item.issueUrl,
@@ -923,7 +900,6 @@ async function cmdAddIssue(
         title: item.title,
         status: item.status,
         priority: item.priority,
-        type: item.type,
         size: item.size,
         issue_number: item.issueNumber,
         issue_url: item.issueUrl,
@@ -962,7 +938,6 @@ async function cmdAddIssue(
   const fields: Record<string, string> = {};
   if (options.fieldStatus) fields["Status"] = options.fieldStatus;
   if (options.priority) fields["Priority"] = options.priority;
-  if (options.type) fields["Type"] = options.type;
   if (options.size) fields["Size"] = options.size;
 
   if (Object.keys(fields).length > 0) {
@@ -976,7 +951,6 @@ async function cmdAddIssue(
       title: item.title,
       status: item.status,
       priority: item.priority,
-      type: item.type,
       size: item.size,
       issue_number: item.issueNumber,
       issue_url: item.issueUrl,
@@ -1202,9 +1176,6 @@ const FIELD_COLORS: Record<string, Record<string, string>> = {
   priority: {
     Critical: "RED", High: "ORANGE", Medium: "YELLOW", Low: "GRAY",
   },
-  type: {
-    Feature: "BLUE", Bug: "RED", Chore: "GRAY", Docs: "GREEN", Research: "PURPLE",
-  },
   size: {
     XS: "GRAY", S: "GREEN", M: "YELLOW", L: "ORANGE", XL: "RED",
   },
@@ -1225,7 +1196,6 @@ const SETUP_LOCALES: Record<string, Record<string, Record<string, string>>> = {
       Done: "完了", "Not Planned": "見送り・対応不要", Released: "リリース済み",
     },
     priority: { Critical: "緊急・最優先", High: "高優先度", Medium: "通常", Low: "低優先度" },
-    type: { Feature: "新機能", Bug: "バグ修正", Chore: "雑務・リファクタ", Docs: "ドキュメント", Research: "調査・検証" },
     size: { XS: "数分で完了", S: "1セッションで完了", M: "複数セッション", L: "1日以上", XL: "分割が必要" },
   },
   en: {
@@ -1236,7 +1206,6 @@ const SETUP_LOCALES: Record<string, Record<string, Record<string, string>>> = {
       Done: "Completed", "Not Planned": "Explicitly not planned", Released: "Released",
     },
     priority: { Critical: "Urgent", High: "High priority", Medium: "Normal", Low: "Low priority" },
-    type: { Feature: "New feature", Bug: "Bug fix", Chore: "Maintenance", Docs: "Documentation", Research: "Research" },
     size: { XS: "Minutes", S: "Single session", M: "Multiple sessions", L: "Full day+", XL: "Split needed" },
   },
 };
@@ -1264,7 +1233,7 @@ interface SetupOptions extends ProjectsOptions {
 }
 
 /**
- * setup subcommand - Status/Priority/Type/Size フィールドの初期設定
+ * setup subcommand - Status/Priority/Size フィールドの初期設定
  */
 async function cmdSetup(
   options: SetupOptions,
@@ -1316,25 +1285,15 @@ async function cmdSetup(
     }
   }
 
-  // Priority/Type/Size フィールド作成
+  // Priority/Size フィールド作成
   if (projectId && !options.statusOnly) {
-    for (const [fieldName, fieldKey] of [["Priority", "priority"], ["Type", "type"], ["Size", "size"]] as const) {
+    for (const [fieldName, fieldKey] of [["Priority", "priority"], ["Size", "size"]] as const) {
       logger.info(`\n[${fieldName}] Creating field...`);
       const fieldOptions = buildSingleSelectOptions(FIELD_COLORS[fieldKey], locale[fieldKey]);
       const createQuery = `mutation { createProjectV2Field(input: { projectId: "${projectId}", dataType: SINGLE_SELECT, name: "${fieldName}", singleSelectOptions: ${fieldOptions} }) { projectV2Field { ... on ProjectV2SingleSelectField { name options { name } } } } }`;
       const result = runGraphQL(createQuery, {});
       if (result.success) {
         logger.success(`  ${fieldName} created`);
-      } else if (fieldName === "Type") {
-        // GitHub が "Type" を予約語として拒否する場合、"Item Type" にフォールバック
-        logger.warn(`  "${fieldName}" failed, trying "Item Type"...`);
-        const fallbackQuery = `mutation { createProjectV2Field(input: { projectId: "${projectId}", dataType: SINGLE_SELECT, name: "Item Type", singleSelectOptions: ${fieldOptions} }) { projectV2Field { ... on ProjectV2SingleSelectField { name options { name } } } } }`;
-        const fallbackResult = runGraphQL(fallbackQuery, {});
-        if (fallbackResult.success) {
-          logger.success("  Item Type created (fallback)");
-        } else {
-          logger.error(`  ${fieldName} creation failed`);
-        }
       } else {
         logger.error(`  ${fieldName} creation failed`);
       }
@@ -1353,6 +1312,8 @@ async function cmdSetup(
     }
   }
 
+  logger.info("\nTip: Rename the default View \"View 1\" in GitHub UI:");
+  logger.info("  TABLE → \"Board\", BOARD → \"Kanban\", ROADMAP → \"Roadmap\"");
   logger.info("\nDone!");
   return 0;
 }
@@ -1367,15 +1328,6 @@ interface CreateProjectOptions extends SetupOptions {
   // lang は SetupOptions から継承
 }
 
-// 必須ラベル定義（create-project で自動作成）
-const REQUIRED_LABELS = [
-  { name: "feature", color: "0E8A16", description: "New feature or enhancement" },
-  { name: "bug", color: "d73a4a", description: "Something isn't working" },
-  { name: "chore", color: "f9d0c4", description: "Maintenance and housekeeping" },
-  { name: "docs", color: "0075ca", description: "Documentation improvements" },
-  { name: "research", color: "5319e7", description: "Research and investigation" },
-] as const;
-
 
 /**
  * create-project subcommand - Project 作成からフィールド設定まで一括実行
@@ -1384,7 +1336,6 @@ const REQUIRED_LABELS = [
  * 2. gh project link でリポジトリにリンク
  * 3. Discussions を自動有効化
  * 4. cmdSetup() でフィールド初期設定
- * 5. 必須ラベルを作成
  */
 async function cmdCreateProject(
   options: CreateProjectOptions,
@@ -1404,7 +1355,7 @@ async function cmdCreateProject(
   }
 
   // ステップ 1: Project 作成
-  logger.info(`[1/5] Creating project "${options.title}"...`);
+  logger.info(`[1/4] Creating project "${options.title}"...`);
   const createResult = runGhCommand<{ number: number; id: string; url: string }>(
     ["project", "create", "--owner", owner, "--title", options.title, "--format", "json"],
   );
@@ -1423,7 +1374,7 @@ async function cmdCreateProject(
   logger.success(`  Project created: #${projectNumber} ${projectUrl ?? ""}`);
 
   // ステップ 2: リポジトリにリンク
-  logger.info(`[2/5] Linking project to ${owner}/${repo}...`);
+  logger.info(`[2/4] Linking project to ${owner}/${repo}...`);
   const linkResult = runGhCommand(
     ["project", "link", String(projectNumber), "--owner", owner, "--repo", `${owner}/${repo}`],
   );
@@ -1438,7 +1389,7 @@ async function cmdCreateProject(
   logger.success("  Project linked to repository");
 
   // ステップ 3: Discussions 有効化
-  logger.info(`[3/5] Enabling Discussions for ${owner}/${repo}...`);
+  logger.info(`[3/4] Enabling Discussions for ${owner}/${repo}...`);
   const discussionsResult = runGhCommandRaw(
     ["api", "-X", "PATCH", `/repos/${owner}/${repo}`, "-f", "has_discussions=true"],
     { silent: true },
@@ -1452,7 +1403,7 @@ async function cmdCreateProject(
   }
 
   // ステップ 4: フィールド設定（cmdSetup を呼び出し）
-  logger.info("[4/5] Setting up project fields...");
+  logger.info("[4/4] Setting up project fields...");
 
   // 新しく作成した Project の ID を取得して setup に渡す
   const projectId = getProjectId(owner, options.title);
@@ -1467,44 +1418,6 @@ async function cmdCreateProject(
     logger,
   );
 
-  // ステップ 5: 必須ラベル作成
-  logger.info("[5/5] Creating required labels...");
-
-  const repoId = getRepoId(owner, repo);
-
-  if (!repoId) {
-    logger.warn("  Failed to get repository ID for label creation");
-    logger.info("  Create labels manually: shirokuma-docs repo labels --create <name> --color <hex>");
-  } else {
-    let created = 0;
-    let skipped = 0;
-    for (const label of REQUIRED_LABELS) {
-      interface CreateLabelResult {
-        data?: { createLabel?: { label?: { id?: string; name?: string } } };
-        errors?: Array<{ message?: string }>;
-      }
-      const result = runGraphQL<CreateLabelResult>(GRAPHQL_MUTATION_CREATE_LABEL, {
-        repositoryId: repoId,
-        name: label.name,
-        color: label.color,
-        description: label.description,
-      });
-      if (result.success && result.data?.data?.createLabel?.label?.id) {
-        created++;
-      } else {
-        // "already exists" はスキップ、その他はエラーとして警告
-        const errorMsg = !result.success ? result.error : "";
-        if (errorMsg.includes("already exist")) {
-          skipped++;
-        } else {
-          logger.warn(`  Failed to create label '${label.name}': ${errorMsg || "unknown error"}`);
-          skipped++;
-        }
-      }
-    }
-    logger.success(`  Labels: ${created} created, ${skipped} skipped`);
-  }
-
   // 出力
   const output = {
     project_number: projectNumber,
@@ -1514,14 +1427,18 @@ async function cmdCreateProject(
     repository: `${owner}/${repo}`,
     setup: setupResult === 0 ? "completed" : "failed",
     next_steps: [
+      `Add Issue Types: https://github.com/organizations/${owner}/settings/issue-types`,
+      "  - Chore, Docs, Research (in addition to Feature / Bug / Task)",
       "Enable recommended workflows: Project → Settings → Workflows",
       "  - Item closed → Done",
       "  - Pull request merged → Done",
       `Create Discussion categories: https://github.com/${owner}/${repo}/settings (Discussions section)`,
-      "  - Handovers (🔄, Open-ended discussion)",
-      "  - ADR (📋, Open-ended discussion)",
-      "  - Knowledge (📚, Open-ended discussion)",
-      "  - Research (🔍, Open-ended discussion)",
+      "  - Handovers (🤝, Open-ended discussion)",
+      "  - ADR (📐, Open-ended discussion)",
+      "  - Knowledge (💡, Open-ended discussion)",
+      "  - Research (🔬, Open-ended discussion)",
+      "Rename default View \"View 1\" in GitHub UI (API not supported):",
+      "  - TABLE → \"Board\", BOARD → \"Kanban\", ROADMAP → \"Roadmap\"",
     ],
   };
 

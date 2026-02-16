@@ -74,28 +74,50 @@ shirokuma-docs projects create-project --title "プロジェクト名" --lang ja
 
 > **Note:** `--lang` はフィールドの説明文（description）のみ翻訳します。オプション名（Backlog, Critical 等）は CLI コマンド互換性のため常に英語です。
 
-Discussions と必須ラベル（feature, bug, chore, docs, research）はコマンド実行時に自動で作成されます。以下は GitHub API の制限により手動設定が必要です:
+Discussions はコマンド実行時に自動で有効化されます。以下は GitHub API の制限により手動設定が必要です:
 
 | 項目 | 設定場所 |
 |------|---------|
-| Discussion カテゴリ | リポジトリ Settings → Discussions |
-| Project ワークフロー | Project Settings → Workflows |
+| Issue Types | `https://github.com/organizations/{org}/settings/issue-types` |
+| Discussion カテゴリ | `https://github.com/{owner}/{repo}/settings`（Discussions セクション） |
+| Project ワークフロー | `https://github.com/orgs/{owner}/projects/{number}/settings/workflows` |
 
-**Discussion カテゴリ**（リポジトリ Settings → Discussions → カテゴリ新規作成）:
+**Issue Types**（Organization 設定 → Issue types）:
 
-| カテゴリ | Emoji | Format | 用途 |
-|---------|-------|--------|------|
-| Handovers | 🔄 | Open-ended discussion | セッション間の引き継ぎ記録 |
-| ADR | 📋 | Open-ended discussion | Architecture Decision Records |
-| Knowledge | 📚 | Open-ended discussion | 確認されたパターン・解決策 |
-| Research | 🔍 | Open-ended discussion | 調査が必要な事項 |
+デフォルトの Feature / Bug / Task に加えて、以下のカスタムタイプを追加:
 
-**Project ワークフロー**（Project Settings → Workflows）:
+| タイプ | Description | 用途 |
+|--------|-------------|------|
+| Chore | Configuration, tooling, and refactoring | 設定・ツール・リファクタリング |
+| Docs | Documentation improvements | ドキュメント |
+| Research | Investigation and validation | 調査・検証 |
+
+**Discussion カテゴリ**（リポジトリ設定 → Discussions → カテゴリ新規作成）:
+
+| カテゴリ | Emoji | 検索ワード | Format | 用途 |
+|---------|-------|-----------|--------|------|
+| Handovers | 🤝 | handshake | Open-ended discussion | セッション間の引き継ぎ記録 |
+| ADR | 📐 | triangular ruler | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 💡 | bulb | Open-ended discussion | 確認されたパターン・解決策 |
+| Research | 🔬 | microscope | Open-ended discussion | 調査が必要な事項 |
+| Reports | 📊 | chart | Open-ended discussion | レビュー・分析レポート（任意） |
+
+**Project ワークフロー**（Project 設定 → Workflows）:
 
 | ワークフロー | ターゲットステータス |
 |-------------|-------------------|
 | Item closed | Done |
 | Pull request merged | Done |
+
+**View リネーム**（Project ページ → View タブ）:
+
+デフォルトの「View 1」を用途に合った名前にリネーム（API 未対応、GitHub UI で設定）:
+
+| レイアウト | 推奨名 | 用途 |
+|-----------|--------|------|
+| TABLE | Board | 全アイテム一覧（デフォルト） |
+| BOARD | Kanban | Status でグルーピングしたカンバン |
+| ROADMAP | Roadmap | タイムライン表示 |
 
 セットアップ後の検証:
 

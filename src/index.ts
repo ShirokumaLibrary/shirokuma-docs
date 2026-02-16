@@ -455,8 +455,6 @@ program
   .option("-s, --field-status <status>", "Set Status field (for create/update/add-issue)")
   .option("--priority <priority>", "Set Priority field (Critical/High/Medium/Low)")
   .option("--field-priority <priority>", "(alias for --priority)")
-  .option("--type <type>", "Set Type field (Feature/Bug/Chore/Docs/Research)")
-  .option("--field-type <type>", "(alias for --type)")
   .option("--size <size>", "Set Size field (XS/S/M/L/XL)")
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Item title (for create)")
@@ -471,7 +469,6 @@ program
     if (!resolveBodyOption(options)) return;
     // エイリアスオプションのマージ (#587)
     options.priority ??= options.fieldPriority;
-    options.type ??= options.fieldType;
     options.size ??= options.fieldSize;
     projectsCommand(action, target, options);
   });
@@ -493,8 +490,6 @@ program
   .option("-s, --field-status <status>", "Set Projects Status field")
   .option("--priority <priority>", "Set Projects Priority field (Critical/High/Medium/Low)")
   .option("--field-priority <priority>", "(alias for --priority)")
-  .option("--type <type>", "Set Projects Type field (Feature/Bug/Chore/Docs/Research)")
-  .option("--field-type <type>", "(alias for --type)")
   .option("--size <size>", "Set Projects Size field (XS/S/M/L/XL)")
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Issue title (for create)")
@@ -524,7 +519,6 @@ program
     if (!resolveBodyOption(options)) return;
     // エイリアスオプションのマージ (#587)
     options.priority ??= options.fieldPriority;
-    options.type ??= options.fieldType;
     options.size ??= options.fieldSize;
     options.labels ??= options.label;
     // search アクション: target を query にマッピング

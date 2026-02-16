@@ -101,7 +101,7 @@ shirokuma-docs issues update {number} --field-status "Review"
 
 If no issue number was provided, skip this step (`ending-session` safety net covers it).
 
-### Step 5: Confirm
+### Step 5: Completion Report
 
 ```markdown
 ## Pull Request Created

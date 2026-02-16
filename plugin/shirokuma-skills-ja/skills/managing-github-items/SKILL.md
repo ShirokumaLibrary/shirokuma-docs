@@ -45,6 +45,6 @@ Issue / Discussion の作成と仕様 Discussion の管理を行う。
 
 ## 注意事項
 
-- 新規アイテムには必ず必須フィールド（Status, Priority, Type）を設定
+- 新規アイテムには必ず必須フィールド（Status, Priority）を設定
 - XL アイテムは分割を検討するようユーザーに提案
 - 仕様タイトルには "[Spec]" プレフィックスを付与（フィルタリング用）

@@ -2,7 +2,7 @@
  * lint-workflow command - AI workflow validation
  *
  * Validates that AI workflow conventions are followed:
- * - Issue field completeness (Priority, Type, Size)
+ * - Issue field completeness (Priority, Size)
  * - Branch naming convention ({type}/{number}-{slug})
  * - Protected branch protection (no direct commits on main/develop)
  * - Co-Authored-By detection
@@ -106,7 +106,7 @@ export async function lintWorkflowCommand(
     const issues = checkIssueFields(issueFieldsSeverity);
     ruleResults.push({
       rule: "issue-fields",
-      description: "Issue field completeness (Priority, Type, Size)",
+      description: "Issue field completeness (Priority, Size)",
       issues,
       passed: issues.filter((i) => i.type === "error").length === 0,
     });

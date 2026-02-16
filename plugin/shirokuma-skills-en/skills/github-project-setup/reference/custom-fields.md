@@ -5,7 +5,6 @@
 | Field | Purpose | AI Development Use |
 |-------|---------|-------------------|
 | Priority | Urgency/importance | Task prioritization |
-| Type | Task category | Work classification |
 | Size | Effort estimation | Replaces time estimates |
 
 ## Priority
@@ -16,16 +15,6 @@
 | High | Orange | Important but not urgent |
 | Medium | Yellow | Normal priority |
 | Low | Gray | When time permits |
-
-## Type
-
-| Value | Color | Purpose |
-|-------|-------|---------|
-| Feature | Green | New functionality |
-| Bug | Red | Bug fix |
-| Chore | Gray | Refactoring, config changes |
-| Docs | Blue | Documentation |
-| Research | Purple | Investigation, PoC |
 
 ## Size (AI Development)
 
@@ -40,3 +29,18 @@ Traditional time estimates don't work well for AI-assisted development. Use Size
 | XL | Red | Needs to be split |
 
 **Rule**: XL tasks must be split into smaller tasks.
+
+## Type (Issue Types)
+
+Built-in Projects V2 field. Reflects Organization Issue Types — not a custom SingleSelect.
+
+| Value | Default | Description |
+|-------|---------|-------------|
+| Feature | Yes | New features and enhancements |
+| Bug | Yes | Bug fixes |
+| Task | Yes | General tasks |
+| Chore | Custom | Config, tooling, refactoring |
+| Docs | Custom | Documentation |
+| Research | Custom | Investigation and research |
+
+Managed via Organization Settings → Planning → Issue types (manual setup).

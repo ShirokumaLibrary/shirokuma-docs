@@ -218,6 +218,29 @@ description: Brief description
 - [reference.md](reference.md) - 完全なフロントマター仕様、設定ファイル形式
 - [examples.md](examples.md) - よくあるユースケースのカスタムスタイル例
 
+## 完了レポート
+
+### スタイル切り替え時
+
+```markdown
+## スタイル切り替え完了
+
+**スタイル:** {style-name}
+**スコープ:** {ユーザーレベル | プロジェクトレベル}
+```
+
+### スタイル作成時
+
+```markdown
+## スタイル作成完了
+
+**名前:** {style-name}
+**場所:** {path}
+**説明:** {description}
+```
+
+スタンドアロン実行時は次のステップ（有効化コマンド、テスト方法）を提案する。
+
 ## 注意事項
 
 - 設定は `.claude/settings.local.json` に保存（プロジェクトレベル）

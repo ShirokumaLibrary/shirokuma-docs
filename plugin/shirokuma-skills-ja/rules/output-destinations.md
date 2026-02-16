@@ -68,7 +68,9 @@ logs/reviews/YYYY-MM-DD-*.md
 PR を対象としたレビュー結果は、PR コメントに直接投稿する。
 
 ```bash
-shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md
+shirokuma-docs issues comment {PR#} --body - <<'EOF'
+レビューサマリー内容
+EOF
 ```
 
 | 条件 | 出力先 |

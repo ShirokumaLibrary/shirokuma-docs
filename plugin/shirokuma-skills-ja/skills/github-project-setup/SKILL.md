@@ -1,6 +1,6 @@
 ---
 name: github-project-setup
-description: GitHub ProjectのStatus、Priority、Type、Sizeフィールド初期設定を自動化します。「project setup」「プロジェクト作成」「GitHub Project初期設定」「初期セットアップ」「プロジェクトのセットアップ」、カンバンワークフローで新規プロジェクト開始時に使用。
+description: GitHub ProjectのStatus、Priority、Sizeフィールド初期設定を自動化します。「project setup」「プロジェクト作成」「GitHub Project初期設定」「初期セットアップ」「プロジェクトのセットアップ」、カンバンワークフローで新規プロジェクト開始時に使用。
 allowed-tools: Bash, Read, Glob
 ---
 
@@ -18,7 +18,7 @@ GitHub Project の初期設定を実施。`create-project` コマンドで自動
 
 | レイヤー | 責務 | 内容 |
 |---------|------|------|
-| `create-project` コマンド | API で自動化できる操作を一括実行 | Project 作成、リポジトリリンク、Discussions 有効化、フィールド設定、ラベル作成 |
+| `create-project` コマンド | API で自動化できる操作を一括実行 | Project 作成、リポジトリリンク、Discussions 有効化、フィールド設定 |
 | このスキル | コマンド実行 + 手動設定のガイド + 検証 | `create-project` の実行、Discussion カテゴリ作成案内、ワークフロー有効化案内、検証 |
 
 ## ワークフロー
@@ -50,8 +50,7 @@ shirokuma-docs projects create-project --title "{プロジェクト名}" --lang=
 | Project 作成 | GitHub Projects V2 を作成 |
 | リポジトリリンク | Projects タブからアクセス可能に |
 | Discussions 有効化 | リポジトリで Discussions を有効化 |
-| フィールド設定 | Status, Priority, Type, Size の全オプションを設定 |
-| ラベル作成 | 必須ラベル 5 種（feature, bug, chore, docs, research）を作成 |
+| フィールド設定 | Status, Priority, Size の全オプションを設定 |
 
 **作成されるフィールド:**
 
@@ -59,24 +58,28 @@ shirokuma-docs projects create-project --title "{プロジェクト名}" --lang=
 |-----------|-----------|
 | Status | Icebox → Backlog → Spec Review → Ready → In Progress ⇄ Pending → Review → Testing → Done / Not Planned → Released |
 | Priority | Critical / High / Medium / Low |
-| Type | Feature / Bug / Chore / Docs / Research |
 | Size | XS / S / M / L / XL |
 
 > **Note:** `--lang` はフィールドの説明文（description）のみ翻訳する。オプション名（Backlog, Critical 等）は CLI コマンド互換性のため常に英語。
 
-**ラベル確認（任意）:**
+### ステップ 3: Issue Types 設定（手動）
 
-コマンド完了後、必要に応じてラベルを整理:
+Organization の Issue Types にカスタムタイプを追加する。デフォルトの Feature / Bug / Task に加えて:
 
-1. **必須ラベルの存在確認**: `shirokuma-docs repo labels list` で 5 種が存在することを確認
-2. **不要ラベルの整理**（任意）: Type フィールドと重複するもの（enhancement, documentation）や該当しないもの（good first issue, help wanted, question）を削除
-3. **エリアラベルの作成**（任意）: プロジェクトのモジュール構造に合わせて `area:` プレフィックス付きラベルを追加
+| タイプ | 用途 |
+|--------|------|
+| Chore | 設定・ツール・リファクタリング |
+| Docs | ドキュメント |
+| Research | 調査・検証 |
 
-**運用ラベルは保持**: `duplicate`, `invalid`, `wontfix`（ライフサイクル/トリアージ用）。
+**ユーザーをガイド:**
 
-詳細は [reference/labels.md](reference/labels.md) 参照。
+1. `https://github.com/organizations/{org}/settings/issue-types` に移動
+2. 「Create new type」で上記 3 タイプを追加
 
-### ステップ 3: Discussion カテゴリ作成（手動）
+追加後、Projects V2 の Type フィールドで自動的に選択可能になる。
+
+### ステップ 4: Discussion カテゴリ作成（手動）
 
 Discussion カテゴリの作成は GitHub API 未対応のため、GitHub UI で手動作成をガイドする。
 
@@ -87,14 +90,14 @@ Discussion カテゴリの作成は GitHub API 未対応のため、GitHub UI �
 
 | カテゴリ | Emoji | Format | 用途 |
 |---------|-------|--------|------|
-| Handovers | 🔄 | Open-ended discussion | セッション間の引き継ぎ記録 |
-| ADR | 📋 | Open-ended discussion | Architecture Decision Records |
-| Knowledge | 📚 | Open-ended discussion | 確認されたパターン・解決策 |
-| Research | 🔍 | Open-ended discussion | 調査が必要な事項 |
+| Handovers | 🤝 | Open-ended discussion | セッション間の引き継ぎ記録 |
+| ADR | 📐 | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 💡 | Open-ended discussion | 確認されたパターン・解決策 |
+| Research | 🔬 | Open-ended discussion | 調査が必要な事項 |
 
 **重要**: Format は必ず **Open-ended discussion** を選択する。Announcement や Poll ではない。
 
-### ステップ 4: ビルトイン自動化の有効化
+### ステップ 5: ビルトイン自動化の有効化
 
 プロジェクトの推奨自動化を有効化。API では設定不可 — GitHub UI をガイド。
 
@@ -119,7 +122,25 @@ shirokuma-docs projects workflows
 
 **注意**: `session end --review` CLI コマンドとこれらの自動化は冪等に協調動作。両方有効でも競合しない。
 
-### ステップ 5: セットアップ検証
+### ステップ 6: View 名のリネーム（手動）
+
+GitHub Projects V2 の GraphQL API には View を操作する mutation が存在しない。GitHub UI で手動リネームをガイドする。
+
+**推奨 View 名:**
+
+| レイアウト | 推奨名 | 用途 |
+|-----------|--------|------|
+| TABLE | Board | 全アイテム一覧（デフォルト） |
+| BOARD | Kanban | Status でグルーピングしたカンバン |
+| ROADMAP | Roadmap | タイムライン表示 |
+
+**ユーザーをガイド:**
+
+1. Project ページを開く
+2. View タブの「View 1」をダブルクリック（またはドロップダウン → Rename）
+3. 上記の推奨名にリネーム
+
+### ステップ 7: セットアップ検証
 
 全ステップの完了を検証:
 
@@ -133,7 +154,7 @@ shirokuma-docs session check --setup
 |------|------|
 | Discussion カテゴリ | Handovers, ADR, Knowledge, Research の存在 |
 | Project | Project の存在 |
-| 必須フィールド | Status, Priority, Type, Size の存在 |
+| 必須フィールド | Status, Priority, Size の存在 |
 | ワークフロー自動化 | Item closed → Done, PR merged → Done の有効状態 |
 
 未設定の項目がある場合、推奨設定（Description, Emoji, Format）が表示される。
@@ -172,7 +193,7 @@ Icebox → Backlog → Spec Review → Ready → In Progress → Review → Test
 ## 注意事項
 
 - **プロジェクト名規約**: プロジェクト名 = リポジトリ名（例: repo `shirokuma-docs` → project `shirokuma-docs`）。CLI の `getProjectId()` がリポジトリ名で検索するため
-- 5ステップのため `TodoWrite` で進捗管理
+- 7ステップのため `TodoWrite` で進捗管理
 - 既存プロジェクトがある場合は `AskUserQuestion` で上書き確認
 - 権限リフレッシュにはインタラクティブモードが必要（ユーザーが手動実行）
 - 言語は会話から自動検出（日本語または英語）

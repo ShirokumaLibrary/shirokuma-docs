@@ -228,8 +228,35 @@ git add .claude/plugins && git commit -m "Add custom plugin"
 
 #### 方法 C: npm パッケージ（公開配布用）
 
-1. `package.json` を作成、`npm publish --access public` で公開
-2. ユーザーは `npm install -g @username/plugin-name` でインストール
+1. `package.json` を作成:
+```json
+{
+  "name": "@username/plugin-name",
+  "version": "1.0.0",
+  "description": "プラグインの説明",
+  "main": ".claude-plugin/plugin.json",
+  "files": [
+    ".claude-plugin/",
+    "skills/",
+    "agents/",
+    "commands/",
+    "hooks/"
+  ],
+  "keywords": ["claude-code", "plugin"],
+  "author": "Your Name",
+  "license": "MIT"
+}
+```
+
+2. 公開:
+```bash
+npm publish --access public
+```
+
+3. ユーザーはインストール:
+```bash
+npm install -g @username/plugin-name
+```
 
 ## よくあるパターン
 
@@ -310,6 +337,19 @@ EOF
 - スキル/コマンドをリネーム
 - 説明文の重複を確認
 
+## 完了レポート
+
+```markdown
+## プラグイン{作成 | 更新}完了
+
+**名前:** {plugin-name}
+**バージョン:** {version}
+**場所:** {path}
+**コンポーネント:** {Skills: N, Agents: N, Commands: N}
+```
+
+スタンドアロン実行時は次のステップ（テスト手順、配布方法）を提案する。
+
 ## 注意事項
 
 - プラグイン名は小文字とハイフンのみ
@@ -325,3 +365,4 @@ EOF
 
 - [reference.md](reference.md) - plugin.json と marketplace.json の完全仕様
 - [examples.md](examples.md) - 全コンポーネントタイプの実例
+- Claude Code Plugin Documentation: https://code.claude.com/docs/en/plugins

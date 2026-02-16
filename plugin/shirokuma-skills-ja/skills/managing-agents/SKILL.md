@@ -282,6 +282,19 @@ Task({
 - [design-patterns.md](design-patterns.md) - 5つのエージェント設計パターン
 - [best-practices.md](best-practices.md) - 高度なパターン、アンチパターン
 
+## 完了レポート
+
+```markdown
+## エージェント{作成 | 更新}完了
+
+**名前:** {agent-name}
+**場所:** `.claude/agents/{name}.md`
+**モデル:** {model}
+**ツール:** {tools}
+```
+
+スタンドアロン実行時は次のステップ（テスト方法、起動フレーズ例）を提案する。
+
 ## 注意事項
 
 - AGENT.md は500行未満、参照は1階層まで

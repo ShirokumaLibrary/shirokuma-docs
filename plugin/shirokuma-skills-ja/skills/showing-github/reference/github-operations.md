@@ -7,8 +7,8 @@
 | コンポーネント | 用途 |
 |-------------|------|
 | **Issues** | タスク管理、`#123` 参照、履歴 |
-| **Projects** | Status/Priority/Type/Size フィールド管理 |
-| **Labels** | タイプ識別のみ（`feature`, `bug`, `chore`） |
+| **Projects** | Status/Priority/Size フィールド管理 |
+| **Labels** | 影響範囲の補助分類（`area:cli`, `area:plugin` 等） |
 | **Discussions** | 引き継ぎ、仕様、決定事項、Q&A |
 
 **ステータスは Projects フィールドで管理**（ラベルではない）。
@@ -47,9 +47,11 @@ shirokuma-docs issues show {number}                  # 詳細
 shirokuma-docs issues create \
   --title "Title" --body /tmp/body.md \
   --labels feature \
-  --field-status "Backlog" --priority "Medium" --type "Feature" --size "M"
+  --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
-shirokuma-docs issues comment {number} --body /tmp/comment.md
+shirokuma-docs issues comment {number} --body - <<'EOF'
+コメント内容
+EOF
 shirokuma-docs issues comments {number}                 # コメント一覧
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
@@ -63,7 +65,9 @@ shirokuma-docs issues pr-list --state merged --limit 5     # フィルタリン�
 shirokuma-docs issues pr-show {number}                      # PR 詳細（body, diff stats, linked issues）
 shirokuma-docs issues pr-comments {number}                  # レビューコメント・スレッド
 shirokuma-docs issues merge {number} --squash               # マージ + ステータス更新
-shirokuma-docs issues pr-reply {number} --reply-to {id} --body /tmp/reply.md  # レビューコメント返信
+shirokuma-docs issues pr-reply {number} --reply-to {id} --body - <<'EOF'
+返信内容
+EOF
 shirokuma-docs issues resolve {number} --thread-id {id}    # スレッド解決
 ```
 
@@ -122,6 +126,15 @@ gh auth login
 gh auth status
 ```
 
+## `--body` 使い分け
+
+| Tier | パターン | 用途 |
+|------|---------|------|
+| Tier 1 (stdin) | `--body - <<'EOF'...EOF` | コメント、返信、短い理由 |
+| Tier 2 (file) | Write → `--body /tmp/xxx.md` | Issue/Discussion 本文、引き継ぎ |
+
+heredoc delimiter は `<<'EOF'`（シングルクォートで変数展開防止）。
+
 ## ステータスワークフロー
 
 ```mermaid
@@ -146,17 +159,15 @@ graph LR
 
 ## ラベル規約
 
-ラベルは**タイプ識別のみ**に使用（ステータスは Projects フィールドで管理）:
+作業種別の分類は **Issue Types**（Organization レベルの Type フィールド）が主な手段。ラベルは作業の**影響範囲**を示す補助的な仕組み:
 
-| ラベル | 用途 |
-|-------|------|
-| `feature` | 新機能 |
-| `bug` | バグ修正 |
-| `chore` | メンテナンス |
-| `docs` | ドキュメント |
-| `research` | 調査 |
+| 仕組み | 役割 | 例 |
+|--------|------|-----|
+| Issue Types | 作業の**種類** | Feature, Bug, Chore, Docs, Research |
+| エリアラベル | 作業の**影響範囲** | `area:cli`, `area:plugin` |
+| 運用ラベル | トリアージ・ライフサイクル | `duplicate`, `invalid`, `wontfix` |
 
-任意の優先度ラベル: `priority:critical`, `priority:high`
+ラベルはプロジェクト構造に合わせて手動追加。ステータスは Projects フィールドで管理。
 
 ## よくあるエラー対処
 

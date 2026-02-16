@@ -76,17 +76,29 @@ Discussions and required labels (feature, bug, chore, docs, research) are automa
 
 | Item | Where to Configure |
 |------|--------------------|
+| Issue Types | `https://github.com/organizations/{org}/settings/issue-types` |
 | Discussion categories | Repository Settings → Discussions |
 | Project workflows | Project Settings → Workflows |
 
+**Issue Types** (Organization Settings → Issue types):
+
+Add the following custom types in addition to the default Feature / Bug / Task:
+
+| Type | Description |
+|------|-------------|
+| Chore | Configuration, tooling, and refactoring |
+| Docs | Documentation improvements |
+| Research | Investigation and validation |
+
 **Discussion categories** (Repository Settings → Discussions → New category):
 
-| Category | Emoji | Format | Purpose |
-|----------|-------|--------|---------|
-| Handovers | 🔄 | Open-ended discussion | Session handover records |
-| ADR | 📋 | Open-ended discussion | Architecture Decision Records |
-| Knowledge | 📚 | Open-ended discussion | Confirmed patterns and solutions |
-| Research | 🔍 | Open-ended discussion | Items requiring investigation |
+| Category | Emoji | Search Word | Format | Purpose |
+|----------|-------|-------------|--------|---------|
+| Handovers | 🤝 | handshake | Open-ended discussion | Session handover records |
+| ADR | 📐 | triangular ruler | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 💡 | bulb | Open-ended discussion | Confirmed patterns and solutions |
+| Research | 🔬 | microscope | Open-ended discussion | Items requiring investigation |
+| Reports | 📊 | chart | Open-ended discussion | Review and analysis reports (optional) |
 
 **Project workflows** (Project Settings → Workflows):
 

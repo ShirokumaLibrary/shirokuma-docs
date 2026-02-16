@@ -16,11 +16,11 @@ import {
 
 describe("FIELD_FALLBACKS", () => {
   /**
-   * @testdoc Type フィールドのフォールバックが定義されている
-   * @purpose GitHub の予約語に対するフォールバック定義確認
+   * @testdoc FIELD_FALLBACKS がオブジェクトとして定義されている
+   * @purpose フォールバック定義の型確認
    */
-  it("should define fallbacks for Type field", () => {
-    expect(FIELD_FALLBACKS["Type"]).toEqual(["Item Type", "ItemType"]);
+  it("should be defined as an object", () => {
+    expect(typeof FIELD_FALLBACKS).toBe("object");
   });
 });
 
@@ -28,7 +28,6 @@ describe("resolveFieldName", () => {
   const projectFields: Record<string, ProjectField> = {
     Status: { id: "f1", type: "SINGLE_SELECT", options: {} },
     Priority: { id: "f2", type: "SINGLE_SELECT", options: {} },
-    "Item Type": { id: "f3", type: "SINGLE_SELECT", options: {} },
     Notes: { id: "f4", type: "TEXT", options: {} },
   };
 
@@ -42,30 +41,11 @@ describe("resolveFieldName", () => {
   });
 
   /**
-   * @testdoc フォールバック名で解決する
-   * @purpose GitHub 予約語のフォールバック解決
-   */
-  it("should resolve Type to Item Type via fallback", () => {
-    expect(resolveFieldName("Type", projectFields)).toBe("Item Type");
-  });
-
-  /**
    * @testdoc 見つからない場合は null を返す
    * @purpose 存在しないフィールドのハンドリング
    */
   it("should return null for unknown field", () => {
     expect(resolveFieldName("Unknown", projectFields)).toBeNull();
-  });
-
-  /**
-   * @testdoc フォールバックも見つからない場合は null を返す
-   * @purpose フォールバック全てが不一致の場合
-   */
-  it("should return null when fallbacks also not found", () => {
-    const fields: Record<string, ProjectField> = {
-      Status: { id: "f1", type: "SINGLE_SELECT", options: {} },
-    };
-    expect(resolveFieldName("Type", fields)).toBeNull();
   });
 
   /**

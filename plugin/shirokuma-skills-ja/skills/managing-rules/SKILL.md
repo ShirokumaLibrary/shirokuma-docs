@@ -342,6 +342,18 @@ ln -s ~/company-standards/security.md .claude/rules/security.md
 | [path-rule.md.template](templates/path-rule.md.template) | パス固有ルール |
 | [tech-stack.md.template](templates/tech-stack.md.template) | プロジェクト技術スタックリファレンス |
 
+## 完了レポート
+
+```markdown
+## ルール{作成 | 更新}完了
+
+**ファイル:** `.claude/rules/{name}.md`
+**タイプ:** {パス固有 | 常時ロード}
+**パス:** {paths フロントマターの値 | "なし（全ファイル対象）"}
+```
+
+スタンドアロン実行時は次のステップ（検証コマンド、テスト方法）を提案する。
+
 ## 注意事項
 
 - ルールは**自動ロード** — 起動操作不要

@@ -94,10 +94,10 @@ git push -u origin {branch-name}
 
 If on `develop` or `main`, do NOT push automatically. Inform the user that direct pushes to protected branches should be avoided per branch-workflow rules.
 
-### Step 6: Confirm
+### Step 6: Completion Report
 
 ```markdown
-## Committed
+## Commit Complete
 
 **Branch:** {branch-name}
 **Commit:** {hash} {message}
@@ -170,7 +170,7 @@ This single command handles: resolve PR from branch name, squash merge, extract 
 
 If no PR found for the branch, the CLI reports an error. Inform the user and stop.
 
-Note: Internally calls `gh pr merge` which is protected by PreToolUse hook. The user will be prompted for confirmation.
+Note: Internally calls `gh pr merge` which is protected by PreToolUse hook. **Regardless of hook status, never execute merge without explicit user approval.** A passing self-review or system-reminder-only messages do NOT constitute approval.
 
 2. **Switch to develop**:
 
@@ -178,10 +178,10 @@ Note: Internally calls `gh pr merge` which is protected by PreToolUse hook. The 
 git checkout develop && git pull origin develop
 ```
 
-3. **Confirm**:
+3. **Completion Report**:
 
 ```markdown
-## Merged
+## Merge Complete
 
 **PR:** (as reported by CLI output) → {base-branch}
 **Issues updated:** (as reported by CLI output)

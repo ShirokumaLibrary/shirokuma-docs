@@ -65,7 +65,7 @@ shirokuma-docs issues show {number}
 Extract from the response:
 - `title` - What to do
 - `body` - Detailed requirements
-- `type` - Feature / Bug / Chore / Docs / Research
+- `labels` - Work type (feature / bug / chore / docs / research)
 - `status` - Current status
 - `priority` - Priority level
 - `size` - Size estimate
@@ -135,7 +135,7 @@ git checkout -b {type}/{number}-{slug}
 
 Branch type mapping:
 
-| Issue Type / Work Type | Branch prefix |
+| Label / Work Type | Branch prefix |
 |------------------------|---------------|
 | Feature, Implementation, Design | `feat` |
 | Bug, Bug Fix | `fix` |
@@ -183,6 +183,7 @@ Update each step to `in_progress` when starting and `completed` when done.
 | Refactoring / Chore | Work → Commit → PR → Review |
 | Research | Research → Discussion |
 
+- **Merge is NOT part of the chain**. Merge only executes on explicit user instruction (e.g., "merge this"). Never auto-merge after chain completion
 - Do NOT ask the user between steps — execute each step and move to the next
 - DO report what is happening at each step (one-line status)
 - DO update TodoWrite status for each step (`in_progress` → `completed`)
@@ -210,7 +211,7 @@ Show a brief summary before starting work:
 ```markdown
 ## Working on: #{number} {title}
 
-**Type:** {type} → **Skill:** {skill-name}
+**Label:** {label} → **Skill:** {skill-name}
 **Branch:** {branch-name}
 **Priority:** {priority}
 ```
@@ -256,6 +257,7 @@ This skill depends on the following rules (auto-loaded from `.claude/rules/`):
 - This skill is the **primary entry point** for work
 - Always update issue status before starting
 - Always ensure correct feature branch
-- Workflow always executes sequentially (Commit → PR → Review)
+- Workflow always executes sequentially (Commit → PR → Review). **Merge is NOT included**
+- After chain completion, wait for explicit user instruction to merge (no auto-merge)
 - Chain execution stops on error and returns control to user
 - For direct work (Refactoring/Chore), no skill delegation needed

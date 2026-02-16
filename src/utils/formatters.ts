@@ -185,7 +185,6 @@ export const GH_ISSUES_LIST_COLUMNS = [
   "state",
   "status",
   "priority",
-  "type",
   "size",
 ];
 
@@ -197,7 +196,6 @@ export const GH_PROJECTS_LIST_COLUMNS = [
   "title",
   "status",
   "priority",
-  "type",
   "size",
   "issue_number",
 ];

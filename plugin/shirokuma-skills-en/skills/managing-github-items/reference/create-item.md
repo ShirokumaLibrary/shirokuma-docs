@@ -5,7 +5,6 @@ Create a GitHub Project item (Issue or DraftIssue). When called without argument
 ```
 /create-item                    # Context auto-inference mode
 /create-item "Title"            # With title
-/create-item --type feature     # Specify type
 ```
 
 ## Step 1: Gather Details
@@ -16,22 +15,22 @@ Without arguments: Infer from conversation context:
 | Target | Source | Method |
 |--------|--------|--------|
 | Title | Recent user message | Summarize the problem/feature mentioned before "make this an issue" |
-| Type | Conversation context | Bug report → Bug, feature request → Feature, tech debt → Chore |
+| Label | Conversation context | Bug report → `bug`, feature request → `feature`, tech debt → `chore` |
 | Priority | Conversation context | Urgency expressions ("urgent" → High, normal → Medium) |
 | Body | Full conversation context | Structure into summary, background, tasks |
 | Size | Task estimate | Estimate from task count and impact scope (default S) |
 
 Confirm inferred values with AskUserQuestion before creating.
 
-Type options:
+Label options (for work type classification):
 
-| Type | Label |
-|------|-------|
-| Feature | `feature` |
-| Bug | `bug` |
-| Chore | `chore` |
-| Docs | `docs` |
-| Research | `research` |
+| Label | Purpose |
+|-------|---------|
+| `feature` | New functionality |
+| `bug` | Bug fix |
+| `chore` | Maintenance, refactoring |
+| `docs` | Documentation |
+| `research` | Investigation |
 
 ## Step 2: Generate Body
 
@@ -66,7 +65,7 @@ Type options:
 shirokuma-docs issues create \
   --title "Title" --body /tmp/body.md \
   --labels feature \
-  --field-status "Backlog" --priority "Medium" --type "Feature" --size "M"
+  --field-status "Backlog" --priority "Medium" --size "M"
 
 # DraftIssue (lightweight)
 shirokuma-docs projects create \
@@ -78,5 +77,5 @@ shirokuma-docs projects create \
 
 ```markdown
 ## Item Created
-**Issue:** #123 | **Type:** Feature | **Priority:** Medium | **Status:** Backlog
+**Issue:** #123 | **Label:** feature | **Priority:** Medium | **Status:** Backlog
 ```
