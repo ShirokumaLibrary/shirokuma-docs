@@ -25,11 +25,13 @@ const TEST_OUTPUT_DIR = join(__dirname, "..", "..", ".test-output", "cache");
 
 let registerPluginCache: typeof import("../../src/utils/skills-repo.js").registerPluginCache;
 let isClaudeCliAvailable: typeof import("../../src/utils/skills-repo.js").isClaudeCliAvailable;
+let PLUGIN_REGISTRY_ID: string;
 
 beforeAll(async () => {
   const mod = await import("../../dist/utils/skills-repo.js");
   registerPluginCache = mod.registerPluginCache;
   isClaudeCliAvailable = mod.isClaudeCliAvailable;
+  PLUGIN_REGISTRY_ID = mod.PLUGIN_REGISTRY_ID;
 });
 
 // =============================================================================
@@ -81,6 +83,18 @@ describe("registerPluginCache", () => {
   });
 
   afterEach(() => {
+    // ゴーストエントリ除去: テストで install されたプラグインを uninstall (#679)
+    if (isClaudeAvailable()) {
+      try {
+        execFileSync(
+          "claude",
+          ["plugin", "uninstall", PLUGIN_REGISTRY_ID, "--scope", "project"],
+          { cwd: TEST_OUTPUT_DIR, stdio: "pipe", timeout: 15000 },
+        );
+      } catch {
+        // uninstall 失敗は無視（未インストールの場合）
+      }
+    }
     cleanupTestDir();
   });
 

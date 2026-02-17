@@ -1,6 +1,6 @@
 {
   "name": "@shirokuma-library/shirokuma-docs",
-  "version": "0.1.0-alpha.21",
+  "version": "0.1.0-alpha.23",
   "description": "Next.js プロジェクト用ドキュメント自動生成 CLI",
   "type": "module",
   "main": "dist/index.js",
@@ -59,6 +59,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@jest/globals": "^30.2.0",
     "@types/jest": "^30.0.0",
     "@types/markdown-it": "^14.1.2",
     "@types/mdast": "^4.0.4",

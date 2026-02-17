@@ -189,6 +189,15 @@ claude plugin uninstall shirokuma-skills-ja@shirokuma-library --scope project
 claude plugin install shirokuma-skills-ja@shirokuma-library --scope project
 ```
 
+marketplace が古い状態（`Source: Directory` 等）で `claude plugin install` が最新を取得しない場合:
+
+```bash
+# marketplace を再登録して fresh clone を取得
+claude plugin marketplace remove shirokuma-library
+claude plugin marketplace add ShirokumaLibrary/shirokuma-plugins
+claude plugin install shirokuma-skills-ja@shirokuma-library --scope project
+```
+
 ## アンインストール
 
 ```bash

@@ -43,10 +43,10 @@ import {
   getProjectFields,
   autoSetTimestamps,
   updateTextField,
-  updateSelectField,
   generateTimestamp,
   type ProjectField,
 } from "../utils/project-fields.js";
+import { updateProjectStatus } from "../utils/issue-detail.js";
 import { WORK_STARTED_STATUSES } from "../utils/status-workflow.js";
 import {
   getProjectId,
@@ -571,7 +571,7 @@ function fetchActiveIssues(
 }
 
 // =============================================================================
-// Helper: Update issue status in project
+// Helper: Update issue status in project (#676: updateProjectStatus に委任)
 // =============================================================================
 
 function updateIssueStatus(
@@ -581,21 +581,14 @@ function updateIssueStatus(
   projectFields: Record<string, ProjectField>,
   logger: Logger
 ): boolean {
-  const statusField = projectFields["Status"];
-  if (!statusField) {
-    logger.warn("Status field not found in project");
-    return false;
-  }
-
-  const optionId = statusField.options[statusValue];
-  if (!optionId) {
-    const available = Object.keys(statusField.options).sort().join(", ");
-    logger.error(`Invalid Status value '${statusValue}'`);
-    logger.info(`  Available options: ${available}`);
-    return false;
-  }
-
-  return updateSelectField(projectId, itemId, statusField.id, optionId, logger);
+  const result = updateProjectStatus({
+    projectId,
+    itemId,
+    statusValue,
+    projectFields,
+    logger,
+  });
+  return result.success;
 }
 
 // =============================================================================
@@ -1196,11 +1189,10 @@ async function cmdEnd(
       }
 
       const fields = fieldsCache[issue.projectId] ?? {};
+      // updateIssueStatus → updateProjectStatus が autoSetTimestamps を呼ぶ (#676)
       if (updateIssueStatus(issue.projectId, issue.projectItemId, "Done", fields, logger)) {
         updatedIssues.push({ number: num, status: "Done" });
         logger.success(`Issue #${num} → Done`);
-        // Auto-set timestamp (#342) - reuse cached fields
-        autoSetTimestamps(issue.projectId, issue.projectItemId, "Done", fields, logger);
       }
     }
 
@@ -1222,6 +1214,7 @@ async function cmdEnd(
       const mergedPr = findMergedPrForIssue(owner, repo, num, logger);
       const targetStatus = mergedPr ? "Done" : "Review";
 
+      // updateIssueStatus → updateProjectStatus が autoSetTimestamps を呼ぶ (#676)
       if (updateIssueStatus(issue.projectId, issue.projectItemId, targetStatus, fields, logger)) {
         updatedIssues.push({ number: num, status: targetStatus });
         if (mergedPr) {
@@ -1229,8 +1222,6 @@ async function cmdEnd(
         } else {
           logger.success(`Issue #${num} → Review`);
         }
-        // Auto-set timestamp (#342) - reuse cached fields
-        autoSetTimestamps(issue.projectId, issue.projectItemId, targetStatus, fields, logger);
       }
     }
   }

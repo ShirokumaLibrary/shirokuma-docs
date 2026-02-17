@@ -5,7 +5,8 @@
 ```mermaid
 graph LR
     Icebox[Icebox] --> Backlog[Backlog]
-    Backlog --> SpecReview[Spec Review]
+    Backlog --> Planning[Planning]
+    Planning --> SpecReview[Spec Review]
     SpecReview --> Ready[Ready]
     SpecReview -.->|不明確| Backlog
     Ready --> InProgress[In Progress]
@@ -27,7 +28,8 @@ graph LR
 | ステータス | 色 | 用途 | 次のステータス |
 |-----------|-----|------|--------------|
 | Icebox | Gray | 将来検討するアイデア | Backlog |
-| Backlog | Blue | 優先順位付き作業項目 | Spec Review |
+| Backlog | Blue | 優先順位付き作業項目 | Planning |
+| Planning | Yellow | 計画策定中 | Spec Review |
 | Spec Review | Pink | 要件・仕様レビュー中 | Ready / Backlog |
 | Ready | Green | 開始可能、依存関係解決済み | In Progress |
 | In Progress | Yellow | 作業中（1人1つまで） | Review / Pending |

@@ -56,6 +56,7 @@ import {
   ensureMarketplace,
   getGlobalCachePath,
   cleanupLegacyPluginDir,
+  cleanupOldCacheVersions,
   isSelfRepo,
   isClaudeCliAvailable,
   hasJaPlugin,
@@ -425,21 +426,32 @@ export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise
     process.exit(1);
   }
 
-  // Verify bundled plugin exists
-  const bundledPath = getBundledPluginPath();
-  if (!existsSync(bundledPath)) {
-    logger.error(T("errorNoBundledPlugin"));
-    process.exit(1);
-  }
-
   const newVersion = getPackageVersion();
-  const newPluginVersion = getPluginVersion();
 
   if (options.dryRun) {
     logger.info(T("dryRunBanner"));
   }
 
   logger.info(T("cliVersion", { version: newVersion }));
+
+  // 外部プロジェクト: marketplace からキャッシュ経由で更新（#486, #674）
+  // バンドルプラグインが存在しなくても動作する
+  if (!isSelfRepo(projectPath)) {
+    const newPluginVersion = getPluginVersion();
+    logger.info(T("pluginVersion", { version: newPluginVersion }));
+    return updateExternalProject(projectPath, options, logger, T, newVersion, newPluginVersion, verbose);
+  }
+
+  // === 以下は self-repo（shirokuma-docs 自身）専用 ===
+
+  // self-repo ではバンドルプラグインが必須
+  const bundledPath = getBundledPluginPath();
+  if (!existsSync(bundledPath)) {
+    logger.error(T("errorNoBundledPlugin"));
+    process.exit(1);
+  }
+
+  const newPluginVersion = getPluginVersion();
   logger.info(T("pluginVersion", { version: newPluginVersion }));
 
   // Version mismatch detection (CLI vs plugin)
@@ -452,13 +464,6 @@ export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise
       logger.warn(T("warnVersionMismatch", { cliVersion: newVersion, pluginVersion: newPluginVersion }));
     }
   }
-
-  // 外部プロジェクト: claude plugin update に完全委譲（#486）
-  if (!isSelfRepo(projectPath)) {
-    return updateExternalProject(projectPath, options, logger, T, newVersion, newPluginVersion, verbose);
-  }
-
-  // === 以下は self-repo（shirokuma-docs 自身）専用 ===
 
   // Determine which skills to update
   let targetSkills: string[];
@@ -618,6 +623,17 @@ async function updateExternalProject(
           logger.success(`${registryId}: ${T("globalCacheUpdated")}`);
         } else {
           logger.warn(`${registryId}: ${cacheResult.message ?? "update failed"}`);
+        }
+      }
+
+      // 古いキャッシュバージョンをクリーンアップ (#679)
+      const pluginNames = languageSetting === "japanese"
+        ? [PLUGIN_NAME_JA, PLUGIN_NAME_HOOKS]
+        : [PLUGIN_NAME, PLUGIN_NAME_HOOKS];
+      for (const pn of pluginNames) {
+        const removed = cleanupOldCacheVersions(pn);
+        if (removed.length > 0) {
+          logger.info(`${pn}: ${removed.length} old cache version(s) removed`);
         }
       }
     }

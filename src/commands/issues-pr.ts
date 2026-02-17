@@ -27,11 +27,7 @@ import { OutputFormat, formatOutput, GH_PR_LIST_COLUMNS } from "../utils/formatt
 import {
   resolveTargetRepo,
 } from "../utils/repo-pairs.js";
-import {
-  getProjectId,
-  setItemFields,
-  cmdGetIssueDetail,
-} from "./issues.js";
+import { resolveAndUpdateStatus } from "../utils/issue-detail.js";
 
 // =============================================================================
 // Types
@@ -420,28 +416,15 @@ export async function cmdMerge(
 
   logger.success(`Merged PR #${prNumber} (${mergeMethod})`);
 
-  // Try to update linked issues to Done (best-effort)
+  // Try to update linked issues to Done + autoSetTimestamps (best-effort, #676)
   const linkedIssuesUpdated: Array<{ number: number; status: string }> = [];
 
   if (linkedNumbers.length > 0) {
-    const projectId = getProjectId(owner, repo);
-    if (projectId) {
-      for (const num of linkedNumbers) {
-        // GraphQL で projectItemId を取得（gh CLI の projectItems には id がないため）
-        const detail = cmdGetIssueDetail(owner, repo, num);
-        if (!detail?.projectItemId) continue;
-
-        const fieldResult = setItemFields(
-          projectId,
-          detail.projectItemId,
-          { Status: "Done" },
-          logger
-        );
-
-        if (fieldResult > 0) {
-          linkedIssuesUpdated.push({ number: num, status: "Done" });
-          logger.success(`Issue #${num} → Done`);
-        }
+    for (const num of linkedNumbers) {
+      const result = resolveAndUpdateStatus(owner, repo, num, "Done", logger);
+      if (result.success) {
+        linkedIssuesUpdated.push({ number: num, status: "Done" });
+        logger.success(`Issue #${num} → Done`);
       }
     }
   }

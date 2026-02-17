@@ -56,7 +56,7 @@ shirokuma-docs projects create-project --title "{project-name}" --lang={en|ja}
 
 | Field | Options |
 |-------|---------|
-| Status | Icebox → Backlog → Spec Review → Ready → In Progress ⇄ Pending → Review → Testing → Done / Not Planned → Released |
+| Status | Icebox → Backlog → Planning → Spec Review → Ready → In Progress ⇄ Pending → Review → Testing → Done / Not Planned → Released |
 | Priority | Critical / High / Medium / Low |
 | Size | XS / S / M / L / XL |
 
@@ -163,7 +163,7 @@ If any items are missing, recommended settings (Description, Emoji, Format) are 
 
 **Normal Flow**:
 
-Icebox → Backlog → Spec Review → Ready → In Progress → Review → Testing → Done / Not Planned → Released
+Icebox → Backlog → Planning → Spec Review → Ready → In Progress → Review → Testing → Done / Not Planned → Released
 
 **Exception Flows**:
 

@@ -70,6 +70,13 @@ import {
   type ProjectField,
   type ProjectFieldType,
 } from "../utils/project-fields.js";
+import { getProjectId } from "./projects.js";
+import {
+  GRAPHQL_QUERY_ISSUE_DETAIL as ISSUE_DETAIL_QUERY,
+  getIssueDetail,
+  updateProjectStatus,
+  resolveAndUpdateStatus,
+} from "../utils/issue-detail.js";
 
 // Re-exports for backward compatibility (issues-pr.ts, session.ts)
 export {
@@ -81,9 +88,13 @@ export {
   generateTimestamp,
   autoSetTimestamps,
   addItemToProject,
+  getProjectId,
   type ProjectField,
   type ProjectFieldType,
 };
+
+// Re-export issue-detail helpers
+export { getIssueDetail, resolveAndUpdateStatus };
 
 // =============================================================================
 // Types
@@ -187,39 +198,8 @@ query($owner: String!, $name: String!, $first: Int!, $cursor: String) {
 }
 `;
 
-const GRAPHQL_QUERY_ISSUE_DETAIL = `
-query($owner: String!, $name: String!, $number: Int!) {
-  repository(owner: $owner, name: $name) {
-    issue(number: $number) {
-      number
-      title
-      body
-      url
-      state
-      createdAt
-      updatedAt
-      labels(first: 20) {
-        nodes { name }
-      }
-      projectItems(first: 5) {
-        nodes {
-          id
-          project { id title }
-          status: fieldValueByName(name: "Status") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
-          }
-          priority: fieldValueByName(name: "Priority") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
-          }
-          size: fieldValueByName(name: "Size") {
-            ... on ProjectV2ItemFieldSingleSelectValue { name optionId }
-          }
-        }
-      }
-    }
-  }
-}
-`;
+// GRAPHQL_QUERY_ISSUE_DETAIL は utils/issue-detail.ts から import（ISSUE_DETAIL_QUERY）
+const GRAPHQL_QUERY_ISSUE_DETAIL = ISSUE_DETAIL_QUERY;
 
 const GRAPHQL_QUERY_SEARCH_ISSUES = `
 query($searchQuery: String!, $first: Int!) {
@@ -356,29 +336,6 @@ query($owner: String!, $name: String!, $number: Int!) {
 // =============================================================================
 // Helper Functions
 // =============================================================================
-
-/**
- * Get project ID by name (defaults to repository name)
- */
-export function getProjectId(owner: string, projectName?: string): string | null {
-  const targetName = projectName || getRepoName();
-  if (!targetName) return null;
-
-  const result = runGhCommand<{ projects: Array<{ id: string; title: string }> }>(
-    ["project", "list", "--owner", owner, "--format", "json"],
-    { silent: true }
-  );
-
-  if (!result.success || !result.data?.projects) return null;
-
-  for (const project of result.data.projects) {
-    if (project.title === targetName) {
-      return project.id;
-    }
-  }
-
-  return result.data.projects[0]?.id ?? null;
-}
 
 /**
  * Get issue GraphQL ID by number
@@ -874,7 +831,10 @@ async function cmdCreate(
       if (options.size) fields["Size"] = options.size;
 
       if (Object.keys(fields).length > 0) {
-        setItemFields(projectId, projectItemId, fields, logger);
+        const fieldCount = setItemFields(projectId, projectItemId, fields, logger);
+        if (fieldCount === 0) {
+          logger.warn("Failed to set project fields on created issue");
+        }
       }
     } else {
       logger.warn("Failed to add to project");
@@ -1118,36 +1078,24 @@ async function cmdUpdate(
         updated = true;
         logger.success(`Closed #${issueNumber} (${stateReason})`);
 
-        // Auto-set Status if --field-status was not explicitly specified
+        // Auto-set Status if --field-status was not explicitly specified (#676)
         if (!options.fieldStatus) {
           const targetStatus = stateReason === "NOT_PLANNED" ? "Not Planned" : "Done";
+          let statusResult;
           if (matchingItem?.id && matchingItem?.project?.id) {
-            const pId = matchingItem.project.id;
-            const iId = matchingItem.id;
-            const pf = getProjectFields(pId);
-            const statusCount = setItemFields(pId, iId, { Status: targetStatus }, logger, pf);
-            if (statusCount > 0) {
-              logger.success(`Issue #${issueNumber} → ${targetStatus}`);
-              if (targetStatus === "Done") {
-                autoSetTimestamps(pId, iId, "Done", pf, logger);
-              }
-            }
+            const pf = getProjectFields(matchingItem.project.id);
+            statusResult = updateProjectStatus({
+              projectId: matchingItem.project.id,
+              itemId: matchingItem.id,
+              statusValue: targetStatus,
+              projectFields: pf,
+              logger,
+            });
           } else {
-            // Issue not in project, try to find project
-            const projectId = getProjectId(owner);
-            if (projectId) {
-              const detail = cmdGetIssueDetail(owner, repo, issueNumber);
-              if (detail?.projectItemId) {
-                const pf = getProjectFields(projectId);
-                const statusCount = setItemFields(projectId, detail.projectItemId, { Status: targetStatus }, logger, pf);
-                if (statusCount > 0) {
-                  logger.success(`Issue #${issueNumber} → ${targetStatus}`);
-                  if (targetStatus === "Done") {
-                    autoSetTimestamps(projectId, detail.projectItemId, "Done", pf, logger);
-                  }
-                }
-              }
-            }
+            statusResult = resolveAndUpdateStatus(owner, repo, issueNumber, targetStatus, logger);
+          }
+          if (statusResult.success) {
+            logger.success(`Issue #${issueNumber} → ${targetStatus}`);
           }
         }
       } else {
@@ -1463,7 +1411,7 @@ async function cmdClose(
 
   logger.success(`Closed #${issueNumber} (${stateReason})`);
 
-  // Auto-update project Status based on stateReason (#373)
+  // Auto-update project Status based on stateReason (#373, #676)
   // Priority: --field-status > stateReason-based default
   const targetStatus = options.fieldStatus
     ? options.fieldStatus
@@ -1471,27 +1419,12 @@ async function cmdClose(
     ? "Not Planned"
     : "Done";
 
-  let statusUpdated = false;
-  const projectId = getProjectId(owner);
-  if (projectId) {
-    const detail = cmdGetIssueDetail(owner, repo, issueNumber);
-    if (detail?.projectItemId) {
-      const fields = getProjectFields(projectId);
-      const fieldResult = setItemFields(
-        projectId,
-        detail.projectItemId,
-        { Status: targetStatus },
-        logger
-      );
-      if (fieldResult > 0) {
-        statusUpdated = true;
-        logger.success(`Issue #${issueNumber} → ${targetStatus}`);
-        // Auto-set timestamp for Done status (#342)
-        if (targetStatus === "Done") {
-          autoSetTimestamps(projectId, detail.projectItemId, "Done", fields, logger);
-        }
-      }
-    }
+  const statusResult = resolveAndUpdateStatus(owner, repo, issueNumber, targetStatus, logger);
+  const statusUpdated = statusResult.success;
+  if (statusUpdated) {
+    logger.success(`Issue #${issueNumber} → ${targetStatus}`);
+  } else {
+    logger.warn(`Issue #${issueNumber}: Status 更新をスキップ (${statusResult.reason ?? "unknown"})`);
   }
 
   const output = {
@@ -1828,47 +1761,14 @@ async function cmdRemove(
 
 /**
  * Issue の projectItemId と projectId を GraphQL で取得する
+ * @deprecated getIssueDetail (utils/issue-detail.ts) を使用してください
  */
 export function cmdGetIssueDetail(
   owner: string,
   repo: string,
   issueNumber: number
 ): { projectItemId?: string; projectId?: string } | null {
-  interface IssueNode {
-    number?: number;
-    projectItems?: {
-      nodes?: Array<{
-        id?: string;
-        project?: { id?: string; title?: string };
-      }>;
-    };
-  }
-
-  interface QueryResult {
-    data?: {
-      repository?: {
-        issue?: IssueNode;
-      };
-    };
-  }
-
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
-    owner,
-    name: repo,
-    number: issueNumber,
-  });
-
-  if (!result.success) return null;
-  const issue = result.data?.data?.repository?.issue;
-  if (!issue) return null;
-
-  // Match by project name convention, fallback to first item
-  const projectItems = issue.projectItems?.nodes ?? [];
-  const projectItem = projectItems.find((p) => p?.project?.title === repo) ?? projectItems[0];
-  return {
-    projectItemId: projectItem?.id,
-    projectId: projectItem?.project?.id,
-  };
+  return getIssueDetail(owner, repo, issueNumber);
 }
 
 // =============================================================================

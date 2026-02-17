@@ -46,6 +46,14 @@ claude plugin install shirokuma-skills-en@shirokuma-library --scope project
 
 A new session is required after cache update for skills to appear.
 
+## Cache Hygiene
+
+`shirokuma-docs update` automatically handles:
+
+- **Old cache version cleanup**: Keeps the latest 3 versions (`keepCount = 3`), removes older directories
+- **Semver sorting**: Resolves version directories by semver order (numeric comparison, not lexicographic)
+- **Marketplace source check**: Detects `Source: Directory` (local reference) and auto-re-registers as `Source: GitHub` (fresh clone)
+
 ## When to Guide the User
 
 | Symptom | Cause | Action |
@@ -55,6 +63,7 @@ A new session is required after cache update for skills to appear.
 | Skill works in one project but not another | Plugin scope mismatch | Check `--scope` (user vs project) |
 | `.claude/plugins/` directory still exists | Legacy installation | `shirokuma-docs update` will auto-cleanup |
 | `disable` / `uninstall` scope mismatch error | Plugin installed with `--scope project` | Use `--scope project` explicitly, or omit `--scope` for auto-detect |
+| Marketplace registered as `Source: Directory` | Stale local reference | `shirokuma-docs update` will auto-re-register, or manually: `claude plugin marketplace remove shirokuma-library` → `claude plugin marketplace add ShirokumaLibrary/shirokuma-plugins` |
 
 ## Rules
 
@@ -62,3 +71,4 @@ A new session is required after cache update for skills to appear.
 2. **Use `shirokuma-docs update`** — updates cache + redeploys rules in one command
 3. **Version-same updates require uninstall + install** — `plugin update` skips when version unchanged
 4. **`.claude/plugins/` is legacy** — if present, `shirokuma-docs update` will clean it up automatically
+5. **Cache cleanup is automatic** — `shirokuma-docs update` removes old versions (keeps latest 3)

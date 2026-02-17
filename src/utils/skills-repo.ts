@@ -234,17 +234,37 @@ export function getPackageVersion(): string {
 /**
  * Get version from the bundled plugin's plugin.json
  *
+ * バンドル → グローバルキャッシュ → "unknown" の順でフォールバック (#674)
+ *
  * @returns Plugin version string or "unknown"
  */
 export function getPluginVersion(): string {
+  // バンドルプラグインから取得
   try {
     const pluginJsonPath = join(getBundledPluginPath(), ".claude-plugin", "plugin.json");
     const content = readFileSync(pluginJsonPath, "utf-8");
     const pluginJson = JSON.parse(content) as { version?: string };
-    return pluginJson.version ?? "unknown";
+    if (pluginJson.version) return pluginJson.version;
   } catch {
-    return "unknown";
+    // バンドルなし — キャッシュにフォールバック
   }
+
+  // グローバルキャッシュから取得（外部プロジェクト向け）
+  for (const pluginName of [PLUGIN_NAME, PLUGIN_NAME_JA]) {
+    const cachePath = getGlobalCachePath(pluginName);
+    if (cachePath) {
+      try {
+        const cachePluginJsonPath = join(cachePath, ".claude-plugin", "plugin.json");
+        const content = readFileSync(cachePluginJsonPath, "utf-8");
+        const pluginJson = JSON.parse(content) as { version?: string };
+        if (pluginJson.version) return pluginJson.version;
+      } catch {
+        // キャッシュ読み取り失敗 — 続行
+      }
+    }
+  }
+
+  return "unknown";
 }
 
 // ========================================
@@ -694,6 +714,70 @@ export async function deployRules(
 }
 
 // ========================================
+// Semver Utilities
+// ========================================
+
+/**
+ * semver 簡易比較関数（外部依存なし）
+ *
+ * shirokuma-docs の既知バージョン体系に限定対応:
+ * major.minor.patch[-prerelease.N]
+ *
+ * @param a - バージョン文字列
+ * @param b - バージョン文字列
+ * @returns 負数: a < b、0: a === b、正数: a > b
+ */
+export function compareSemver(a: string, b: string): number {
+  const parse = (v: string) => {
+    const [core, ...preParts] = v.split("-");
+    const pre = preParts.length > 0 ? preParts.join("-") : null;
+    const [rawMajor, rawMinor, rawPatch] = (core ?? "").split(".").map(Number);
+    return {
+      major: Number.isNaN(rawMajor) ? 0 : (rawMajor ?? 0),
+      minor: Number.isNaN(rawMinor) ? 0 : (rawMinor ?? 0),
+      patch: Number.isNaN(rawPatch) ? 0 : (rawPatch ?? 0),
+      pre,
+    };
+  };
+
+  const pa = parse(a);
+  const pb = parse(b);
+
+  // major.minor.patch を比較
+  if (pa.major !== pb.major) return pa.major - pb.major;
+  if (pa.minor !== pb.minor) return pa.minor - pb.minor;
+  if (pa.patch !== pb.patch) return pa.patch - pb.patch;
+
+  // prerelease: リリース版 > プレリリース版
+  if (!pa.pre && !pb.pre) return 0;
+  if (!pa.pre) return 1;
+  if (!pb.pre) return -1;
+
+  // 両方 prerelease: セグメント比較
+  const aSegs = pa.pre.split(".");
+  const bSegs = pb.pre.split(".");
+
+  for (let i = 0; i < Math.max(aSegs.length, bSegs.length); i++) {
+    const aS = aSegs[i];
+    const bS = bSegs[i];
+    if (aS === undefined) return -1;
+    if (bS === undefined) return 1;
+
+    const aNum = Number(aS);
+    const bNum = Number(bS);
+
+    if (!isNaN(aNum) && !isNaN(bNum)) {
+      if (aNum !== bNum) return aNum - bNum;
+    } else {
+      if (aS < bS) return -1;
+      if (aS > bS) return 1;
+    }
+  }
+
+  return 0;
+}
+
+// ========================================
 // Marketplace Management
 // ========================================
 
@@ -713,11 +797,14 @@ export const MARKETPLACE_REPO = "ShirokumaLibrary/shirokuma-plugins";
  * `claude plugin marketplace list` で確認し、MARKETPLACE_NAME が
  * 含まれていなければ `claude plugin marketplace add` で登録する。
  *
- * 既存の登録（directory/github）は上書きしない。
+ * Directory ソース（ローカル参照）が検出された場合は再登録して
+ * GitHub ソース（fresh clone）に切り替える (#679)。
  *
  * @returns true: 登録済みまたは登録成功、false: 登録失敗
  */
 export function ensureMarketplace(): boolean {
+  let needsReRegister = false;
+
   try {
     const output = execFileSync(
       "claude",
@@ -725,10 +812,34 @@ export function ensureMarketplace(): boolean {
       { encoding: "utf-8", timeout: 15000, stdio: "pipe" },
     );
     if (output.includes(MARKETPLACE_NAME)) {
-      return true;
+      // Directory ソースの検出: キャッシュが陳腐化する原因 (#679)
+      // marketplace list の各行を解析し、該当エントリのソースを確認
+      const lines = output.split("\n");
+      for (const line of lines) {
+        if (line.includes(MARKETPLACE_NAME) && line.toLowerCase().includes("directory")) {
+          needsReRegister = true;
+          break;
+        }
+      }
+      if (!needsReRegister) {
+        return true;
+      }
     }
   } catch {
     // CLI エラー: 登録を試みる
+  }
+
+  // Directory ソースの場合は remove してから再登録
+  if (needsReRegister) {
+    try {
+      execFileSync(
+        "claude",
+        ["plugin", "marketplace", "remove", MARKETPLACE_NAME],
+        { encoding: "utf-8", timeout: 15000, stdio: "pipe" },
+      );
+    } catch {
+      // remove 失敗は無視して add を試みる
+    }
   }
 
   try {
@@ -761,8 +872,7 @@ export function getGlobalCachePath(pluginName: string, version?: string): string
     return existsSync(versionDir) ? versionDir : null;
   }
 
-  // version 未指定: ディレクトリをスキャンし最新を返す
-  // NOTE: 辞書順ソート。0.10.x 以降では semver ソートが必要になる
+  // version 未指定: ディレクトリをスキャンし最新を返す（semver ソート #679）
   // TOCTOU 防御: existsSync と readdirSync の間にディレクトリが削除される可能性 (#632)
   try {
     const versions = readdirSync(cacheBase)
@@ -770,8 +880,7 @@ export function getGlobalCachePath(pluginName: string, version?: string): string
         try { return statSync(join(cacheBase, name)).isDirectory(); }
         catch { return false; }
       })
-      .sort()
-      .reverse();
+      .sort((a, b) => compareSemver(b, a));
     return versions.length > 0 ? join(cacheBase, versions[0]) : null;
   } catch {
     return null;
@@ -953,4 +1062,52 @@ export async function cleanDeployedRules(
   }
 
   return results;
+}
+
+// ========================================
+// Cache Version Cleanup
+// ========================================
+
+/**
+ * グローバルキャッシュの古いバージョンディレクトリを削除する (#679)
+ *
+ * uninstall + install を繰り返すとキャッシュディレクトリが肥大化する。
+ * semver ソートで最新 keepCount 個を残し、古いバージョンを削除する。
+ *
+ * installed_plugins.json は操作しない（Claude Code 管理ファイル）。
+ *
+ * @param pluginName - プラグイン名
+ * @param keepCount - 残すバージョン数（デフォルト: 3）
+ * @returns 削除されたバージョンの配列
+ */
+export function cleanupOldCacheVersions(pluginName: string, keepCount = 3): string[] {
+  const cacheBase = join(homedir(), ".claude", "plugins", "cache", MARKETPLACE_NAME, pluginName);
+  if (!existsSync(cacheBase)) return [];
+
+  try {
+    const versions = readdirSync(cacheBase)
+      .filter(name => {
+        try { return statSync(join(cacheBase, name)).isDirectory(); }
+        catch { return false; }
+      })
+      .sort((a, b) => compareSemver(b, a)); // 最新が先頭
+
+    if (versions.length <= keepCount) return [];
+
+    const toRemove = versions.slice(keepCount);
+    const removed: string[] = [];
+
+    for (const ver of toRemove) {
+      try {
+        rmSync(join(cacheBase, ver), { recursive: true, force: true });
+        removed.push(ver);
+      } catch {
+        // 他プロセスが参照中の可能性 — 無視
+      }
+    }
+
+    return removed;
+  } catch {
+    return [];
+  }
 }

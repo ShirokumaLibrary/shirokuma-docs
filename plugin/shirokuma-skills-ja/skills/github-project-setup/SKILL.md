@@ -56,7 +56,7 @@ shirokuma-docs projects create-project --title "{プロジェクト名}" --lang=
 
 | フィールド | オプション |
 |-----------|-----------|
-| Status | Icebox → Backlog → Spec Review → Ready → In Progress ⇄ Pending → Review → Testing → Done / Not Planned → Released |
+| Status | Icebox → Backlog → Planning → Spec Review → Ready → In Progress ⇄ Pending → Review → Testing → Done / Not Planned → Released |
 | Priority | Critical / High / Medium / Low |
 | Size | XS / S / M / L / XL |
 
@@ -163,7 +163,7 @@ shirokuma-docs session check --setup
 
 **通常フロー**:
 
-Icebox → Backlog → Spec Review → Ready → In Progress → Review → Testing → Done / Not Planned → Released
+Icebox → Backlog → Planning → Spec Review → Ready → In Progress → Review → Testing → Done / Not Planned → Released
 
 **例外フロー**:
 

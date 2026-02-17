@@ -46,6 +46,14 @@ claude plugin install shirokuma-skills-ja@shirokuma-library --scope project
 
 キャッシュ更新後、スキルが表示されるには新しいセッションが必要。
 
+## キャッシュの衛生管理
+
+`shirokuma-docs update` は自動的に以下を実行する:
+
+- **古いキャッシュバージョンの削除**: `keepCount = 3` で最新3バージョンを保持し、古いディレクトリを削除
+- **semver ソート**: バージョンディレクトリを semver 順で解決（辞書順ではなく数値比較）
+- **marketplace ソース確認**: `Source: Directory`（ローカル参照）を検出した場合、`Source: GitHub`（fresh clone）に自動再登録
+
 ## ユーザーへのガイダンスが必要な場合
 
 | 症状 | 原因 | アクション |
@@ -55,6 +63,7 @@ claude plugin install shirokuma-skills-ja@shirokuma-library --scope project
 | あるプロジェクトでスキルが動くが別では動かない | プラグインスコープの不一致 | `--scope`（user vs project）を確認 |
 | `.claude/plugins/` ディレクトリがまだ存在する | レガシーインストール | `shirokuma-docs update` で自動クリーンアップ |
 | `disable` / `uninstall` でスコープ不一致エラー | プラグインが `--scope project` でインストール済み | `--scope project` を指定、または `--scope` を省略して auto-detect |
+| marketplace が `Source: Directory` で登録されている | ローカル参照が残存 | `shirokuma-docs update` で自動再登録、または手動: `claude plugin marketplace remove shirokuma-library` → `claude plugin marketplace add ShirokumaLibrary/shirokuma-plugins` |
 
 ## ルール
 
@@ -62,3 +71,4 @@ claude plugin install shirokuma-skills-ja@shirokuma-library --scope project
 2. **`shirokuma-docs update` を推奨** — キャッシュ更新+ルール再展開を一発で実行
 3. **バージョンが同じ場合の更新は uninstall + install** — `plugin update` はバージョン未変更時にスキップする
 4. **`.claude/plugins/` はレガシー** — 存在する場合、`shirokuma-docs update` が自動的にクリーンアップ
+5. **キャッシュクリーンアップは自動** — `shirokuma-docs update` が古いバージョンを自動削除（最新3つを保持）
