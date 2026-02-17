@@ -106,6 +106,24 @@ Classify the work type from keywords:
 | "review", "audit", "レビュー", "チェック" | Review |
 | "config", "setup", "設定", "セットアップ" | Chore |
 
+### Step 1a: Issue Resolution (text description only)
+
+When called with text description only, ensure an issue exists before starting work.
+
+1. AskUserQuestion: "Do you have a corresponding issue number? If not, we'll create a new one."
+   - Options: "Enter issue number", "No issue - create new"
+2. Issue number provided → Join Step 1's "issue number provided" path
+3. No issue → Create issue via `managing-github-items` skill (use Step 1's keyword classification for work type inference) → Join Step 1 with the created issue number
+
+```
+Text description only → Step 1a
+├── AskUserQuestion: "Corresponding issue?"
+├── Issue number provided → Join Step 1 (issue number path)
+└── No issue
+    ├── Create issue via managing-github-items
+    └── Join Step 1 with created issue
+```
+
 ### Step 2: Update Status (if issue number)
 
 If the issue is not already In Progress:

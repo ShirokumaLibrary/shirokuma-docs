@@ -57,15 +57,16 @@ shirokuma-docs issues show {number}
 
 title, body, type, priority, size, labels, コメントを確認。
 
-### ステップ 1b: ステータスを Planning に更新
+### ステップ 1b: ステータスを Planning に更新 + アサイン
 
-Issue のステータスが Backlog の場合、Planning に遷移して計画開始を記録する。
+Issue のステータスが Backlog の場合、Planning に遷移して計画開始を記録する。同時にユーザーを自動アサインする。
 
 ```bash
 shirokuma-docs issues update {number} --field-status "Planning"
+gh issue edit {number} --add-assignee @me
 ```
 
-既に Planning / Spec Review の場合はスキップ。
+既に Planning / Spec Review の場合はステータス更新をスキップ。アサインは冪等なので常に実行する。
 
 ### ステップ 2: コードベース調査
 
@@ -145,6 +146,7 @@ Task(subagent_type: "general-purpose", prompt: """
 
 | 観点 | 説明 | 具体例 |
 |------|------|--------|
+| 目的セクションの妥当性 | `## 目的` が「誰が・何を・なぜ」を明確に述べているか | ロールが具体的か、「なぜ」が省略されていないか |
 | 要件カバレッジ | 概要・タスクの全要件が計画で漏れなくカバーされているか | 成果物に対応するタスクがあるか |
 | 変更ファイルの妥当性 | 漏れや余分なファイルはないか | 依存するモジュールの見落とし |
 | タスク粒度 | 適切な分解か（1タスク ≈ 1コミット） | 粗すぎ or 細かすぎの検出 |

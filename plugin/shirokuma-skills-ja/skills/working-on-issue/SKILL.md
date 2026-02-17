@@ -92,6 +92,24 @@ Planning + 計画ありのケース（セッション中断等）では、計画
 | review, レビュー | レビュー |
 | config, setup, 設定 | Chore |
 
+### ステップ 1a: Issue 解決（テキスト説明のみの場合）
+
+テキスト説明のみで呼ばれた場合、作業開始前に Issue を確保する。
+
+1. AskUserQuestion: 「対応する Issue 番号があれば入力してください。なければ新規作成します。」
+   - 選択肢: 「Issue 番号を入力」「Issue なし - 新規作成」
+2. Issue 番号入力 → ステップ 1 の「Issue 番号あり」パスに合流
+3. Issue なし → `managing-github-items` スキルで Issue 作成（ステップ 1 のキーワード分類を作業タイプ推定に活用）→ 作成された Issue 番号でステップ 1 に合流
+
+```
+テキスト説明のみ → ステップ 1a
+├── AskUserQuestion: 「対応 Issue は？」
+├── Issue 番号あり → ステップ 1（Issue 番号あり）に合流
+└── Issue なし
+    ├── managing-github-items で Issue 作成
+    └── 作成された Issue でステップ 1 に合流
+```
+
 ### ステップ 2: ステータス更新
 
 Issue が In Progress でなければ: `shirokuma-docs issues update {number} --field-status "In Progress"`

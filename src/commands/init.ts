@@ -472,6 +472,8 @@ export async function initCommand(options: InitOptions): Promise<void> {
  * gh 未インストール、未認証、オフライン、GitHub remote 未設定の場合は null を返す。
  */
 function tryValidateGitHubSetup(logger: Logger): SetupCheckResult | null {
+  // テスト時は GitHub API 呼び出しをスキップ（タイムアウト防止 #703）
+  if (process.env.SHIROKUMA_NO_CLAUDE_CLI) return null;
   try {
     return validateGitHubSetup(logger);
   } catch {

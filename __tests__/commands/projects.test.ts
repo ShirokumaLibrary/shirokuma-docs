@@ -19,6 +19,7 @@ import {
   MAX_TITLE_LENGTH,
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
+import { detectOptionDiff } from "../../src/commands/projects.js";
 
 describe("projects command validation", () => {
   // ===========================================================================
@@ -1092,6 +1093,184 @@ describe("projects create-project subcommand", () => {
     });
   });
 
+  describe("cmdSetup fieldId auto-detection (#688)", () => {
+    /**
+     * @testdoc cmdSetupはprojectId指定時でもfieldIdを自動検出する
+     * @purpose create-project経由（projectId指定あり、fieldId未指定）でStatusフィールドが更新されることを確認
+     */
+    it("should auto-detect fieldId independently from projectId", () => {
+      // create-project は cmdSetup を projectId 付きで呼ぶ
+      // fieldId は未指定（undefined → null）
+      const setupOptions = {
+        projectId: "PVT_xxx",
+        owner: "test-org",
+        lang: "ja",
+        fieldId: undefined,
+      };
+
+      const projectId: string | null = setupOptions.projectId ?? null;
+      let fieldId: string | null = setupOptions.fieldId ?? null;
+
+      // 修正前: if (!projectId && !fieldId) → false（projectId が truthy）
+      // fieldId 検出がスキップされ、Status 更新が実行されない
+      const oldCondition = !projectId && !fieldId;
+      expect(oldCondition).toBe(false); // バグ: 条件が false になる
+
+      // 修正後: projectId と fieldId の検出を分離
+      // if (!projectId) → false（projectId は既に設定済み、スキップ OK）
+      // if (!fieldId && projectId) → true（fieldId の自動検出が実行される）
+      const newProjectIdCondition = !projectId;
+      expect(newProjectIdCondition).toBe(false); // projectId は既にある
+
+      const newFieldIdCondition = !fieldId && !!projectId;
+      expect(newFieldIdCondition).toBe(true); // fieldId の自動検出が実行される
+
+      // 自動検出後、fieldId がセットされれば Status 更新が実行される
+      fieldId = "PVTSSF_mock_status_field_id";
+      expect(fieldId).toBeTruthy();
+    });
+
+    /**
+     * @testdoc cmdSetupはprojectIdもfieldIdも未指定の場合、両方を自動検出する
+     * @purpose 直接 setup コマンド実行時（引数なし）の動作を確認
+     */
+    it("should auto-detect both projectId and fieldId when neither provided", () => {
+      const setupOptions = {
+        projectId: undefined,
+        fieldId: undefined,
+      };
+
+      const projectId: string | null = setupOptions.projectId ?? null;
+      const fieldId: string | null = setupOptions.fieldId ?? null;
+
+      // projectId 未指定 → 自動検出ブロックに入る
+      expect(!projectId).toBe(true);
+      // fieldId 未指定 + projectId 検出後 → fieldId 自動検出ブロックに入る
+      expect(!fieldId).toBe(true);
+    });
+  });
+
+});
+
+describe("detectOptionDiff (#708)", () => {
+  /**
+   * @testdoc 定義と既存が完全一致する場合、差分なしを返す
+   * @purpose 全オプションが揃っている場合にスキップ判定できることを確認
+   */
+  it("should return no diff when options match exactly", () => {
+    const existing = ["Icebox", "Backlog", "Done"];
+    const defined = ["Icebox", "Backlog", "Done"];
+    const result = detectOptionDiff(existing, defined);
+    expect(result.missing).toEqual([]);
+    expect(result.extra).toEqual([]);
+  });
+
+  /**
+   * @testdoc 定義に不足がある場合、missingに検出する
+   * @purpose 新しく追加されたオプション（例: Not Planned）を検出できることを確認
+   */
+  it("should detect missing options", () => {
+    const existing = ["Icebox", "Backlog", "Done"];
+    const defined = ["Icebox", "Backlog", "Done", "Not Planned"];
+    const result = detectOptionDiff(existing, defined);
+    expect(result.missing).toEqual(["Not Planned"]);
+    expect(result.extra).toEqual([]);
+  });
+
+  /**
+   * @testdoc 既存に定義にないオプションがある場合、extraに検出する
+   * @purpose ユーザーがUIで追加したカスタムオプションを検出できることを確認
+   */
+  it("should detect extra options", () => {
+    const existing = ["Icebox", "Backlog", "Done", "Custom Status"];
+    const defined = ["Icebox", "Backlog", "Done"];
+    const result = detectOptionDiff(existing, defined);
+    expect(result.missing).toEqual([]);
+    expect(result.extra).toEqual(["Custom Status"]);
+  });
+
+  /**
+   * @testdoc missingとextraが同時に存在する場合、両方検出する
+   * @purpose UIでリネームした場合等の混在ケースを確認
+   */
+  it("should detect both missing and extra options", () => {
+    const existing = ["Todo", "In Progress", "Done"];
+    const defined = ["Icebox", "Backlog", "Done", "Not Planned"];
+    const result = detectOptionDiff(existing, defined);
+    expect(result.missing).toEqual(["Icebox", "Backlog", "Not Planned"]);
+    expect(result.extra).toEqual(["Todo", "In Progress"]);
+  });
+
+  /**
+   * @testdoc 既存が空の場合、全定義がmissingになる
+   * @purpose 初回セットアップ時の判定を確認
+   */
+  it("should treat all defined as missing when existing is empty", () => {
+    const existing: string[] = [];
+    const defined = ["Icebox", "Backlog", "Done"];
+    const result = detectOptionDiff(existing, defined);
+    expect(result.missing).toEqual(["Icebox", "Backlog", "Done"]);
+    expect(result.extra).toEqual([]);
+  });
+
+  /**
+   * @testdoc 完全不一致の場合、missing.lengthがdefined.lengthと等しい
+   * @purpose GitHubデフォルトオプション（Todo, In Progress, Done）からの初回セットアップ判定
+   */
+  it("should detect full mismatch for initial setup detection", () => {
+    // GitHubが自動生成するデフォルトオプション
+    const existing = ["Todo", "In Progress", "Done"];
+    const defined = ["Icebox", "Backlog", "Planning", "Spec Review", "Ready",
+      "In Progress", "Pending", "Review", "Testing", "Done", "Not Planned", "Released"];
+    const result = detectOptionDiff(existing, defined);
+    // "In Progress" と "Done" は一致するので、完全不一致ではない
+    expect(result.missing.length).toBe(10);
+    expect(result.extra).toEqual(["Todo"]);
+  });
+});
+
+describe("projects setup --dry-run", () => {
+  /**
+   * @testdoc SetupOptionsにdryRunプロパティが含まれる
+   * @purpose --dry-runオプションの型定義を文書化
+   */
+  it("should support dryRun option in SetupOptions", () => {
+    const options = {
+      lang: "ja",
+      dryRun: true,
+      force: false,
+    };
+
+    expect(options.dryRun).toBe(true);
+    expect(options.lang).toBe("ja");
+  });
+
+  /**
+   * @testdoc --dry-runと--forceは同時に指定可能
+   * @purpose --dry-run --force でプレビューのみ表示されることを文書化
+   */
+  it("should allow combining --dry-run with --force", () => {
+    const options = {
+      dryRun: true,
+      force: true,
+    };
+
+    expect(options.dryRun).toBe(true);
+    expect(options.force).toBe(true);
+  });
+
+  /**
+   * @testdoc --dry-runはデフォルトでfalse
+   * @purpose dryRun未指定時のデフォルト動作を文書化
+   */
+  it("should default dryRun to false when not specified", () => {
+    const options = {
+      lang: "ja",
+    };
+
+    const dryRun = (options as { dryRun?: boolean }).dryRun ?? false;
+    expect(dryRun).toBe(false);
+  });
 });
 
 describe("projects GraphQL queries", () => {

@@ -128,7 +128,7 @@ shirokuma-docs session end \
 
 判定に必要な情報は `shirokuma-docs issues show {number}` で PR 状態を確認する。
 
-**冪等性**: `creating-pr-on-issue` が PR 作成時に既に Review に更新済みの場合、`--review` は no-op。`committing-on-issue` のマージチェーンが Done に更新済みの場合、`--done` は no-op。`ending-session` はセーフティネットとして機能し、スキルが更新し損ねた Status を補完する。
+**冪等性**: `creating-pr-on-issue` がセルフレビュー完了時に既に Review に更新済みの場合、`--review` は no-op。`committing-on-issue` のマージチェーンが Done に更新済みの場合、`--done` は no-op。`ending-session` はセーフティネットとして機能し、スキルが更新し損ねた Status を補完する。
 
 **出力**:
 ```json

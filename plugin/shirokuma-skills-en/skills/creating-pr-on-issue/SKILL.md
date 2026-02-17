@@ -91,16 +91,6 @@ docs: CLAUDE.md のコマンド一覧を更新      ← Wrong: not English
 - Related Issues: `Closes #N` for completed items, `Refs #N` for related
 - Test plan: checklist of verification steps
 
-### Step 4b: Update Status
-
-If invoked with an issue number (e.g., `/creating-pr-on-issue 39`), update Status to Review immediately after PR creation:
-
-```bash
-shirokuma-docs issues update {number} --field-status "Review"
-```
-
-If no issue number was provided, skip this step (`ending-session` safety net covers it).
-
 ### Step 5: Completion Report
 
 ```markdown
@@ -182,6 +172,16 @@ Self-review [1/3]: Category detection → config + code (mixed)
 Self-review [2/3]: Re-reviewing...
   → No issues. Self-review complete.
 ```
+
+### Step 7: Update Status
+
+After the self-review chain completes (PASS or loop stopped), update Status to Review if invoked with an issue number:
+
+```bash
+shirokuma-docs issues update {number} --field-status "Review"
+```
+
+If no issue number was provided, skip this step (`ending-session` safety net covers it).
 
 ## Arguments
 

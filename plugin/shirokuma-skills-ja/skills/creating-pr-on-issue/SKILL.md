@@ -58,16 +58,6 @@ EOF
 
 **タイトルルール**: 70文字以内、プレフィックス(`feat:` 等)は英語、**それ以降は日本語**で記述する。Issue番号はタイトルに入れない。
 
-### ステップ 4b: Status 更新
-
-Issue 番号ありで起動された場合（例: `/creating-pr-on-issue 39`）、PR 作成直後に Status を Review に更新する:
-
-```bash
-shirokuma-docs issues update {number} --field-status "Review"
-```
-
-Issue 番号なしの場合はこのステップをスキップ（`ending-session` のセーフティネットでカバー）。
-
 ### ステップ 5: 完了レポート
 
 PR URL、ブランチ、コミット数、概要、リンクされた Issue を表示。
@@ -137,6 +127,16 @@ graph LR
 セルフレビュー [2/3]: 再レビュー実行中...
   → 問題なし。セルフレビュー完了。
 ```
+
+### ステップ 7: Status 更新
+
+セルフレビューチェーン完了後（PASS またはループ停止）、Issue 番号ありで起動された場合に Status を Review に更新する:
+
+```bash
+shirokuma-docs issues update {number} --field-status "Review"
+```
+
+Issue 番号なしの場合はこのステップをスキップ（`ending-session` のセーフティネットでカバー）。
 
 ## 引数
 

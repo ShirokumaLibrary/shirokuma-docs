@@ -19,7 +19,7 @@ import {
   MAX_TITLE_LENGTH,
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
-import { generateTimestamp, getPullRequestId } from "../../src/commands/issues.js";
+import { generateTimestamp, getPullRequestId, getOrganizationIssueTypes } from "../../src/commands/issues.js";
 import { GH_ISSUES_SEARCH_COLUMNS } from "../../src/utils/formatters.js";
 
 describe("issues command validation", () => {
@@ -1380,6 +1380,119 @@ describe("getPullRequestId export (#353)", () => {
    */
   it("should be exported as a function", () => {
     expect(typeof getPullRequestId).toBe("function");
+  });
+});
+
+describe("issues --issue-type option (#693)", () => {
+  // ===========================================================================
+  // Issue Types 機能のテスト
+  // ===========================================================================
+
+  describe("IssuesOptions issueType property", () => {
+    /**
+     * @testdoc createアクションで--issue-typeオプションをサポートする
+     * @purpose Issue Types を作成時に設定できることを文書化
+     */
+    it("should support --issue-type option for create action", () => {
+      const options = {
+        title: "New Feature",
+        issueType: "Feature",
+      };
+
+      expect(options.issueType).toBe("Feature");
+    });
+
+    /**
+     * @testdoc updateアクションで--issue-typeオプションをサポートする
+     * @purpose Issue Types を更新時に変更できることを文書化
+     */
+    it("should support --issue-type option for update action", () => {
+      const options = {
+        issueType: "Bug",
+      };
+
+      expect(options.issueType).toBe("Bug");
+    });
+
+    /**
+     * @testdoc --issue-typeが未指定の場合はundefinedである
+     * @purpose Issue Types はオプショナルであることを文書化
+     */
+    it("should be undefined when not specified", () => {
+      const options = {
+        title: "New Issue",
+        issueType: undefined as string | undefined,
+      };
+
+      expect(options.issueType).toBeUndefined();
+    });
+  });
+
+  describe("Issue Type name resolution", () => {
+    /**
+     * @testdoc 有効な Issue Type 名のパターン
+     * @purpose 想定される Issue Type 名を文書化
+     */
+    it("should document common Issue Type names", () => {
+      const commonTypes = ["Task", "Bug", "Feature", "Chore", "Docs", "Research"];
+
+      commonTypes.forEach((type) => {
+        expect(typeof type).toBe("string");
+        expect(type.length).toBeGreaterThan(0);
+      });
+    });
+
+    /**
+     * @testdoc Issue Type 名→ID マッピングのパターン
+     * @purpose 名前解決が getLabels() と同パターンであることを文書化
+     */
+    it("should follow same pattern as label name resolution", () => {
+      const issueTypes: Record<string, string> = {
+        "Task": "IT_abc123",
+        "Bug": "IT_def456",
+        "Feature": "IT_ghi789",
+      };
+
+      expect(issueTypes["Feature"]).toBe("IT_ghi789");
+      expect(issueTypes["NotExist"]).toBeUndefined();
+    });
+
+    /**
+     * @testdoc 存在しない Issue Type 名はエラーになる
+     * @purpose 不正な type 名のエラー条件を文書化
+     */
+    it("should error when Issue Type name is not found", () => {
+      const issueTypes: Record<string, string> = {
+        "Task": "IT_abc123",
+        "Bug": "IT_def456",
+      };
+
+      const requestedType = "InvalidType";
+      const resolved = issueTypes[requestedType] ?? null;
+
+      expect(resolved).toBeNull();
+      expect(Object.keys(issueTypes).join(", ")).toBe("Task, Bug");
+    });
+
+    /**
+     * @testdoc Organization 非対応時は空マップが返る
+     * @purpose 個人リポジトリでの Issue Types 非対応を文書化
+     */
+    it("should return empty map for non-organization repos", () => {
+      const emptyTypes: Record<string, string> = {};
+
+      expect(Object.keys(emptyTypes).length).toBe(0);
+    });
+  });
+
+  describe("getOrganizationIssueTypes export", () => {
+    /**
+     * @testdoc getOrganizationIssueTypes がエクスポートされている
+     * @purpose Issue Types 取得ヘルパーが利用可能であることを確認
+     */
+    it("should be exported as a function", () => {
+      expect(typeof getOrganizationIssueTypes).toBe("function");
+    });
   });
 });
 

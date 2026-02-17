@@ -64,22 +64,24 @@ Ideas and proposals start as **Discussions** (Research or Knowledge category), n
 ## Body Template
 
 ```markdown
-## 概要
+## Purpose
+{who} can {what}. {why}.
+
+## Summary
 {What this item does}
 
-## 背景
-{Why this is needed - optional}
+## Background
+{Current problems, relevant constraints and dependencies}
 
-## タスク
+## Tasks
 - [ ] Task 1
 - [ ] Task 2
 
 ## Deliverable
 {What "done" looks like}
-
-## 優先度
-{Priority justification - optional}
 ```
+
+> For type-specific templates (bug reproduction steps, research investigation items, etc.), see the `create-item` reference.
 
 ## Status Update Triggers
 
@@ -87,10 +89,10 @@ AI MUST update issue status at these points:
 
 | Trigger | Action | Owner | Command |
 |---------|--------|-------|---------|
-| Planning started | → Planning | `planning-on-issue` | `issues update {n} --field-status "Planning"` |
+| Planning started | → Planning + assign | `planning-on-issue` | `issues update {n} --field-status "Planning"` + `gh issue edit {n} --add-assignee @me` |
 | Plan created | → Spec Review | `planning-on-issue` | `issues update {n} --field-status "Spec Review"` |
 | User approves plan, starts work | → In Progress + branch | `working-on-issue` | `issues update {n} --field-status "In Progress"` |
-| PR created | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` |
+| Self-review complete | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` |
 | PR merged | → Done | `committing-on-issue` (via `issues merge`) | Automatic |
 | Blocked by dependency | → Pending | Manual | `issues update {n} --field-status "Pending"` + comment |
 | Complete (no PR needed) | → Done | `ending-session` | `session end --done {n}` |
@@ -119,7 +121,7 @@ The `planning-on-issue` skill writes a plan to the issue body and transitions Pl
 
 1. **One In Progress at a time** - Move previous item out before starting new one
 2. **Branch per issue** - Create a feature branch when starting work (see `branch-workflow` rule)
-3. **Event-driven**: Status changes happen immediately when events occur (`creating-pr-on-issue` sets Review, `issues merge` sets Done)
+3. **Event-driven**: Status changes happen immediately when events occur (`creating-pr-on-issue` sets Review after self-review completion, `issues merge` sets Done)
 4. **Session end safety net** - `ending-session` catches any missed status updates
 5. **Pending requires reason** - Add a comment explaining the blocker
 6. **Idempotency** - If status is already correct, skip the update (no error)

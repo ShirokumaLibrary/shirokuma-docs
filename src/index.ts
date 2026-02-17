@@ -459,11 +459,12 @@ program
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Item title (for create)")
   .option("-b, --body <file>", "Item body file path, or - for stdin (for create/update)")
-  .option("-F, --force", "Skip confirmation (for delete)")
+  .option("-F, --force", "Skip confirmation (delete) / Force destructive update (setup)")
   .option("--lang <lang>", "Language for field descriptions (option names stay in English): en, ja (for setup/create-project)")
   .option("--field-id <fieldId>", "Status field ID (for setup)")
   .option("--project-id <projectId>", "Project ID (for setup)")
   .option("--status-only", "Only update Status field (for setup)")
+  .option("--dry-run", "Preview changes without executing (for setup)")
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, target, options) => {
     if (!resolveBodyOption(options)) return;
@@ -494,6 +495,7 @@ program
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Issue title (for create)")
   .option("-b, --body <file>", "Issue body file path, or - for stdin (for create/update/comment/close)")
+  .option("--issue-type <type>", "Set Issue Type (e.g., Feature, Bug, Task) (for create/update)")
   .option(
     "--state-reason <reason>",
     "Close reason: COMPLETED, NOT_PLANNED (for close)",

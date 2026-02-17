@@ -119,6 +119,7 @@ export interface IssuesOptions {
   size?: string;
   title?: string;
   body?: string;
+  issueType?: string;
   // Label management
   addLabel?: string[];
   removeLabel?: string[];
@@ -242,16 +243,16 @@ query($owner: String!, $name: String!) {
 `;
 
 const GRAPHQL_MUTATION_CREATE_ISSUE = `
-mutation($repositoryId: ID!, $title: String!, $body: String, $labelIds: [ID!]) {
-  createIssue(input: {repositoryId: $repositoryId, title: $title, body: $body, labelIds: $labelIds}) {
+mutation($repositoryId: ID!, $title: String!, $body: String, $labelIds: [ID!], $issueTypeId: ID) {
+  createIssue(input: {repositoryId: $repositoryId, title: $title, body: $body, labelIds: $labelIds, issueTypeId: $issueTypeId}) {
     issue { id number url title }
   }
 }
 `;
 
 const GRAPHQL_MUTATION_UPDATE_ISSUE = `
-mutation($id: ID!, $title: String, $body: String) {
-  updateIssue(input: {id: $id, title: $title, body: $body}) {
+mutation($id: ID!, $title: String, $body: String, $issueTypeId: ID) {
+  updateIssue(input: {id: $id, title: $title, body: $body, issueTypeId: $issueTypeId}) {
     issue { id number title body }
   }
 }
@@ -386,6 +387,66 @@ function getLabels(owner: string, repo: string): Record<string, string> {
     }
   }
   return labels;
+}
+
+/**
+ * Organization の Issue Types 一覧を取得し、名前→ID マッピングを返す
+ */
+const GRAPHQL_QUERY_ORGANIZATION_ISSUE_TYPES = `
+query($login: String!) {
+  organization(login: $login) {
+    issueTypes(first: 50) {
+      nodes { id name }
+    }
+  }
+}
+`;
+
+export function getOrganizationIssueTypes(owner: string): Record<string, string> {
+  interface QueryResult {
+    data?: {
+      organization?: {
+        issueTypes?: { nodes?: Array<{ id: string; name: string }> };
+      };
+    };
+  }
+
+  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ORGANIZATION_ISSUE_TYPES, { login: owner });
+  if (!result.success) return {};
+
+  const types: Record<string, string> = {};
+  const nodes = result.data?.data?.organization?.issueTypes?.nodes ?? [];
+  for (const node of nodes) {
+    if (node?.name && node?.id) {
+      types[node.name] = node.id;
+    }
+  }
+  return types;
+}
+
+/**
+ * Issue Type 名を ID に解決する。
+ * 解決成功時は ID 文字列、スキップ時は null、エラー時は false を返す。
+ */
+function resolveIssueTypeId(
+  owner: string,
+  typeName: string,
+  logger: Logger
+): string | null | false {
+  const issueTypes = getOrganizationIssueTypes(owner);
+  const id = issueTypes[typeName] ?? null;
+  if (id) return id;
+
+  const available = Object.keys(issueTypes);
+  if (available.length === 0) {
+    logger.error(
+      `Issue Types not available for organization '${owner}'. ` +
+      `--issue-type requires an organization with Issue Types enabled.`
+    );
+    return false;
+  }
+  logger.error(`Issue Type '${typeName}' not found. Available: ${available.join(", ")}`);
+  return false;
 }
 
 // =============================================================================
@@ -780,6 +841,14 @@ async function cmdCreate(
     }
   }
 
+  // Resolve issue type name to ID
+  let issueTypeId: string | null = null;
+  if (options.issueType) {
+    const resolved = resolveIssueTypeId(owner, options.issueType, logger);
+    if (resolved === false) return 1;
+    issueTypeId = resolved;
+  }
+
   // Create the Issue
   interface CreateResult {
     data?: {
@@ -794,6 +863,7 @@ async function cmdCreate(
     title: options.title,
     body: options.body ?? "",
     labelIds: labelIds ?? null,
+    issueTypeId,
   });
 
   if (!createResult.success) {
@@ -922,18 +992,32 @@ async function cmdUpdate(
 
   let updated = false;
 
-  // Update issue fields (title, body)
-  if (options.title !== undefined || options.body !== undefined) {
+  // Resolve issue type name to ID
+  let issueTypeId: string | null = null;
+  if (options.issueType) {
+    const resolved = resolveIssueTypeId(owner, options.issueType, logger);
+    if (resolved === false) return 1;
+    issueTypeId = resolved;
+  }
+
+  // Update issue fields (title, body, issueType)
+  if (options.title !== undefined || options.body !== undefined || issueTypeId) {
     const issueId = getIssueId(owner, repo, issueNumber);
     if (issueId) {
       const updateResult = runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, {
         id: issueId,
         title: options.title !== undefined ? options.title : (issueNode.title ?? ""),
         body: options.body !== undefined ? options.body : (issueNode.body ?? ""),
+        issueTypeId: issueTypeId ?? null,
       });
       if (updateResult.success) {
         updated = true;
-        logger.success("Updated issue");
+        if (options.issueType) {
+          logger.success(`Set issue type to '${options.issueType}'`);
+        }
+        if (options.title !== undefined || options.body !== undefined) {
+          logger.success("Updated issue");
+        }
       }
     }
   }
@@ -1727,7 +1811,7 @@ async function cmdRemove(
   // Find project item for this issue
 
   // Fetch the issue to find its project item ID
-  const issueResult = cmdGetIssueDetail(owner, repo, issueNumber);
+  const issueResult = getIssueDetail(owner, repo, issueNumber);
   if (!issueResult) {
     logger.error(`Issue #${issueNumber} not found`);
     return 1;
@@ -1759,17 +1843,6 @@ async function cmdRemove(
   }
 }
 
-/**
- * Issue の projectItemId と projectId を GraphQL で取得する
- * @deprecated getIssueDetail (utils/issue-detail.ts) を使用してください
- */
-export function cmdGetIssueDetail(
-  owner: string,
-  repo: string,
-  issueNumber: number
-): { projectItemId?: string; projectId?: string } | null {
-  return getIssueDetail(owner, repo, issueNumber);
-}
 
 // =============================================================================
 // Main Command Handler

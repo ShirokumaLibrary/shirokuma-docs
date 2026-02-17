@@ -27,10 +27,10 @@ graph LR
 
 | トリガー | アクション | 責任者 | コマンド |
 |---------|----------|--------|---------|
-| 計画策定開始 | → Planning | `planning-on-issue` | `issues update {n} --field-status "Planning"` |
+| 計画策定開始 | → Planning + アサイン | `planning-on-issue` | `issues update {n} --field-status "Planning"` + `gh issue edit {n} --add-assignee @me` |
 | 計画策定完了 | → Spec Review | `planning-on-issue` | `issues update {n} --field-status "Spec Review"` |
 | ユーザーが計画承認、実装開始 | → In Progress + ブランチ | `working-on-issue` | `issues update {n} --field-status "In Progress"` |
-| PR作成 | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` |
+| セルフレビュー完了 | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` |
 | マージ | → Done | `committing-on-issue` (via `issues merge`) | 自動更新 |
 | ブロック | → Pending | 手動 | `issues update {n} --field-status "Pending"` + 理由 |
 | 完了（PR不要） | → Done | `ending-session` | `session end --done {n}` |
@@ -59,7 +59,7 @@ graph LR
 
 1. **同時に In Progress は1つ**
 2. **Issue ごとにブランチ**（`branch-workflow` 参照）
-3. **イベント駆動**: Status 変更はイベント発生時に即座に実行する（`creating-pr-on-issue` が Review、`issues merge` が Done）
+3. **イベント駆動**: Status 変更はイベント発生時に即座に実行する（`creating-pr-on-issue` がセルフレビュー完了時に Review、`issues merge` が Done）
 4. **セッション終了時**に `ending-session` が取りこぼしを補完（セーフティネット）
 5. **Pending は理由必須**
 6. **冪等性**: 既に正しい Status なら更新をスキップ（エラーにしない）
@@ -148,8 +148,14 @@ shirokuma-docs discussions update {number} --body /tmp/body.md
 ## 本文テンプレート
 
 ```markdown
+## 目的
+{誰}が{何}できるようにする。{なぜ}。
+
 ## 概要
 {内容}
+
+## 背景
+{現状の問題、関連する制約や依存関係}
 
 ## タスク
 - [ ] タスク 1
@@ -157,6 +163,8 @@ shirokuma-docs discussions update {number} --body /tmp/body.md
 ## 成果物
 {"完了" の定義}
 ```
+
+> 種別ごとの詳細テンプレート（bug の再現手順、research の調査項目等）は `create-item` リファレンスを参照。
 
 ## アイテム作成
 

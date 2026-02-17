@@ -66,11 +66,11 @@ shirokuma-docs projects create-project --title "{プロジェクト名}" --lang=
 
 Organization の Issue Types にカスタムタイプを追加する。デフォルトの Feature / Bug / Task に加えて:
 
-| タイプ | 用途 |
-|--------|------|
-| Chore | 設定・ツール・リファクタリング |
-| Docs | ドキュメント |
-| Research | 調査・検証 |
+| タイプ | 用途 | 色 | アイコン |
+|--------|------|-----|---------|
+| Chore | 設定・ツール・リファクタリング | Gray | ⚙️ (gear) |
+| Docs | ドキュメント | Blue | 📄 (page facing up) |
+| Research | 調査・検証 | Purple | 🔍 (magnifying glass) |
 
 **ユーザーをガイド:**
 
@@ -85,15 +85,15 @@ Discussion カテゴリの作成は GitHub API 未対応のため、GitHub UI �
 
 **ユーザーをガイド:**
 
-1. `https://github.com/{owner}/{repo}/settings` に移動（Discussions セクション）
+1. `https://github.com/{owner}/{repo}/discussions/categories` に移動
 2. 以下の 4 カテゴリを作成:
 
-| カテゴリ | Emoji | Format | 用途 |
-|---------|-------|--------|------|
-| Handovers | 🤝 | Open-ended discussion | セッション間の引き継ぎ記録 |
-| ADR | 📐 | Open-ended discussion | Architecture Decision Records |
-| Knowledge | 💡 | Open-ended discussion | 確認されたパターン・解決策 |
-| Research | 🔬 | Open-ended discussion | 調査が必要な事項 |
+| カテゴリ | Emoji | 検索テキスト | 色 | Format | 用途 |
+|---------|-------|-------------|-----|--------|------|
+| Handovers | 🤝 | handshake | Purple | Open-ended discussion | セッション間の引き継ぎ記録 |
+| ADR | 📐 | triangular ruler | Blue | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 💡 | light bulb | Yellow | Open-ended discussion | 確認されたパターン・解決策 |
+| Research | 🔬 | microscope | Green | Open-ended discussion | 調査が必要な事項 |
 
 **重要**: Format は必ず **Open-ended discussion** を選択する。Announcement や Poll ではない。
 
@@ -114,11 +114,29 @@ Discussion カテゴリの作成は GitHub API 未対応のため、GitHub UI �
 shirokuma-docs projects workflows
 ```
 
-**ユーザーをガイド:**
+**`projects workflows` の結果に応じたガイド:**
 
-1. `https://github.com/orgs/{owner}/projects/{number}/settings/workflows` に移動
+| 結果パターン | アクション |
+|-------------|----------|
+| 推奨 2 件とも ON | 確認済み — 追加操作不要 |
+| 一部のみ ON | OFF のワークフローを有効化するよう案内 |
+| 全て OFF | 以下の手順で 2 件を有効化 |
+
+**手順:**
+
+1. `https://github.com/orgs/{owner}/projects/{number}/workflows` に移動
 2. "Item closed" を有効化 → ターゲットを **Done** に設定
 3. "Pull request merged" を有効化 → ターゲットを **Done** に設定
+
+**その他のビルトインワークフロー:**
+
+| ワークフロー | 推奨 | 理由 |
+|-------------|------|------|
+| Item added to project | OFF | ステータスは CLI が管理するため自動設定不要 |
+| Item reopened | OFF | 再開時のステータスはケースバイケースで手動判断 |
+| Auto-close issue | OFF | CLI の Not Planned ステータス設定と競合する可能性 |
+| Auto-archive items | OFF | Done アイテムの履歴参照が困難になる |
+| Auto-add to project | 任意 | リポジトリの全 Issue を自動追加したい場合は ON |
 
 **注意**: `session end --review` CLI コマンドとこれらの自動化は冪等に協調動作。両方有効でも競合しない。
 
@@ -159,6 +177,36 @@ shirokuma-docs session check --setup
 
 未設定の項目がある場合、推奨設定（Description, Emoji, Format）が表示される。
 
+### ステップ 8: 次のステップ — 開発環境構築
+
+GitHub Project のセットアップが完了したら、開発環境の構築に進む。プロジェクト構成を決定し、Next.js アプリを作成する。
+
+**構成の選択:**
+
+| 構成 | 適用場面 | ディレクトリ |
+|------|---------|-------------|
+| シンプル | 単一アプリ、小〜中規模 | リポジトリルートに直接配置 |
+| モノレポ | 複数アプリ・共有パッケージ | `apps/web`, `packages/shared` 等 |
+
+**既知の注意点:**
+
+| 問題 | 対策 |
+|------|------|
+| `create-next-app` が `.claude/` や `README.md` と競合 | サブディレクトリ（例: `tmp-app`）に作成し、必要なファイルをルートに移動する |
+| pnpm 未インストール | `corepack enable` を実行（sudo 不要、Node.js 組み込み） |
+| `.env` の設定漏れ | 下記テンプレートを参考に `.env.local` を作成 |
+
+**`.env.local` テンプレート（主要変数）:**
+
+```bash
+DATABASE_URL="postgresql://user:pass@localhost:5432/dbname"
+BETTER_AUTH_SECRET="<32文字以上のランダム文字列>"
+BETTER_AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+> このステップはガイダンスのみ。自動化は行わない。プロジェクトの技術スタックに合わせて適宜調整すること。
+
 ## ステータスワークフロー
 
 **通常フロー**:
@@ -193,7 +241,7 @@ Icebox → Backlog → Planning → Spec Review → Ready → In Progress → Re
 ## 注意事項
 
 - **プロジェクト名規約**: プロジェクト名 = リポジトリ名（例: repo `shirokuma-docs` → project `shirokuma-docs`）。CLI の `getProjectId()` がリポジトリ名で検索するため
-- 7ステップのため `TodoWrite` で進捗管理
+- 8ステップのため `TodoWrite` で進捗管理
 - 既存プロジェクトがある場合は `AskUserQuestion` で上書き確認
 - 権限リフレッシュにはインタラクティブモードが必要（ユーザーが手動実行）
 - 言語は会話から自動検出（日本語または英語）

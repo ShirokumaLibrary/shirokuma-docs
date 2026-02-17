@@ -101,6 +101,28 @@ Args: #{number}
 `planning-on-issue` handles plan creation and status transitions.
 Do NOT duplicate status updates or branch creation in `starting-session`.
 
+## When Other Selected
+
+Routing for selections outside the issue list, such as handover remaining tasks or new tasks.
+
+### Flow
+
+1. AskUserQuestion: "Do you have a corresponding issue number? If not, we'll create a new one."
+   - Options: "Enter issue number", "No issue - create new"
+2. Issue number provided → Join status-based routing (same as "If Item Selected" above)
+3. No issue → Create issue via `managing-github-items` skill → Route created issue to `planning-on-issue`
+
+```
+Other selected
+├── AskUserQuestion: "Corresponding issue?"
+├── Issue number provided → Status-based routing
+└── No issue
+    ├── Create issue via managing-github-items
+    └── Route created issue to planning-on-issue
+```
+
+**For handover remaining tasks**: Pass the handover's Next Steps content as context to `managing-github-items` for the issue body.
+
 ## Error Handling
 
 | Error | Action |

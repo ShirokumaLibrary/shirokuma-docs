@@ -1,7 +1,7 @@
 {
   "name": "shirokuma-skills-ja",
   "description": "Japanese version of shirokuma-skills - AI skills and rules for Claude Code",
-  "version": "0.1.0-alpha.23",
+  "version": "0.1.0-alpha.26",
   "author": {
     "name": "ShirokumaLibrary"
   },

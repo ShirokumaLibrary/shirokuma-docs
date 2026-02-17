@@ -66,11 +66,11 @@ shirokuma-docs projects create-project --title "{project-name}" --lang={en|ja}
 
 Add custom Issue Types to the Organization. In addition to the defaults (Feature / Bug / Task):
 
-| Type | Purpose |
-|------|---------|
-| Chore | Config, tooling, refactoring |
-| Docs | Documentation |
-| Research | Investigation and research |
+| Type | Purpose | Color | Icon |
+|------|---------|-------|------|
+| Chore | Config, tooling, refactoring | Gray | ⚙️ (gear) |
+| Docs | Documentation | Blue | 📄 (page facing up) |
+| Research | Investigation and research | Purple | 🔍 (magnifying glass) |
 
 **Guide the user:**
 
@@ -85,15 +85,15 @@ Discussion category creation is not supported by the GitHub API. Guide the user 
 
 **Guide the user:**
 
-1. Navigate to `https://github.com/{owner}/{repo}/settings` (Discussions section)
+1. Navigate to `https://github.com/{owner}/{repo}/discussions/categories`
 2. Create the following 4 categories:
 
-| Category | Emoji | Format | Purpose |
-|----------|-------|--------|---------|
-| Handovers | 🤝 | Open-ended discussion | Session handover records |
-| ADR | 📐 | Open-ended discussion | Architecture Decision Records |
-| Knowledge | 💡 | Open-ended discussion | Confirmed patterns and solutions |
-| Research | 🔬 | Open-ended discussion | Items requiring investigation |
+| Category | Emoji | Search Text | Color | Format | Purpose |
+|----------|-------|-------------|-------|--------|---------|
+| Handovers | 🤝 | handshake | Purple | Open-ended discussion | Session handover records |
+| ADR | 📐 | triangular ruler | Blue | Open-ended discussion | Architecture Decision Records |
+| Knowledge | 💡 | light bulb | Yellow | Open-ended discussion | Confirmed patterns and solutions |
+| Research | 🔬 | microscope | Green | Open-ended discussion | Items requiring investigation |
 
 **Important**: Format must be **Open-ended discussion**, not Announcement or Poll.
 
@@ -114,11 +114,29 @@ Enable recommended automations for the project. These cannot be set via API — 
 shirokuma-docs projects workflows
 ```
 
-**Guide the user:**
+**Guide based on `projects workflows` results:**
 
-1. Navigate to: `https://github.com/orgs/{owner}/projects/{number}/settings/workflows`
+| Result Pattern | Action |
+|----------------|--------|
+| Both recommended ON | Confirmed — no additional action needed |
+| Some ON, some OFF | Guide to enable the OFF workflows |
+| All OFF | Enable both using steps below |
+
+**Steps:**
+
+1. Navigate to: `https://github.com/orgs/{owner}/projects/{number}/workflows`
 2. Enable "Item closed" → set target to **Done**
 3. Enable "Pull request merged" → set target to **Done**
+
+**Other built-in workflows:**
+
+| Workflow | Recommended | Reason |
+|----------|-------------|--------|
+| Item added to project | OFF | Status is managed by CLI, no auto-set needed |
+| Item reopened | OFF | Reopen status should be manually decided per case |
+| Auto-close issue | OFF | May conflict with CLI's Not Planned status setting |
+| Auto-archive items | OFF | Makes it harder to reference Done item history |
+| Auto-add to project | Optional | Enable if you want all repo issues auto-added |
 
 **Note**: The `session end --review` CLI command and these automations are designed to work together (idempotent). No conflict arises from having both enabled.
 
@@ -159,6 +177,36 @@ shirokuma-docs session check --setup
 
 If any items are missing, recommended settings (Description, Emoji, Format) are displayed.
 
+### Step 8: Next Steps — Development Environment Setup
+
+After GitHub Project setup is complete, proceed to set up your development environment. Choose a project structure and create a Next.js application.
+
+**Structure choice:**
+
+| Structure | When to Use | Directory |
+|-----------|-------------|-----------|
+| Simple | Single app, small-to-medium scale | Directly in repository root |
+| Monorepo | Multiple apps, shared packages | `apps/web`, `packages/shared`, etc. |
+
+**Known issues:**
+
+| Problem | Solution |
+|---------|----------|
+| `create-next-app` conflicts with `.claude/` and `README.md` | Create in a subdirectory (e.g., `tmp-app`), then move files to root |
+| pnpm not installed | Run `corepack enable` (no sudo required, built into Node.js) |
+| Missing `.env` configuration | Create `.env.local` using the template below |
+
+**`.env.local` template (key variables):**
+
+```bash
+DATABASE_URL="postgresql://user:pass@localhost:5432/dbname"
+BETTER_AUTH_SECRET="<random string, 32+ characters>"
+BETTER_AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+> This step is guidance only — no automation is performed. Adjust according to your project's technology stack.
+
 ## Status Workflow
 
 **Normal Flow**:
@@ -193,7 +241,7 @@ Icebox → Backlog → Planning → Spec Review → Ready → In Progress → Re
 ## Notes
 
 - **Project name convention**: Project name = repository name (e.g., repo `shirokuma-docs` → project `shirokuma-docs`). This matches the CLI's `getProjectId()` lookup which searches by repository name.
-- Use `TodoWrite` for progress tracking (7 steps)
+- Use `TodoWrite` for progress tracking (8 steps)
 - Use `AskUserQuestion` to confirm overwrite when an existing project is found
 - Permission refresh requires interactive mode (user must run manually)
 - Language auto-detected from conversation (Japanese or English)

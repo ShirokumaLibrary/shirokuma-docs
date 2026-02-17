@@ -57,15 +57,16 @@ shirokuma-docs issues show {number}
 
 Review title, body, type, priority, size, labels, and comments.
 
-### Step 1b: Set Status to Planning
+### Step 1b: Set Status to Planning + Assign
 
-If the issue status is Backlog, transition to Planning to record the planning start.
+If the issue status is Backlog, transition to Planning to record the planning start. Also auto-assign the user.
 
 ```bash
 shirokuma-docs issues update {number} --field-status "Planning"
+gh issue edit {number} --add-assignee @me
 ```
 
-Skip if already Planning or Spec Review.
+Skip status update if already Planning or Spec Review. Assignee is idempotent, so always execute.
 
 ### Step 2: Codebase Investigation
 
@@ -145,6 +146,7 @@ You are a plan reviewer. Review the plan for the following issue.
 
 | Criterion | Description | Examples |
 |-----------|-------------|----------|
+| Purpose section validity | Does `## Purpose` clearly state who, what, and why? | Is the role specific? Is "why" not omitted? |
 | Requirements coverage | Are all requirements from overview/tasks covered by the plan? | Deliverables have corresponding tasks |
 | Target file validity | Any missing or unnecessary files? | Overlooked dependent modules |
 | Task granularity | Appropriate breakdown (~1 task ≈ ~1 commit)? | Too coarse or too fine |

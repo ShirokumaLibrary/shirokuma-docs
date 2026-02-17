@@ -52,7 +52,7 @@ shirokuma-docs session start
 
 ### ステップ 3: 方向性の確認
 
-AskUserQuestion で上位アイテムを選択肢として提示（作業中 > 準備完了 > バックログ、最大4オプション）。
+AskUserQuestion で上位アイテムを選択肢として提示（作業中 > 準備完了 > バックログ、最大4オプション）。「Other」オプションも含める（自由入力用）。
 
 ## アイテム選択時
 
@@ -79,6 +79,28 @@ Args: #{number}
 `working-on-issue` がステータス更新、ブランチ作成、計画確認、スキル選択・実行、作業後フローを一貫して処理する。
 `planning-on-issue` が計画策定とステータス遷移を処理する。
 `starting-session` ではステータス更新やブランチ作成を行わない。
+
+## Other 選択時
+
+引き継ぎ残タスクや新しいタスクなど、Issue リスト外の選択肢が選ばれた場合のルーティング。
+
+### フロー
+
+1. AskUserQuestion: 「対応する Issue 番号があれば入力してください。なければ新規作成します。」
+   - 選択肢: 「Issue 番号を入力」「Issue なし - 新規作成」
+2. Issue 番号入力 → ステータスベースルーティングに合流（上記「アイテム選択時」と同じ）
+3. Issue なし → `managing-github-items` スキルで Issue 作成 → 作成された Issue で `planning-on-issue` にルーティング
+
+```
+Other 選択
+├── AskUserQuestion: 「対応 Issue は？」
+├── Issue 番号あり → ステータスベースルーティング
+└── Issue なし
+    ├── managing-github-items で Issue 作成
+    └── 作成された Issue で planning-on-issue にルーティング
+```
+
+**引き継ぎ残タスクの場合**: 引き継ぎの Next Steps セクションの内容を Issue 本文のコンテキストとして `managing-github-items` に渡す。
 
 ## エッジケース
 
