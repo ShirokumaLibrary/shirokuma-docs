@@ -20,9 +20,9 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 ## 移行: エージェント → `context: fork` 付きスキル
 
 スキルが `context: fork` をサポートしたことで、独立サブエージェントとして実行可能に。ほとんどのユースケースでスキルを推奨:
-- リサーチタスク（`best-practices-researching` スキル参照）
+- リサーチタスク（`researching-best-practices` スキル参照）
 - レビュータスク（`reviewing-on-issue` スキル参照）
-- 設定検証（`claude-config-reviewing` スキル参照）
+- 設定検証（`reviewing-claude-config` スキル参照）
 
 **エージェントが適切な場合:**
 - 真にオープンエンドなマルチステップタスクで完全な自律性が必要
@@ -144,7 +144,7 @@ assistant: "[Response before invoking]"
 | **Creator** | 実装 | 「する」ルールのみ |
 | **Checker** | レビュー/監査 | 「する」+「しない」ルール |
 
-**例**: `nextjs-vibe-coding (Creator) ←→ reviewing-on-issue (Checker)`
+**例**: `coding-nextjs (Creator) ←→ reviewing-on-issue (Checker)`
 
 ### 4. 最小ツールアクセス（ACI）
 
@@ -191,7 +191,7 @@ assistant: "[Response before invoking]"
 4. **システムプロンプト記述**: 責務、ワークフロー、出力フォーマット
 5. **ファイル作成**: `.claude/agents/[name].md`
 6. **テスト**: 呼び出しフレーズで起動確認
-7. **レビュー**: `claude-config-reviewing` スキルで検証
+7. **レビュー**: `reviewing-claude-config` スキルで検証
 
 **クイックスタート**:
 ```bash
@@ -217,7 +217,7 @@ EOF
 2. **問題特定**: 曖昧な指示、不足ワークフロー
 3. **変更適用**: Edit ツールで修正
 4. **検証**: 品質チェックリストで確認
-5. **レビュー**: `claude-config-reviewing` スキルで検証
+5. **レビュー**: `reviewing-claude-config` スキルで検証
 
 [reference.md](reference.md#quality-checklist) に評価基準あり。
 

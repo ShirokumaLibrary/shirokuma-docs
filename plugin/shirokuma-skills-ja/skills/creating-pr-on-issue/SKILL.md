@@ -80,9 +80,9 @@ PR 作成後、セルフレビューを**常に自動実行**する。
 
 | ファイル構成 | レビュー方法 |
 |-------------|-------------|
-| config のみ | `claude-config-reviewing` のみ起動 |
+| config のみ | `reviewing-claude-config` のみ起動 |
 | code/docs のみ（config なし） | `reviewing-on-issue` のみ起動（従来通り） |
-| 混在（config + code/docs） | `reviewing-on-issue` → `claude-config-reviewing` 順次起動 → 結果統合 |
+| 混在（config + code/docs） | `reviewing-on-issue` → `reviewing-claude-config` 順次起動 → 結果統合 |
 
 **混在時の結果統合ルール:**
 - Status: いずれかが FAIL → FAIL
@@ -120,7 +120,7 @@ graph LR
 ```text
 セルフレビュー [1/3]: カテゴリ検出 → config + code（混在）
   reviewing-on-issue 実行中...
-  claude-config-reviewing 実行中...
+  reviewing-claude-config 実行中...
   → 統合結果: 2 件の critical issue 検出、自動修正中...
   → 修正完了、コミット・プッシュ
 

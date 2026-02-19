@@ -54,7 +54,7 @@ describe("getBundledRuleNames", () => {
    */
   it("should return all bundled rule files", () => {
     const rules = getBundledRuleNames();
-    expect(rules.length).toBeGreaterThanOrEqual(18);
+    expect(rules.length).toBeGreaterThanOrEqual(12);
   });
 
   /**
@@ -63,7 +63,6 @@ describe("getBundledRuleNames", () => {
   it("should return rules with subdirectory prefixes", () => {
     const rules = getBundledRuleNames();
     expect(rules).toContain("github/project-items.md");
-    expect(rules).toContain("nextjs/tech-stack.md");
     expect(rules).toContain("shirokuma-docs/shirokuma-annotations.md");
   });
 
@@ -111,15 +110,14 @@ describe("deployRules", () => {
 
     const result = await deployRules(projectPath);
 
-    expect(result.deployed.length).toBeGreaterThanOrEqual(18);
+    expect(result.deployed.length).toBeGreaterThanOrEqual(12);
     const deployed = result.deployed.filter(r => r.status === "deployed");
-    expect(deployed.length).toBeGreaterThanOrEqual(18);
+    expect(deployed.length).toBeGreaterThanOrEqual(12);
 
     // Check files exist
     const targetDir = join(projectPath, DEPLOYED_RULES_DIR);
     expect(existsSync(join(targetDir, "best-practices-first.md"))).toBe(true);
     expect(existsSync(join(targetDir, "github", "project-items.md"))).toBe(true);
-    expect(existsSync(join(targetDir, "nextjs", "tech-stack.md"))).toBe(true);
   });
 
   /**
@@ -154,7 +152,7 @@ describe("deployRules", () => {
     // Second deploy
     const result = await deployRules(projectPath);
     const unchanged = result.deployed.filter(r => r.status === "unchanged");
-    expect(unchanged.length).toBeGreaterThanOrEqual(18);
+    expect(unchanged.length).toBeGreaterThanOrEqual(12);
   });
 
   /**
@@ -191,9 +189,9 @@ describe("deployRules", () => {
 
     const result = await deployRules(projectPath, { dryRun: true });
 
-    expect(result.deployed.length).toBeGreaterThanOrEqual(18);
+    expect(result.deployed.length).toBeGreaterThanOrEqual(12);
     const deployed = result.deployed.filter(r => r.status === "deployed");
-    expect(deployed.length).toBeGreaterThanOrEqual(18);
+    expect(deployed.length).toBeGreaterThanOrEqual(12);
 
     // No files should be written
     expect(existsSync(join(projectPath, DEPLOYED_RULES_DIR))).toBe(false);
@@ -210,7 +208,6 @@ describe("deployRules", () => {
 
     const targetDir = join(projectPath, DEPLOYED_RULES_DIR);
     expect(existsSync(join(targetDir, "github"))).toBe(true);
-    expect(existsSync(join(targetDir, "nextjs"))).toBe(true);
     expect(existsSync(join(targetDir, "shirokuma-docs"))).toBe(true);
   });
 });
@@ -233,7 +230,7 @@ describe("cleanDeployedRules", () => {
     // Clean
     const results = await cleanDeployedRules(projectPath);
     const removed = results.filter(r => r.status === "removed");
-    expect(removed.length).toBeGreaterThanOrEqual(18);
+    expect(removed.length).toBeGreaterThanOrEqual(12);
 
     // Directory should be completely gone
     expect(existsSync(join(projectPath, DEPLOYED_RULES_DIR))).toBe(false);
@@ -286,7 +283,7 @@ describe("cleanDeployedRules", () => {
     // Clean (dry-run)
     const results = await cleanDeployedRules(projectPath, { dryRun: true });
     const removed = results.filter(r => r.status === "removed");
-    expect(removed.length).toBeGreaterThanOrEqual(18);
+    expect(removed.length).toBeGreaterThanOrEqual(12);
 
     // Files should still exist
     expect(existsSync(join(projectPath, DEPLOYED_RULES_DIR, "best-practices-first.md"))).toBe(true);

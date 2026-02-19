@@ -240,7 +240,7 @@ shirokuma-docs issues pr-show {number}
 shirokuma-docs discussions list --category Handovers --limit {count}
 
 # 特定の引き継ぎを取得
-shirokuma-docs discussions get {number}
+shirokuma-docs discussions show {number}
 
 # ローカルファイル（フォールバック）
 ls -t .claude/sessions/*-handover.md 2>/dev/null | head -{count}

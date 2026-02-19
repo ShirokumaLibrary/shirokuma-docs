@@ -91,10 +91,10 @@ describe("PLUGIN_NAME", () => {
 
 describe("AVAILABLE_SKILLS", () => {
   /**
-   * @testdoc 22個のスキルが定義されている
+   * @testdoc 24個のスキルが定義されている
    */
-  it("should contain 22 skills", () => {
-    expect(AVAILABLE_SKILLS).toHaveLength(22);
+  it("should contain 24 skills", () => {
+    expect(AVAILABLE_SKILLS).toHaveLength(24);
   });
 
   /**
@@ -107,10 +107,10 @@ describe("AVAILABLE_SKILLS", () => {
       "managing-plugins",
       "managing-output-styles",
       "managing-rules",
-      "frontend-designing",
-      "nextjs-vibe-coding",
+      "coding-nextjs",
+      "designing-shadcn-ui",
       "reviewing-on-issue",
-      "codebase-rule-discovery",
+      "discovering-codebase-rules",
       "working-on-issue",
       "committing-on-issue",
       "creating-pr-on-issue",
@@ -121,9 +121,11 @@ describe("AVAILABLE_SKILLS", () => {
       "managing-github-items",
       "project-config-generator",
       "publishing",
-      "best-practices-researching",
-      "claude-config-reviewing",
+      "researching-best-practices",
+      "reviewing-claude-config",
       "planning-on-issue",
+      "creating-item",
+      "setting-up-project",
     ];
     for (const skill of expected) {
       expect(AVAILABLE_SKILLS).toContain(skill);
@@ -149,6 +151,8 @@ describe("AVAILABLE_SKILLS", () => {
       "manage-labels",
       "committing",
       "creating-pull-request",
+      "nextjs-vibe-coding",
+      "frontend-designing",
     ];
     for (const name of oldNames) {
       expect(AVAILABLE_SKILLS).not.toContain(name);
@@ -158,10 +162,10 @@ describe("AVAILABLE_SKILLS", () => {
 
 describe("AVAILABLE_RULES", () => {
   /**
-   * @testdoc 19個のルールが定義されている
+   * @testdoc 12個のルールが定義されている（nextjs/ 7件は knowledge-manager に移行済み）
    */
-  it("should contain 19 rules", () => {
-    expect(AVAILABLE_RULES).toHaveLength(19);
+  it("should contain 12 rules", () => {
+    expect(AVAILABLE_RULES).toHaveLength(12);
   });
 
   /**
@@ -178,13 +182,6 @@ describe("AVAILABLE_RULES", () => {
       "github/discussions-usage.md",
       "github/pr-review-response.md",
       "github/project-items.md",
-      "nextjs/known-issues.md",
-      "nextjs/lib-structure.md",
-      "nextjs/radix-ui-hydration.md",
-      "nextjs/server-actions.md",
-      "nextjs/tailwind-v4.md",
-      "nextjs/tech-stack.md",
-      "nextjs/testing.md",
       "shirokuma-docs/cli-invocation.md",
       "shirokuma-docs/plugin-cache.md",
       "shirokuma-docs/shirokuma-annotations.md",
@@ -337,11 +334,11 @@ describe("getBundledSkillNames", () => {
   });
 
   /**
-   * @testdoc 全22スキルが含まれる
+   * @testdoc 全24スキルが含まれる
    */
-  it("should contain all 22 bundled skills", () => {
+  it("should contain all 24 bundled skills", () => {
     const skills = getBundledSkillNames();
-    expect(skills).toHaveLength(22);
+    expect(skills).toHaveLength(24);
   });
 
   /**

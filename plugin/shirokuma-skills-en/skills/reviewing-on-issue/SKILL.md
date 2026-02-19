@@ -78,8 +78,8 @@ When invoked from the self-review chain (PR context available), analyze changed 
 |-------------|-----------|------|
 | Code | Contains `.ts/.tsx/.js/.jsx` | `code` |
 | Docs only | `.md` files only (excluding config paths) | `docs` |
-| Config only | Only files under `.claude/skills/`, `.claude/rules/`, `.claude/agents/`, `.claude/output-styles/`, `.claude/commands/`, `plugin/` | Routed to `claude-config-reviewing` by `creating-pr-on-issue` (this skill is not invoked) |
-| Mixed | Code + docs/config | `code` (config portion reviewed by `claude-config-reviewing` in parallel) |
+| Config only | Only files under `.claude/skills/`, `.claude/rules/`, `.claude/agents/`, `.claude/output-styles/`, `.claude/commands/`, `plugin/` | Routed to `reviewing-claude-config` by `creating-pr-on-issue` (this skill is not invoked) |
+| Mixed | Code + docs/config | `code` (config portion reviewed by `reviewing-claude-config` in parallel) |
 
 **Config paths**: `.claude/skills/`, `.claude/rules/`, `.claude/agents/`, `.claude/output-styles/`, `.claude/commands/`, `plugin/`
 
@@ -274,18 +274,20 @@ Focus areas:
 
 When user requests `--update`:
 
-1. Web search for latest:
-   - Next.js releases and CVEs
-   - React updates
-   - Tailwind CSS changes
-   - Better Auth updates
-   - OWASP updates
+Technical knowledge (CVEs, versions, framework patterns, etc.) is centrally managed by the knowledge-manager agent. Delegate knowledge updates to knowledge-manager:
 
-2. Update relevant files:
-   - `.claude/rules/shirokuma/nextjs/tech-stack.md` - Versions
-   - `.claude/rules/shirokuma/nextjs/known-issues.md` - CVEs
+```
+ソース更新して
+```
 
-> **Note**: This mode only updates rule files. To update source knowledge files (`patterns/`, `criteria/`, `reference/`), use the knowledge-manager agent's update mode (`ソース更新して`).
+knowledge-manager will use web search to update:
+- Next.js releases and CVEs
+- React updates
+- Tailwind CSS changes
+- Better Auth updates
+- OWASP updates
+
+After updating, run `配布して` to redistribute knowledge to skills.
 
 ## Progressive Disclosure
 

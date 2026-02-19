@@ -64,7 +64,11 @@
       "pluginInstallFailed": "プラグインのインストールに失敗しました",
       "configCreateFailed": "設定ファイルの作成に失敗: {error}",
       "restartSessionNotice": "スキルを利用するには Claude Code のセッションを再起動してください。",
-      "restartSessionHint": "  新しい会話を開始するとスキルが利用可能になります。"
+      "restartSessionHint": "  新しい会話を開始するとスキルが利用可能になります。",
+      "nextjsScaffolding": "Next.js モノレポ構造を生成中...",
+      "nextjsScaffoldDone": "モノレポ構造を生成しました",
+      "nextjsGitInitDone": "git リポジトリを初期化しました",
+      "summaryNextjs": "✓ Next.js モノレポ: 構造生成済み"
     },
     "session": {
       "description": "セッション管理 (start, end, check)",

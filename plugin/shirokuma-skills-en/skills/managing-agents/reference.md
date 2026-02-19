@@ -93,7 +93,7 @@ assistant: "[Response pattern]"
 | `assistant:` | Expected response | `"I'll implement this with TDD."` |
 | `<Task...>` | Tool invocation placeholder | `<Task tool call to coder agent>` |
 
-**Complete Example** (from nextjs-vibe-coding):
+**Complete Example** (from coding-nextjs):
 
 ```yaml
 description: Use this agent when the user wants to implement new features, create components, or build pages using natural language. This agent transforms vibe descriptions into working code with TDD.
@@ -103,15 +103,15 @@ Examples:
 <example>
 Context: User describes a feature in natural language.
 user: "ユーザーがプロフィール画像をアップロードできる機能が欲しい"
-assistant: "I'll use the nextjs-vibe-coding agent to implement this with TDD."
-<Task tool call to nextjs-vibe-coding agent>
+assistant: "I'll use the coding-nextjs agent to implement this with TDD."
+<Task tool call to coding-nextjs agent>
 </example>
 
 <example>
 Context: User wants a new page or component.
 user: "Add a dashboard page that shows post statistics"
 assistant: "Let me use the agent to create this dashboard with proper test coverage."
-<Task tool call to nextjs-vibe-coding agent>
+<Task tool call to coding-nextjs agent>
 </example>
 ```
 

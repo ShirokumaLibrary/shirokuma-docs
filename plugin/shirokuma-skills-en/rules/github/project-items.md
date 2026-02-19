@@ -186,69 +186,11 @@ Labels indicate **where** work applies (cross-cutting attribute). Work type clas
 | `area:` | Codebase area affected | `area:cli`, `area:plugin`, `area:github` |
 | (none) | Operational / triage | `duplicate`, `invalid`, `wontfix` |
 
-See `github-project-setup/reference/labels.md` for full taxonomy and setup commands.
-
 ## Item Body Maintenance (Issues / Discussions / PRs)
 
-**The body is the source of truth.** Comments serve as historical record of the discussion. The body MUST always be the latest consolidated version. Readers should be able to understand the current state by reading the body alone.
+**The body is the source of truth.** Comments serve as historical record; body must always be the latest consolidated version. For detailed procedures, see `managing-github-items/reference/item-maintenance.md`.
 
-### When to Update
-
-| Trigger | Action |
-|---------|--------|
-| New findings or corrections added via comments | Consolidate into body |
-| Investigation results posted as comments | Merge into body's relevant section |
-| Requirements changed via comments | Update body's Tasks/Deliverable sections |
-| Decision made in comment thread | Record in body |
-| 3+ comments accumulated since last body update | Consolidate into body |
-
-### How to Update
-
-```bash
-# Issues (Write tool でファイル作成後)
-shirokuma-docs issues update {number} --body /tmp/body.md
-
-# Discussions (Write tool でファイル作成後)
-shirokuma-docs discussions update {number} --body /tmp/body.md
-```
-
-### Workflow Order (Comment First)
-
-When updating a body, ALWAYS follow this order:
-
-1. **Post a comment** — Record the changes, findings, or corrections as a comment first
-2. **Consolidate into body** — Integrate the comment content into the relevant body section
-
-This order ensures the comment history preserves "what was changed and why", enabling detection and correction of AI judgment errors or hallucinations.
-
-**Prohibited**: Updating the body directly and then adding a comment after the fact (reverse order). Updating the body without any comment.
-
-### Substantive Compliance
-
-Merely following the comment→body order is not enough. Comments must have **independent value as primary records** of the work.
-
-**Heuristic**: If deleting a comment would not lose any information absent from the body, that comment is not substantive.
-
-| Bad (Formal compliance) | Good (Substantive compliance) |
-|------------------------|-------------------------------|
-| "Plan created. See body for details." | "Selected approach A. Also considered B (reason), rejected due to X." |
-| "Updated issue body." | "Investigation found module X is also affected. Added to tasks." |
-| "Reflected review results." | "Review detected N issues: {summary of specific findings}" |
-
-**Content that should be primary records in comments**:
-- Decision rationale and alternatives considered
-- Facts discovered during investigation
-- Summary of review findings
-- Reasons for requirement changes
-
-**When consolidating into body**: Structure and merge comment content into relevant sections. Comments remain as historical record.
-
-### Guidelines
-
-1. **Preserve structure** - Keep the original body template sections
-2. **Update task checkboxes** - Check completed items, add new tasks discovered
-3. **Summarize, don't duplicate** - Consolidate comment threads into concise body updates
-4. **Comment first** - Always post a comment before updating the body (see Workflow Order section above)
+> **Comment-first rule**: Always post a comment before updating the body. Comments must have independent value as primary records of work.
 
 ## Creating Items
 

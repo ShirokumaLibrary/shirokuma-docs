@@ -125,9 +125,9 @@ Get changed files via `git diff --name-only develop..HEAD` and classify:
 
 | File Composition | Review Method |
 |-----------------|---------------|
-| config only | Invoke `claude-config-reviewing` only |
+| config only | Invoke `reviewing-claude-config` only |
 | code/docs only (no config) | Invoke `reviewing-on-issue` only (as before) |
-| mixed (config + code/docs) | Invoke `reviewing-on-issue` → `claude-config-reviewing` sequentially → merge results |
+| mixed (config + code/docs) | Invoke `reviewing-on-issue` → `reviewing-claude-config` sequentially → merge results |
 
 **Result merging rules (mixed case):**
 - Status: either FAIL → FAIL
@@ -165,7 +165,7 @@ graph LR
 ```text
 Self-review [1/3]: Category detection → config + code (mixed)
   Running reviewing-on-issue...
-  Running claude-config-reviewing...
+  Running reviewing-claude-config...
   → Merged result: 2 critical issues detected, auto-fixing...
   → Fix complete, commit & push
 

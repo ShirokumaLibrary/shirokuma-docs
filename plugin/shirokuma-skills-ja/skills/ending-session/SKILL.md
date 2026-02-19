@@ -112,6 +112,13 @@ shirokuma-docs session end \
 - `--done <numbers...>` - Done にする Issue 番号
 - `--review <numbers...>` - Review にする Issue 番号
 
+**タイトル自動成形（マルチ開発者対応）**: `YYYY-MM-DD - {サマリー}` 形式のタイトルには、GitHub ユーザー名が自動挿入される。
+
+例: `2026-02-19 - Plugin feature` → `2026-02-19 [alice] - Plugin feature`
+
+- すでに `[username]` を含む場合は挿入しない（冪等）
+- ユーザー名取得に失敗した場合は元のタイトルをそのまま使用
+
 **--done vs --review の選択**:
 - `--done`: 作業完了、PR 不要（またはマージ済み）
 - `--review`: PR 作成済み、ユーザーレビュー待ち（PR がマージ済みなら自動で Done に昇格）

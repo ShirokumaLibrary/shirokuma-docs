@@ -996,9 +996,10 @@ export async function discussionsCommand(
       break;
 
     case "get":
+    case "show":
       if (!target) {
         logger.error("Discussion ID or number required");
-        logger.info("Usage: shirokuma-docs discussions get <id-or-number>");
+        logger.info(`Usage: shirokuma-docs discussions ${action} <id-or-number>`);
         exitCode = 1;
       } else {
         exitCode = await cmdGet(target, options, logger);
@@ -1041,7 +1042,7 @@ export async function discussionsCommand(
 
     default:
       logger.error(`Unknown action: ${action}`);
-      logger.info("Available actions: categories, list, get, create, update, search, comment");
+      logger.info("Available actions: categories, list, get, show, create, update, search, comment");
       exitCode = 1;
   }
 

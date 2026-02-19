@@ -33,6 +33,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       body
       url
       state
+      issueType { name }
       createdAt
       updatedAt
       labels(first: 20) {

@@ -726,6 +726,7 @@ async function cmdGet(
     body?: string;
     url?: string;
     state?: string;
+    issueType?: { name?: string };
     createdAt?: string;
     updatedAt?: string;
     labels?: { nodes?: Array<{ name?: string }> };
@@ -766,6 +767,7 @@ async function cmdGet(
   const output = {
     number: node.number,
     title: node.title,
+    type: node.issueType?.name ?? null,
     body: node.body,
     url: node.url,
     state: node.state,
@@ -958,10 +960,15 @@ async function cmdUpdate(
     title?: string;
     body?: string;
     state?: string;
+    issueType?: { name?: string };
+    labels?: { nodes?: Array<{ name?: string }> };
     projectItems?: {
       nodes?: Array<{
         id?: string;
         project?: { id?: string; title?: string };
+        status?: { name?: string };
+        priority?: { name?: string };
+        size?: { name?: string };
       }>;
     };
   }
@@ -1022,6 +1029,10 @@ async function cmdUpdate(
     }
   }
 
+  // Track label changes for minimal output
+  const addedLabels: string[] = [];
+  const removedLabels: string[] = [];
+
   // Update labels
   if (
     (options.addLabel && options.addLabel.length > 0) ||
@@ -1034,9 +1045,11 @@ async function cmdUpdate(
       // Add labels
       if (options.addLabel && options.addLabel.length > 0) {
         const addIds: string[] = [];
+        const addNames: string[] = [];
         for (const name of options.addLabel) {
           if (allLabels[name]) {
             addIds.push(allLabels[name]);
+            addNames.push(name);
           } else {
             logger.warn(`Label '${name}' not found`);
           }
@@ -1048,6 +1061,7 @@ async function cmdUpdate(
           });
           if (addResult.success) {
             updated = true;
+            addedLabels.push(...addNames);
             logger.success(`Added ${addIds.length} label(s)`);
           }
         }
@@ -1056,9 +1070,11 @@ async function cmdUpdate(
       // Remove labels
       if (options.removeLabel && options.removeLabel.length > 0) {
         const removeIds: string[] = [];
+        const removeNames: string[] = [];
         for (const name of options.removeLabel) {
           if (allLabels[name]) {
             removeIds.push(allLabels[name]);
+            removeNames.push(name);
           } else {
             logger.warn(`Label '${name}' not found`);
           }
@@ -1070,6 +1086,7 @@ async function cmdUpdate(
           });
           if (removeResult.success) {
             updated = true;
+            removedLabels.push(...removeNames);
             logger.success(`Removed ${removeIds.length} label(s)`);
           }
         }
@@ -1127,6 +1144,10 @@ async function cmdUpdate(
     }
   }
 
+  // Track state and auto-status changes for minimal output
+  let finalState = issueNode.state;
+  let autoSetStatus: string | undefined;
+
   // Handle --state (close/reopen)
   if (options.state !== undefined) {
     const stateValue = options.state.toLowerCase();
@@ -1160,6 +1181,7 @@ async function cmdUpdate(
 
       if (closeResult.success) {
         updated = true;
+        finalState = "CLOSED";
         logger.success(`Closed #${issueNumber} (${stateReason})`);
 
         // Auto-set Status if --field-status was not explicitly specified (#676)
@@ -1179,6 +1201,7 @@ async function cmdUpdate(
             statusResult = resolveAndUpdateStatus(owner, repo, issueNumber, targetStatus, logger);
           }
           if (statusResult.success) {
+            autoSetStatus = targetStatus;
             logger.success(`Issue #${issueNumber} → ${targetStatus}`);
           }
         }
@@ -1202,6 +1225,7 @@ async function cmdUpdate(
 
       if (reopenResult.success) {
         updated = true;
+        finalState = "OPEN";
         logger.success(`Reopened #${issueNumber}`);
       } else {
         logger.error(`Failed to reopen issue #${issueNumber}`);
@@ -1214,8 +1238,26 @@ async function cmdUpdate(
     logger.info("No changes made");
   }
 
-  // Output updated issue info
-  return cmdGet(issueNumberStr, options, logger);
+  // Build minimal output from available data (no re-fetch)
+  const initialLabels = (issueNode.labels?.nodes ?? []).map((l) => l?.name ?? "").filter(Boolean);
+  const finalLabels = [
+    ...initialLabels.filter((l) => !removedLabels.includes(l)),
+    ...addedLabels.filter((l) => !initialLabels.includes(l)),
+  ];
+
+  const output = {
+    number: issueNumber,
+    title: options.title !== undefined ? options.title : issueNode.title,
+    type: options.issueType ?? issueNode.issueType?.name ?? null,
+    state: finalState,
+    labels: finalLabels,
+    status: fields.Status ?? autoSetStatus ?? matchingItem?.status?.name,
+    priority: fields.Priority ?? matchingItem?.priority?.name,
+    size: fields.Size ?? matchingItem?.size?.name,
+  };
+
+  console.log(JSON.stringify(output, null, 2));
+  return 0;
 }
 
 /**

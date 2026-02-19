@@ -123,6 +123,30 @@ Other selected
 
 **For handover remaining tasks**: Pass the handover's Next Steps content as context to `managing-github-items` for the issue body.
 
+## Multi-Developer Mode
+
+In team development, add options to `session start`:
+
+```bash
+# Show handovers from a specific user
+shirokuma-docs session start --user {username}
+
+# Show handovers from all members (no filter)
+shirokuma-docs session start --all
+
+# Team dashboard (grouped by member)
+shirokuma-docs session start --team
+```
+
+| Option | Behavior |
+|--------|----------|
+| (default) | Fetches only handovers created by the current GitHub user |
+| `--user {username}` | Fetches handovers from the specified user |
+| `--all` | Fetches handovers from all members (no filter) |
+| `--team` | Groups handovers and issues by member for team overview |
+
+**Default behavior**: Uses `gh api user` to get the current GitHub username and filters handovers to that user only.
+
 ## Error Handling
 
 | Error | Action |

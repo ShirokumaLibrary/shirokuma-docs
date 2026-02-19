@@ -112,6 +112,13 @@ This single command:
 - `--done <numbers...>` - Issue numbers to mark as Done
 - `--review <numbers...>` - Issue numbers to mark as Review
 
+**Auto-formatted title (multi-developer support)**: Titles in `YYYY-MM-DD - {summary}` format have the GitHub username automatically inserted.
+
+Example: `2026-02-19 - Plugin feature` → `2026-02-19 [alice] - Plugin feature`
+
+- If the title already contains `[username]`, no insertion occurs (idempotent)
+- If username lookup fails, the original title is used as-is
+
 **Choosing --done vs --review:**
 - `--done`: Work is fully complete, no PR needed (or already merged)
 - `--review`: PR created, awaiting user review (auto-promotes to Done if PR already merged)

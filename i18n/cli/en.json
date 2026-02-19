@@ -64,7 +64,11 @@
       "pluginInstallFailed": "Plugin installation failed",
       "configCreateFailed": "Failed to create config file: {error}",
       "restartSessionNotice": "Restart your Claude Code session to use the installed skills.",
-      "restartSessionHint": "  Start a new conversation to make skills available."
+      "restartSessionHint": "  Start a new conversation to make skills available.",
+      "nextjsScaffolding": "Generating Next.js monorepo structure...",
+      "nextjsScaffoldDone": "Monorepo structure generated",
+      "nextjsGitInitDone": "Git repository initialized",
+      "summaryNextjs": "✓ Next.js monorepo: structure generated"
     },
     "session": {
       "description": "Session management (start, end, check)",

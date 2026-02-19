@@ -684,7 +684,6 @@ describe("projects output format", () => {
       const expectedOutput = {
         id: "PVTI_xxx",
         title: "New Draft Issue",
-        body: "Description",
         status: "Backlog",
         priority: "High",
         size: "M",
@@ -699,6 +698,8 @@ describe("projects output format", () => {
       expect(expectedOutput.id).toBeDefined();
       expect(expectedOutput.draft_issue_id).toBeDefined();
       expect(expectedOutput.issue_number).toBeNull();
+      // body は含まない（ミューテーション最小出力）
+      expect(expectedOutput).not.toHaveProperty("body");
     });
   });
 

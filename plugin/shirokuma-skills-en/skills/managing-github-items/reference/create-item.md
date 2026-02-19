@@ -16,7 +16,7 @@ Without arguments: Infer from conversation context:
 |--------|--------|--------|
 | Title | Recent user message | Summarize the problem/feature mentioned before "make this an issue" |
 | **Type classification** | Conversation context | See "Type Classification" below |
-| Type (Issue Types) | Derived from classification | feature → Feature, bug → Bug, chore → Chore, research → Task (Note: CLI unsupported, set manually in GitHub UI) |
+| Type (Issue Types) | Derived from classification | feature → Feature, bug → Bug, chore → Chore, research → Task (specify via `--issue-type` option) |
 | Label (area) | Conversation context | Infer from impact scope: CLI-related → `area:cli`, plugin-related → `area:plugin`, etc. |
 | Priority | Conversation context | Urgency expressions ("urgent" → High, normal → Medium) |
 | Body | Type template | Structure using the type-specific template from Step 2 |
@@ -48,8 +48,6 @@ A) "Enable CLI users to choose output format based on use case. Currently SVG-on
 B) "Enable CLI users to get dependency info in JSON format. For pipeline integration with other tools."
 C) Other (please specify)
 ```
-
-> **Issue Types**: Work types (Feature, Bug, Chore, etc.) are managed via Issue Types. Currently not supported by CLI — set in GitHub UI after issue creation.
 
 Label options (for impact scope classification — area labels):
 

@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 # Project Config Generator
 
-Creates and maintains project-specific configuration directories for skills like `nextjs-vibe-coding` and `reviewing-on-issue`.
+Creates and maintains project-specific configuration directories for skills like `coding-nextjs` and `reviewing-on-issue`.
 
 ## When to Use
 
@@ -51,7 +51,7 @@ ls .claude/skills/*/project/ 2>/dev/null || echo "No project configs found"
 ```
 
 Supported skills:
-- `nextjs-vibe-coding`
+- `coding-nextjs`
 - `reviewing-on-issue`
 
 ### Step 2: Gather Project Information
@@ -176,7 +176,7 @@ Output summary:
 ## Project Config Generated
 
 ### Target Skills
-- nextjs-vibe-coding
+- coding-nextjs
 - reviewing-on-issue
 
 ### Files Created/Updated

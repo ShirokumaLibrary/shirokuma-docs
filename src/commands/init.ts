@@ -13,12 +13,13 @@
  * shirokuma-docs init --with-skills
  *
  * # Install specific skills only
- * shirokuma-docs init --with-skills=nextjs-vibe-coding,reviewing-on-issue
+ * shirokuma-docs init --with-skills=coding-nextjs,reviewing-on-issue
  * ```
  */
 
 import { resolve, dirname } from "node:path";
 import { existsSync, writeFileSync, readFileSync, mkdirSync, rmSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { Document as YamlDocument, type YAMLMap, type Scalar } from "yaml";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
@@ -65,6 +66,8 @@ interface InitOptions {
   lang?: string;
   /** Manage .gitignore (default: true, set false by --no-gitignore) */
   gitignore?: boolean;
+  /** Scaffold Next.js monorepo structure */
+  nextjs?: boolean;
 }
 
 /**
@@ -80,6 +83,8 @@ interface InitResult {
   skills_installed: string[];
   rules_installed: string[];
   rules_deployed: number;
+  nextjs_scaffolded: boolean;
+  nextjs_directories_created: number;
 }
 
 /** 言語コードから settings.json の language 値へのマッピング */
@@ -170,6 +175,234 @@ const defaultConfigTemplate: ShirokumaConfig = {
   },
 };
 
+/**
+ * Next.js monorepo config template
+ */
+const nextjsMonorepoTemplate: ShirokumaConfig = {
+  project: {
+    name: "my-nextjs-app",
+    description: "Next.js モノレポプロジェクト",
+    url: "",
+  },
+  output: {
+    dir: "./docs",
+    portal: "./docs/portal",
+    generated: "./docs/generated",
+  },
+  typedoc: {
+    entryPoints: [
+      "./apps/web/src/app",
+      "./apps/web/lib",
+    ],
+    tsconfig: "./tsconfig.json",
+    exclude: ["**/node_modules/**", "**/*.test.ts", "**/*.spec.ts"],
+  },
+  schema: {
+    sources: [
+      { path: "./packages/database/src/schema" },
+    ],
+    pattern: "*.ts",
+  },
+  deps: {
+    include: [
+      "apps/web/**/*.ts",
+      "packages/**/*.ts",
+    ],
+    exclude: ["node_modules", ".next", "dist"],
+    output: "./docs/generated/architecture",
+    formats: ["svg", "json"],
+  },
+  testCases: {
+    jest: {
+      config: "./jest.config.ts",
+      testMatch: ["**/apps/web/__tests__/**/*.test.{ts,tsx}", "**/apps/web/**/*.test.{ts,tsx}"],
+    },
+    playwright: {
+      config: "./playwright.config.ts",
+      testDir: "./apps/web/e2e",
+    },
+  },
+  portal: {
+    title: "ドキュメントポータル",
+    links: [],
+    devTools: [],
+  },
+  lintDocs: {
+    enabled: false,
+  },
+  lintCode: {
+    enabled: false,
+  },
+  lintStructure: {
+    enabled: false,
+  },
+  lintAnnotations: {
+    enabled: false,
+  },
+  adr: {
+    enabled: true,
+    directory: "docs/adr",
+    template: "madr",
+    language: "ja",
+  },
+};
+
+/** Next.js monorepo scaffold result */
+interface ScaffoldResult {
+  directories_created: string[];
+  files_created: string[];
+  git_initialized: boolean;
+}
+
+/**
+ * Scaffold Next.js monorepo directory structure and base files.
+ * Skips existing directories and files to avoid overwriting user data.
+ */
+function scaffoldNextjsMonorepo(projectPath: string): ScaffoldResult {
+  const result: ScaffoldResult = {
+    directories_created: [],
+    files_created: [],
+    git_initialized: false,
+  };
+
+  // モノレポディレクトリ構造を生成
+  const directories = [
+    "apps/web/src/app/(dashboard)",
+    "apps/web/lib/actions",
+    "apps/web/__tests__",
+    "apps/web/e2e",
+    "packages/database/src/schema",
+    "packages/shared/src",
+  ];
+
+  for (const dir of directories) {
+    const fullPath = resolve(projectPath, dir);
+    if (!existsSync(fullPath)) {
+      mkdirSync(fullPath, { recursive: true });
+      result.directories_created.push(dir);
+    }
+  }
+
+  // Root package.json（存在しない場合のみ生成）
+  const rootPkgPath = resolve(projectPath, "package.json");
+  if (!existsSync(rootPkgPath)) {
+    const rootPkg = {
+      name: "my-nextjs-app",
+      version: "0.1.0",
+      private: true,
+      workspaces: ["apps/*", "packages/*"],
+      scripts: {
+        dev: "pnpm --filter web dev",
+        build: "pnpm --filter web build",
+        test: "pnpm --filter web test",
+        "test:e2e": "pnpm --filter web test:e2e",
+        lint: "pnpm --filter web lint",
+      },
+      packageManager: "pnpm@10.30.0",
+    };
+    writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + "\n", "utf-8");
+    result.files_created.push("package.json");
+  }
+
+  // apps/web/package.json（存在しない場合のみ生成）
+  const webPkgPath = resolve(projectPath, "apps/web/package.json");
+  if (!existsSync(webPkgPath)) {
+    const webPkg = {
+      name: "web",
+      version: "0.1.0",
+      private: true,
+      scripts: {
+        dev: "next dev",
+        build: "next build",
+        start: "next start",
+        lint: "next lint",
+        test: "jest",
+        "test:e2e": "playwright test",
+      },
+      dependencies: {
+        "next": "^16.0.0",
+        "react": "^19.0.0",
+        "react-dom": "^19.0.0",
+        "better-auth": "^1.0.0",
+        "next-intl": "^3.0.0",
+        "@workspace/database": "workspace:*",
+        "@workspace/shared": "workspace:*",
+      },
+      devDependencies: {
+        "@types/node": "^22.0.0",
+        "@types/react": "^19.0.0",
+        "typescript": "^5.0.0",
+        "tailwindcss": "^4.0.0",
+        "jest": "^29.0.0",
+        "@playwright/test": "^1.40.0",
+      },
+    };
+    writeFileSync(webPkgPath, JSON.stringify(webPkg, null, 2) + "\n", "utf-8");
+    result.files_created.push("apps/web/package.json");
+  }
+
+  // packages/database/package.json（存在しない場合のみ生成）
+  const dbPkgPath = resolve(projectPath, "packages/database/package.json");
+  if (!existsSync(dbPkgPath)) {
+    const dbPkg = {
+      name: "@workspace/database",
+      version: "0.1.0",
+      private: true,
+      exports: {
+        ".": "./src/index.ts",
+        "./schema": "./src/schema/index.ts",
+      },
+      dependencies: {
+        "drizzle-orm": "^0.30.0",
+      },
+      devDependencies: {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.0.0",
+        "drizzle-kit": "^0.20.0",
+      },
+    };
+    writeFileSync(dbPkgPath, JSON.stringify(dbPkg, null, 2) + "\n", "utf-8");
+    result.files_created.push("packages/database/package.json");
+  }
+
+  // packages/shared/package.json（存在しない場合のみ生成）
+  const sharedPkgPath = resolve(projectPath, "packages/shared/package.json");
+  if (!existsSync(sharedPkgPath)) {
+    const sharedPkg = {
+      name: "@workspace/shared",
+      version: "0.1.0",
+      private: true,
+      exports: {
+        ".": "./src/index.ts",
+      },
+      devDependencies: {
+        "@types/node": "^22.0.0",
+        "typescript": "^5.0.0",
+      },
+    };
+    writeFileSync(sharedPkgPath, JSON.stringify(sharedPkg, null, 2) + "\n", "utf-8");
+    result.files_created.push("packages/shared/package.json");
+  }
+
+  // git init（.git が存在しない場合のみ実行）
+  const gitDir = resolve(projectPath, ".git");
+  if (!existsSync(gitDir)) {
+    try {
+      const gitResult = spawnSync("git", ["init"], {
+        cwd: projectPath,
+        encoding: "utf-8",
+      });
+      if (gitResult.status === 0) {
+        result.git_initialized = true;
+      }
+    } catch {
+      // git init 失敗は無視
+    }
+  }
+
+  return result;
+}
+
 /** セクションコメント定義 */
 const sectionComments: Record<string, string> = {
   typedoc: "TypeDoc API ドキュメント生成対象。自分のプロジェクトのソースパスに変更してください。",
@@ -228,6 +461,8 @@ export async function initCommand(options: InitOptions): Promise<void> {
     skills_installed: [],
     rules_installed: [],
     rules_deployed: 0,
+    nextjs_scaffolded: false,
+    nextjs_directories_created: 0,
   };
 
   // Validate --lang option
@@ -243,7 +478,8 @@ export async function initCommand(options: InitOptions): Promise<void> {
   if (shouldCreateConfig) {
     logger.info(t("commands.init.initializingConfig", { path: configPath }));
 
-    const yamlContent = buildConfigYaml(defaultConfigTemplate);
+    const template = options.nextjs ? nextjsMonorepoTemplate : defaultConfigTemplate;
+    const yamlContent = buildConfigYaml(template);
 
     try {
       writeFileSync(configPath, yamlContent, "utf-8");
@@ -404,6 +640,18 @@ export async function initCommand(options: InitOptions): Promise<void> {
     }
   }
 
+  // Scaffold Next.js monorepo structure
+  if (options.nextjs) {
+    logger.info("\n" + t("commands.init.nextjsScaffolding"));
+    const scaffoldResult = scaffoldNextjsMonorepo(projectPath);
+    result.nextjs_scaffolded = true;
+    result.nextjs_directories_created = scaffoldResult.directories_created.length;
+    if (scaffoldResult.git_initialized) {
+      logger.success(t("commands.init.nextjsGitInitDone"));
+    }
+    logger.success(t("commands.init.nextjsScaffoldDone"));
+  }
+
   // Update .gitignore (unless --no-gitignore)
   if (options.gitignore !== false) {
     logger.info("\n" + t("commands.init.updatingGitignore"));
@@ -444,6 +692,9 @@ export async function initCommand(options: InitOptions): Promise<void> {
   }
   if (result.gitignore_updated) {
     logger.info(t("commands.init.summaryGitignore", { count: result.gitignore_entries_added }));
+  }
+  if (result.nextjs_scaffolded) {
+    logger.info(t("commands.init.summaryNextjs"));
   }
 
   // セッション再起動案内（#589: プラグインインストール後に必須）

@@ -31,6 +31,7 @@ import {
   type GitState,
   type IssueData,
   type SessionBackup,
+  type SessionOptions,
   type Inconsistency,
   type FixResult,
   type CheckOutput,
@@ -1657,3 +1658,275 @@ describe("session check - metrics inconsistency classification (#342)", () => {
 // プロジェクトのテスト方針（純粋関数のみユニットテスト、API モック不使用）に従い、
 // ユニットテストは省略。動作は session end の統合テストでカバー。
 // =============================================================================
+
+// =============================================================================
+// Multi-Developer Handover (#754)
+// ADR-v2-004: チーム開発でのハンドオーバー運用
+// =============================================================================
+
+describe("session end - handover title auto-insert (#754)", () => {
+  /** タイトル自動挿入のターゲットパターン */
+  const AUTO_INSERT_PATTERN = /^\d{4}-\d{2}-\d{2} - /;
+
+  /**
+   * @testdoc YYYY-MM-DD - summary 形式のタイトルが自動挿入の対象になる
+   * @purpose 日付プレフィックスのみで [username] なし = 挿入対象の判定
+   */
+  it("should detect date-prefixed titles without username as auto-insert candidates", () => {
+    const candidateTitle = "2026-02-19 - Session summary";
+    const alreadyFormattedTitle = "2026-02-19 [alice] - Session summary";
+    const nonDateTitle = "Plugin marketplace feature";
+
+    // 対象: 日付プレフィックスあり + [ なし
+    expect(AUTO_INSERT_PATTERN.test(candidateTitle) && !candidateTitle.includes("[")).toBe(true);
+    // 非対象: すでに [username] を含む
+    expect(AUTO_INSERT_PATTERN.test(alreadyFormattedTitle) && !alreadyFormattedTitle.includes("[")).toBe(false);
+    // 非対象: 日付プレフィックスなし
+    expect(AUTO_INSERT_PATTERN.test(nonDateTitle) && !nonDateTitle.includes("[")).toBe(false);
+  });
+
+  /**
+   * @testdoc タイトル変換が YYYY-MM-DD [username] - summary 形式になる
+   * @purpose 自動挿入後の正確なフォーマット確認
+   */
+  it("should transform date-only title to include username", () => {
+    const title = "2026-02-19 - Session summary";
+    const username = "alice";
+    const result = title.replace(/^(\d{4}-\d{2}-\d{2}) - /, `$1 [${username}] - `);
+
+    expect(result).toBe("2026-02-19 [alice] - Session summary");
+  });
+
+  /**
+   * @testdoc すでに [username] を含むタイトルは再挿入されない
+   * @purpose 二重挿入の防止確認
+   */
+  it("should not double-insert username into already-formatted title", () => {
+    const title = "2026-02-19 [alice] - Session summary";
+
+    const shouldInsert = AUTO_INSERT_PATTERN.test(title) && !title.includes("[");
+
+    expect(shouldInsert).toBe(false);
+  });
+
+  /**
+   * @testdoc 挿入後のタイトル形式が validateTitle を通過する
+   * @purpose [username] 付きタイトルが長さ制限内で有効であることの確認
+   */
+  it("should accept auto-inserted title format in validateTitle", () => {
+    const autoInsertedTitle = "2026-02-19 [particles7] - Plugin marketplace spec compliance";
+    expect(validateTitle(autoInsertedTitle)).toBeNull();
+  });
+
+  /**
+   * @testdoc YYYY-MM-DD [username] - summary の正規表現パターンが正しい
+   * @purpose ハンドオーバータイトル形式の完全な仕様確認
+   */
+  it("should define the full handover title format regex", () => {
+    const HANDOVER_TITLE_WITH_USERNAME = /^\d{4}-\d{2}-\d{2} \[[a-zA-Z0-9._-]+\] - .+$/;
+    const validTitles = [
+      "2026-02-19 [alice] - Feature implementation complete",
+      "2026-02-18 [bob] - Debug session",
+      "2026-02-01 [particles7] - Plugin marketplace spec",
+    ];
+    const invalidTitles = [
+      "2026-02-19 - No username",
+      "Session summary without date",
+    ];
+
+    for (const title of validTitles) {
+      expect(HANDOVER_TITLE_WITH_USERNAME.test(title)).toBe(true);
+    }
+    for (const title of invalidTitles) {
+      expect(HANDOVER_TITLE_WITH_USERNAME.test(title)).toBe(false);
+    }
+  });
+});
+
+describe("session start - multi-developer options (#754)", () => {
+  /**
+   * @testdoc SessionOptions に --user, --all, --team オプションが定義される
+   * @purpose マルチ開発者モードのオプション型契約
+   */
+  it("should define --user, --all, --team options in SessionOptions", () => {
+    // --user: 特定ユーザーの引き継ぎをフィルタ
+    const userOptions: SessionOptions = { user: "alice" };
+    expect(userOptions).toHaveProperty("user");
+    expect(typeof userOptions.user).toBe("string");
+
+    // --all: フィルタなし（全メンバー）
+    const allOptions: SessionOptions = { all: true };
+    expect(allOptions).toHaveProperty("all");
+    expect(allOptions.all).toBe(true);
+
+    // --team: チームダッシュボードモード
+    const teamOptions: SessionOptions = { team: true };
+    expect(teamOptions).toHaveProperty("team");
+    expect(teamOptions.team).toBe(true);
+  });
+
+  /**
+   * @testdoc --user と --all の相互排他を型で表現できる
+   * @purpose 同時指定は意味をなさない（--all が優先）ことの文書化
+   */
+  it("should allow both --user and --all to coexist in SessionOptions type", () => {
+    // 型上は共存可能だが、実装では --all が優先される
+    const options: SessionOptions = { user: "alice", all: true };
+    expect(options.user).toBe("alice");
+    expect(options.all).toBe(true);
+  });
+
+  /**
+   * @testdoc author フィルタロジック: authorFilter=null は全件返す
+   * @purpose --all モードでフィルタなし動作の確認
+   */
+  it("should return all handovers when authorFilter is null (--all mode)", () => {
+    const handovers = [
+      { number: 1, author: "alice" },
+      { number: 2, author: "bob" },
+      { number: 3, author: "charlie" },
+    ];
+
+    const authorFilter: string | null = null;
+    const filtered = authorFilter
+      ? handovers.filter((h) => h.author === authorFilter)
+      : handovers;
+
+    expect(filtered).toHaveLength(3);
+  });
+
+  /**
+   * @testdoc author フィルタロジック: 特定ユーザー指定で一致のみ返す
+   * @purpose --user {username} でのフィルタリング確認
+   */
+  it("should filter handovers by author when authorFilter is set", () => {
+    const handovers = [
+      { number: 1, author: "alice" },
+      { number: 2, author: "bob" },
+      { number: 3, author: "alice" },
+    ];
+
+    const authorFilter = "alice";
+    const filtered = authorFilter
+      ? handovers.filter((h) => h.author === authorFilter)
+      : handovers;
+
+    expect(filtered).toHaveLength(2);
+    expect(filtered.map((h) => h.number)).toEqual([1, 3]);
+  });
+
+  /**
+   * @testdoc author フィルタロジック: 一致なしは空配列
+   * @purpose 対象ユーザーのハンドオーバーがない場合の動作
+   */
+  it("should return empty array when no handovers match the author filter", () => {
+    const handovers = [
+      { number: 1, author: "alice" },
+      { number: 2, author: "bob" },
+    ];
+
+    const authorFilter = "charlie";
+    const filtered = handovers.filter((h) => h.author === authorFilter);
+
+    expect(filtered).toHaveLength(0);
+  });
+});
+
+describe("session start --team - fetchTeamHandovers grouping logic (#754)", () => {
+  /**
+   * fetchTeamHandovers の「著者別に最新1件のみ保持」ロジックをテスト。
+   * 関数自体は private なのでアルゴリズムを直接検証。
+   */
+
+  /** fetchTeamHandovers の grouping アルゴリズムを再現したヘルパー */
+  function groupByAuthorLatestFirst(
+    nodes: Array<{ number?: number; title?: string; body?: string; url?: string; author?: { login?: string } | null }>
+  ): Array<{ number: number; author: string }> {
+    const byAuthor = new Map<string, { number: number; author: string }>();
+    for (const node of nodes) {
+      if (!node?.number) continue;
+      const author = node.author?.login ?? "unknown";
+      if (!byAuthor.has(author)) {
+        byAuthor.set(author, { number: node.number, author });
+      }
+    }
+    return Array.from(byAuthor.values());
+  }
+
+  /**
+   * @testdoc 同一著者の複数ハンドオーバーは最新のみ保持される
+   * @purpose GraphQL は新しい順に返すので Map への最初の挿入が最新
+   */
+  it("should keep only the latest handover per author", () => {
+    const nodes = [
+      { number: 3, author: { login: "alice" } }, // 最新
+      { number: 2, author: { login: "bob" } },
+      { number: 1, author: { login: "alice" } }, // 古い
+    ];
+
+    const result = groupByAuthorLatestFirst(nodes);
+
+    expect(result).toHaveLength(2);
+    const aliceEntry = result.find((r) => r.author === "alice");
+    expect(aliceEntry?.number).toBe(3); // 古い #1 ではなく最新 #3
+  });
+
+  /**
+   * @testdoc 複数著者がいる場合に全員分が返される
+   * @purpose チームダッシュボードで全メンバーを表示する確認
+   */
+  it("should include one entry per unique author", () => {
+    const nodes = [
+      { number: 1, author: { login: "alice" } },
+      { number: 2, author: { login: "bob" } },
+      { number: 3, author: { login: "charlie" } },
+    ];
+
+    const result = groupByAuthorLatestFirst(nodes);
+
+    expect(result).toHaveLength(3);
+    expect(result.map((r) => r.author).sort()).toEqual(["alice", "bob", "charlie"]);
+  });
+
+  /**
+   * @testdoc author が null のノードは "unknown" グループに入る
+   * @purpose 著者情報がない Discussion への対応
+   */
+  it("should group nodes without author under 'unknown'", () => {
+    const nodes = [
+      { number: 1, author: null },
+      { number: 2, author: { login: "alice" } },
+    ];
+
+    const result = groupByAuthorLatestFirst(nodes);
+
+    expect(result).toHaveLength(2);
+    const unknownEntry = result.find((r) => r.author === "unknown");
+    expect(unknownEntry?.number).toBe(1);
+  });
+
+  /**
+   * @testdoc number がないノードはスキップされる
+   * @purpose GraphQL の不完全なレスポンスへの対応
+   */
+  it("should skip nodes without a number", () => {
+    const nodes = [
+      { number: undefined, author: { login: "alice" } },
+      { number: 1, author: { login: "bob" } },
+    ];
+
+    const result = groupByAuthorLatestFirst(nodes);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].author).toBe("bob");
+  });
+
+  /**
+   * @testdoc 空配列を入力すると空配列を返す
+   * @purpose ハンドオーバーがまだない状態への対応
+   */
+  it("should return empty array for empty input", () => {
+    const result = groupByAuthorLatestFirst([]);
+    expect(result).toHaveLength(0);
+  });
+});

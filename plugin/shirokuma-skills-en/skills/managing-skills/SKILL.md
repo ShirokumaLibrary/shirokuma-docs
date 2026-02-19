@@ -189,7 +189,7 @@ model: opus
 
 # After: Skill with context: fork (SKILL.md)
 ---
-name: best-practices-researching
+name: researching-best-practices
 context: fork
 agent: general-purpose
 model: opus
@@ -270,7 +270,7 @@ See [reference.md](reference.md#validation-checklist) for complete checklist.
 
 ### Step 9: Review
 
-Run `claude-config-reviewing` skill to validate:
+Run `reviewing-claude-config` skill to validate:
 - Structure and required sections
 - Anti-patterns (temporary markers, broken links)
 - File size limits
@@ -310,7 +310,7 @@ Same principles as creating:
 
 ### Step 4: Review
 
-Run `claude-config-reviewing` skill to validate changes.
+Run `reviewing-claude-config` skill to validate changes.
 
 ### Step 5: Test
 

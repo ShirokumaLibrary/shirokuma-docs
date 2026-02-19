@@ -184,7 +184,7 @@ model: opus
 
 # 現在: Skill with context: fork (SKILL.md)
 ---
-name: best-practices-researching
+name: researching-best-practices
 context: fork
 agent: general-purpose
 model: opus
@@ -265,7 +265,7 @@ EOF
 
 ### ステップ 9: レビュー
 
-`claude-config-reviewing` スキルで検証:
+`reviewing-claude-config` スキルで検証:
 - 構造と必須セクション
 - アンチパターン（一時マーカー、壊れたリンク）
 - ファイルサイズ制限
@@ -305,7 +305,7 @@ ls .claude/skills/skill-name/
 
 ### ステップ 4: レビュー
 
-`claude-config-reviewing` スキルで検証。
+`reviewing-claude-config` スキルで検証。
 
 ### ステップ 5: テスト
 

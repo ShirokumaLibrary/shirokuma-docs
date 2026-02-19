@@ -24,7 +24,7 @@ Automatically invoke when the user:
 ```
 .claude/
 ├── skills/                        # GENERIC (shareable across projects)
-│   ├── nextjs-vibe-coding/
+│   ├── coding-nextjs/
 │   │   ├── patterns/              # Reusable patterns
 │   │   └── templates/             # Code templates
 │   ├── reviewing-on-issue/
@@ -61,7 +61,7 @@ Project-specific rules always take precedence since they are loaded alongside ma
 
 **Before** (Skills `project/` directory):
 ```
-.claude/skills/nextjs-vibe-coding/
+.claude/skills/coding-nextjs/
 ├── patterns/         # ✓ Keep (generic patterns)
 ├── templates/        # ✓ Keep (code templates)
 └── project/          # → Move to rules
@@ -73,7 +73,7 @@ Project-specific rules always take precedence since they are loaded alongside ma
 **After** (Rules):
 ```
 .claude/
-├── skills/nextjs-vibe-coding/
+├── skills/coding-nextjs/
 │   ├── patterns/     # Generic patterns
 │   └── templates/    # Code templates
 │
@@ -300,7 +300,7 @@ cat .claude/rules/{name}.md
 
 Current pattern:
 ```
-.claude/skills/nextjs-vibe-coding/project/patterns/lib-structure.md
+.claude/skills/coding-nextjs/project/patterns/lib-structure.md
 ```
 
 Better as rule:

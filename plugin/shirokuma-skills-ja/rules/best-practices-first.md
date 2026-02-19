@@ -13,12 +13,13 @@
 
 | タスクタイプ | 委任先 | メソッド |
 |-------------|--------|----------|
-| 実装 / デザイン | `nextjs-vibe-coding` / `frontend-designing` | Skill（via `working-on-issue`） |
-| リサーチ | `best-practices-researching` | Skill (`context: fork`) |
+| 実装 / デザイン | `coding-nextjs` / `designing-shadcn-ui` | Skill（via `working-on-issue`） |
+| リサーチ | `researching-best-practices` | Skill (`context: fork`) |
 | レビュー | `reviewing-on-issue` | Skill (`context: fork`) |
-| Claude 設定 | `claude-config-reviewing` | Skill (`context: fork`) |
-| Issue / Discussion 作成 | `managing-github-items` | Skill |
+| Claude 設定 | `reviewing-claude-config` | Skill (`context: fork`) |
+| Issue / Discussion 作成 | `creating-item` | Skill |
 | GitHub データ表示 | `showing-github` | Skill |
+| プロジェクトセットアップ | `setting-up-project` | Skill |
 | 探索 | `Explore` | Task (ビルトイン) |
 | アーキテクチャ | `Plan` | Task (ビルトイン) |
 | 該当なし | 新しいスキルを提案 | — |

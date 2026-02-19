@@ -240,7 +240,7 @@ Past session handover information.
 shirokuma-docs discussions list --category Handovers --limit {count}
 
 # Get specific handover
-shirokuma-docs discussions get {number}
+shirokuma-docs discussions show {number}
 
 # From local files (fallback)
 ls -t .claude/sessions/*-handover.md 2>/dev/null | head -{count}

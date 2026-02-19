@@ -11,20 +11,20 @@ When creating or updating Claude Code configuration files (rules, skills, agents
 | `managing-agents` | Skill | Creating or updating agents |
 | `managing-output-styles` | Skill | Creating or updating output styles |
 | `managing-plugins` | Skill | Creating or updating plugins |
-| `claude-config-reviewing` | Skill | After any config creation/update (quality check) |
+| `reviewing-claude-config` | Skill | After any config creation/update (quality check) |
 
 ## Flow
 
 1. **Before writing**: Invoke the relevant managing-* skill for best practices and templates
 2. **Write**: Create or update the config file following the skill's guidance
-3. **After writing**: Run the `claude-config-reviewing` skill to verify quality
+3. **After writing**: Run the `reviewing-claude-config` skill to verify quality
 
 ### Example: Creating a new rule
 
 ```
 1. Invoke managing-rules skill -> get template and best practices
 2. Write plugin/shirokuma-skills-en/rules/my-rule.md
-3. Invoke claude-config-reviewing skill -> verify quality and consistency
+3. Invoke reviewing-claude-config skill -> verify quality and consistency
 ```
 
 ## When This Applies

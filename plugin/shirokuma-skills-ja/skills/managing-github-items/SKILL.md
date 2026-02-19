@@ -1,6 +1,6 @@
 ---
 name: managing-github-items
-description: GitHubプロジェクトアイテム（Issue / Discussion）を作成・管理します。「アイテム作成」「Issue 作成」「Issue にして」「仕様作成」「create item」「create spec」「フォローアップ Issue」で使用。
+description: GitHubプロジェクトアイテム（Issue / Discussion）を作成・管理する内部エンジン。creating-item スキルから委任されて使用。直接起動は非推奨（creating-item を使用）。
 allowed-tools: Bash, AskUserQuestion, Read, Write
 ---
 
@@ -35,7 +35,7 @@ Issue / Discussion の作成と仕様 Discussion の管理を行う。
 
 | エラー | 対処 |
 |--------|------|
-| プロジェクト未作成 | "`/project-setup` でプロジェクトを作成してください" |
+| プロジェクト未作成 | "`/setting-up-project` でプロジェクトを作成してください" |
 | gh 未認証 | "`gh auth login` を実行してください" |
 | フィールド未発見 | デフォルト値を使用、ユーザーに警告 |
 | Issue 未発見 | "Issue #{n} が見つかりません。番号を確認してください" |

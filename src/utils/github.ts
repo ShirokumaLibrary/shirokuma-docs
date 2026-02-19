@@ -307,6 +307,60 @@ export function getRepoInfo(): { owner: string; name: string } | null {
 }
 
 /**
+ * リポジトリ情報取得の失敗原因を診断する。
+ * getOwner() / getRepoName() / getRepoInfo() が null を返した後に呼び出す。
+ * コストの低いチェックから順に実行し、最初にヒットした原因を返す。
+ */
+export function diagnoseRepoFailure(): { cause: string; suggestion: string } {
+  // (1) git リポジトリ内かチェック（サブディレクトリからの実行にも対応）
+  const revParseResult = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], {
+    encoding: "utf-8",
+    timeout: 5000,
+  });
+  if (revParseResult.status !== 0) {
+    return {
+      cause: "Not inside a git repository",
+      suggestion: "Run this command from a git repository root, or run: git init",
+    };
+  }
+
+  // (2) git remote に GitHub URL が含まれるかチェック
+  const remoteResult = spawnSync("git", ["remote", "-v"], {
+    encoding: "utf-8",
+    timeout: 5000,
+  });
+
+  if (remoteResult.status !== 0 || !remoteResult.stdout?.trim()) {
+    return {
+      cause: "No git remote configured",
+      suggestion: "Add a GitHub remote: git remote add origin https://github.com/OWNER/REPO.git",
+    };
+  }
+
+  if (!remoteResult.stdout.includes("github.com")) {
+    return {
+      cause: "No GitHub remote found (remotes exist but none point to github.com)",
+      suggestion: "Add a GitHub remote: git remote add origin https://github.com/OWNER/REPO.git",
+    };
+  }
+
+  // (3) gh CLI の認証状態チェック（既存の checkGhCli() を再利用）
+  const ghCheck = checkGhCli();
+  if (!ghCheck.success) {
+    return {
+      cause: "GitHub CLI is not authenticated",
+      suggestion: "Run: gh auth login",
+    };
+  }
+
+  // (4) フォールバック: 上記すべてパスしたが gh repo view が失敗する場合
+  return {
+    cause: "Could not resolve repository (multiple remotes or no default set)",
+    suggestion: "Run: gh repo set-default, or use the --owner option",
+  };
+}
+
+/**
  * Validate title input
  */
 export function validateTitle(title: string): string | null {

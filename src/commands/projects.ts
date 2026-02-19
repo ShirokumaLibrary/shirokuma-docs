@@ -21,6 +21,7 @@ import {
   getOwner,
   getRepoName,
   getRepoInfo,
+  diagnoseRepoFailure,
   validateTitle,
   validateBody,
   isIssueNumber,
@@ -650,7 +651,6 @@ async function cmdCreate(
     const output = {
       id: item.id,
       title: item.title,
-      body: item.body,
       status: item.status,
       priority: item.priority,
       size: item.size,
@@ -759,13 +759,10 @@ async function cmdUpdate(
     const output = {
       id: item.id,
       title: item.title,
-      body: item.body,
       status: item.status,
-      status_option_id: item.statusOptionId,
       priority: item.priority,
       size: item.size,
       issue_number: item.issueNumber,
-      issue_url: item.issueUrl,
       draft_issue_id: item.draftIssueId,
       project: item.project,
     };
@@ -1431,7 +1428,9 @@ async function cmdCreateProject(
   const owner = options.owner || getOwner();
   const repo = getRepoName();
   if (!owner || !repo) {
-    logger.error("Could not determine repository owner/name");
+    const diagnosis = diagnoseRepoFailure();
+    logger.error(`Could not determine repository owner/name: ${diagnosis.cause}`);
+    logger.info(`  ${diagnosis.suggestion}`);
     return 1;
   }
 

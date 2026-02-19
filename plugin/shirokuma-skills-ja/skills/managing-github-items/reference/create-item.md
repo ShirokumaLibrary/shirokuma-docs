@@ -16,7 +16,7 @@ Issue または DraftIssue を作成する。引数なしの場合、会話コ�
 |---------|--------|---------|
 | タイトル | 直前のユーザー発話 | 「Issue にして」の前に述べられた問題・機能の要約 |
 | **種別** | 会話コンテキスト | 下記「種別判定」参照 |
-| Type（Issue Types） | 種別から決定 | feature → Feature、bug → Bug、chore → Chore、research → Task（注: CLI 未対応、GitHub UI で手動設定） |
+| Type（Issue Types） | 種別から決定 | feature → Feature、bug → Bug、chore → Chore、research → Task（`--issue-type` オプションで指定） |
 | ラベル（area） | 会話コンテキスト | 影響範囲から推定: CLI 関連 → `area:cli`、プラグイン関連 → `area:plugin` 等 |
 | Priority | 会話コンテキスト | 緊急性の表現（「すぐ」→ High、通常 → Medium） |
 | 本文 | 種別テンプレート | ステップ 2 の種別テンプレートに従って構造化 |
@@ -48,8 +48,6 @@ A) 「CLI ユーザーが出力形式を用途に応じて選べるようにす�
 B) 「CLI ユーザーが JSON 形式で依存情報を取得できるようにする。他ツールとのパイプライン連携のため。」
 C) その他（具体的に教えてください）
 ```
-
-> **Issue Types**: 作業種別（Feature, Bug, Chore 等）は Issue Types で管理する。現在 CLI では設定不可のため、Issue 作成後に GitHub UI から設定すること。
 
 ラベル一覧（影響範囲分類用 — area ラベル）:
 

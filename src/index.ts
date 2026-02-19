@@ -172,6 +172,7 @@ program
   .option("--with-skills [skills]", "スキルをインストール（カンマ区切りで指定、または全スキル）")
   .option("--with-rules", "ルールをインストール")
   .option("--lang <lang>", "言語設定 (en|ja) - .claude/settings.json に書き込み")
+  .option("--nextjs", "Next.js モノレポ構造をスキャフォールド")
   .option("--no-gitignore", ".gitignore の自動更新をスキップ")
   .option("-v, --verbose", "詳細ログを出力")
   .action(async (options) => {
@@ -533,7 +534,7 @@ program
 // GitHub Discussions 管理
 program
   .command("discussions <action>")
-  .description("GitHub Discussions 管理 (categories, list, get, create, update, search, comment)")
+  .description("GitHub Discussions 管理 (categories, list, get, show, create, update, search, comment)")
   .argument("[target]", "Discussion ID/number (for get/update/comment) or search query (for search)")
   .option("--category <category>", "Category name (for list/create/search)")
   .option("--limit <number>", "Max discussions to fetch (for list/search)", parseInt)

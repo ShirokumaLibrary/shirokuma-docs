@@ -232,7 +232,7 @@ describe("discussions command actions", () => {
      * @purpose 利用可能なアクションを文書化
      */
     it("should document supported actions", () => {
-      const supportedActions = ["categories", "list", "get", "create", "update", "search", "comment"];
+      const supportedActions = ["categories", "list", "get", "show", "create", "update", "search", "comment"];
 
       // These actions are supported by the command
       supportedActions.forEach((action) => {
@@ -242,6 +242,7 @@ describe("discussions command actions", () => {
       expect(supportedActions).toContain("categories");
       expect(supportedActions).toContain("list");
       expect(supportedActions).toContain("get");
+      expect(supportedActions).toContain("show");
       expect(supportedActions).toContain("create");
       expect(supportedActions).toContain("update");
       expect(supportedActions).toContain("search");
@@ -990,6 +991,24 @@ describe("discussions error handling", () => {
         exitCode: 1,
       };
 
+      expect(errorCondition.exitCode).toBe(1);
+    });
+
+    /**
+     * @testdoc showアクションでターゲットが指定されていない場合（getのエイリアス） (#761)
+     * @purpose show使用時のエラーメッセージにshowが表示されることを文書化
+     */
+    it("should document target required for show error (#761)", () => {
+      const action = "show";
+      const errorCondition = {
+        cause: "Discussion ID or number not provided for show action",
+        expectedError: "Discussion ID or number required",
+        usage: `shirokuma-docs discussions ${action} <id-or-number>`,
+        exitCode: 1,
+      };
+
+      expect(errorCondition.usage).toContain("show");
+      expect(errorCondition.usage).not.toContain("get");
       expect(errorCondition.exitCode).toBe(1);
     });
 

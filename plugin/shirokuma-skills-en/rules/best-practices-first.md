@@ -16,12 +16,12 @@
 |------|------|---------|
 | planning-on-issue | Skill | **Plan creation** (all issues, depth scales with content) |
 | working-on-issue | Skill | **Work dispatcher** (entry point for tasks) |
-| best-practices-researching | Skill (`context: fork`) | Research and best practices |
-| nextjs-vibe-coding | Skill | TDD implementation |
-| frontend-designing | Skill | Impressive UI / unique design |
+| researching-best-practices | Skill (`context: fork`) | Research and best practices |
+| coding-nextjs | Skill | TDD implementation |
+| designing-shadcn-ui | Skill | Impressive UI / unique design |
 | reviewing-on-issue | Skill (`context: fork`) | Code/security review |
-| claude-config-reviewing | Skill (`context: fork`) | Claude config file review |
-| managing-github-items | Skill | Issue / Discussion creation |
+| reviewing-claude-config | Skill (`context: fork`) | Claude config file review |
+| creating-item | Skill | Issue / Discussion creation (auto-inference) |
 | showing-github | Skill | GitHub data display / dashboard |
 | Explore | Built-in | Codebase exploration |
 | Plan | Built-in | Architecture design |
@@ -43,26 +43,27 @@ User Request → Task Analysis → Skill Selection
 
 | Task Type | Route To | Method |
 |-----------|----------|--------|
-| Implementation | nextjs-vibe-coding | Skill tool (via working-on-issue) |
-| Design | frontend-designing | Skill tool (via working-on-issue) |
-| Research | best-practices-researching | Skill tool |
+| Implementation | coding-nextjs | Skill tool (via working-on-issue) |
+| Design | designing-shadcn-ui | Skill tool (via working-on-issue) |
+| Research | researching-best-practices | Skill tool |
 | Review | reviewing-on-issue | Skill tool |
-| Issue / Discussion creation | managing-github-items | Skill tool |
+| Issue / Discussion creation | creating-item | Skill tool |
 | GitHub data display | showing-github | Skill tool |
+| Project setup | setting-up-project | Skill tool |
 | Exploration | Explore | Task tool (Built-in) |
 | Architecture | Plan | Task tool (Built-in) |
-| Claude Config | claude-config-reviewing | Skill tool |
+| Claude Config | reviewing-claude-config | Skill tool |
 | None match | Propose new skill | — |
 
 ### 2. Skill Selection Criteria
 
 | Keyword/Pattern | Route To | Example |
 |-----------------|----------|---------|
-| implement, add feature, create page | `nextjs-vibe-coding` (Skill) | "implement dashboard" |
-| impressive, design, unique | `frontend-designing` (Skill) | "make UI impressive" |
-| research, best practices | `best-practices-researching` (Skill) | "Drizzle best practice?" |
+| implement, add feature, create page | `coding-nextjs` (Skill) | "implement dashboard" |
+| impressive, design, unique | `designing-shadcn-ui` (Skill) | "make UI impressive" |
+| research, best practices | `researching-best-practices` (Skill) | "Drizzle best practice?" |
 | review, audit | `reviewing-on-issue` (Skill) | "security review" |
-| create issue, make issue, follow-up | `managing-github-items` (Skill) | "make this an issue" |
+| create issue, make issue, follow-up | `creating-item` (Skill) | "make this an issue" |
 | dashboard, show issues, project status | `showing-github` (Skill) | "show dashboard" |
 | structure, explore files | `Explore` (Built-in) | "where is auth?" |
 | design, architecture | `Plan` (Built-in) | "design auth system" |
@@ -90,9 +91,9 @@ Create it?
 - Detect missing skills and propose new ones
 
 ### Don't:
-- Write code directly (→ nextjs-vibe-coding Skill)
+- Write code directly (→ coding-nextjs Skill)
 - Explore files directly (→ Explore)
-- Do lengthy research (→ best-practices-researching Skill)
+- Do lengthy research (→ researching-best-practices Skill)
 
 ### Exceptions (direct handling OK):
 - Simple question answers

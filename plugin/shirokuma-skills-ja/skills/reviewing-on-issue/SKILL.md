@@ -78,8 +78,8 @@ allowed-tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 |---------|---------|--------|
 | コード | `.ts/.tsx/.js/.jsx` を含む | `code` |
 | ドキュメントのみ | `.md` ファイルのみ（設定パス配下を除く） | `docs` |
-| 設定のみ | `.claude/skills/`, `.claude/rules/`, `.claude/agents/`, `.claude/output-styles/`, `.claude/commands/`, `plugin/` 配下のみ | `creating-pr-on-issue` が `claude-config-reviewing` にルーティング（本スキルは呼ばれない） |
-| 混在 | コード + ドキュメント/設定 | `code`（設定部分は `claude-config-reviewing` が並行レビュー） |
+| 設定のみ | `.claude/skills/`, `.claude/rules/`, `.claude/agents/`, `.claude/output-styles/`, `.claude/commands/`, `plugin/` 配下のみ | `creating-pr-on-issue` が `reviewing-claude-config` にルーティング（本スキルは呼ばれない） |
+| 混在 | コード + ドキュメント/設定 | `code`（設定部分は `reviewing-claude-config` が並行レビュー） |
 
 **設定パス**: `.claude/skills/`, `.claude/rules/`, `.claude/agents/`, `.claude/output-styles/`, `.claude/commands/`, `plugin/`
 
@@ -274,18 +274,20 @@ Discussion URL をユーザーに報告。
 
 ユーザーが `--update` を要求した場合：
 
-1. 最新情報を Web 検索：
-   - Next.js リリースと CVE
-   - React 更新
-   - Tailwind CSS 変更
-   - Better Auth 更新
-   - OWASP 更新
+技術知識（CVE、バージョン、フレームワークパターン等）のソースは knowledge-manager エージェントが一元管理している。ナレッジ更新は knowledge-manager に委任する：
 
-2. 関連ファイルを更新：
-   - `.claude/rules/shirokuma/nextjs/tech-stack.md` - バージョン
-   - `.claude/rules/shirokuma/nextjs/known-issues.md` - CVE
+```
+ソース更新して
+```
 
-> **注意**: このモードはルールファイルのみ更新する。ソース知識ファイル（`patterns/`, `criteria/`, `reference/`）の更新は knowledge-manager エージェントの更新モード（`ソース更新して`）を使用する。
+knowledge-manager が Web 検索で以下を最新化する：
+- Next.js リリースと CVE
+- React 更新
+- Tailwind CSS 変更
+- Better Auth 更新
+- OWASP 更新
+
+更新後、`配布して` コマンドで知識をスキルに再配布する。
 
 ## 段階的開示
 

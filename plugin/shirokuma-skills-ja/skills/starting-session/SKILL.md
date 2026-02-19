@@ -102,6 +102,30 @@ Other 選択
 
 **引き継ぎ残タスクの場合**: 引き継ぎの Next Steps セクションの内容を Issue 本文のコンテキストとして `managing-github-items` に渡す。
 
+## マルチ開発者モード
+
+チーム開発では `session start` に以下のオプションを追加できる：
+
+```bash
+# 特定ユーザーの引き継ぎを表示
+shirokuma-docs session start --user {username}
+
+# 全メンバーの引き継ぎを表示（フィルタなし）
+shirokuma-docs session start --all
+
+# チームダッシュボード（メンバー別にグループ化）
+shirokuma-docs session start --team
+```
+
+| オプション | 動作 |
+|-----------|------|
+| （デフォルト）| 現在の GitHub ユーザーの引き継ぎのみ取得 |
+| `--user {username}` | 特定ユーザーの引き継ぎを取得 |
+| `--all` | 全メンバーの引き継ぎを取得（フィルタなし） |
+| `--team` | メンバー別にハンドオーバー + Issue をグループ化して表示 |
+
+**デフォルト動作の詳細**: `gh api user` で現在ログイン中の GitHub ユーザー名を取得し、そのユーザーが作成したハンドオーバーのみをフィルタする。
+
 ## エッジケース
 
 | 状況 | 対応 |

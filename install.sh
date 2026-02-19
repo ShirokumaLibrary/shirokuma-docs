@@ -69,47 +69,15 @@ parse_args() {
   done
 }
 
-# Ask user to select language
+# Set language (default: en, override with --lang)
 select_language() {
-  # Skip if already set via --lang argument
   if [ -n "$SELECTED_LANG" ]; then
     info "Language: $SELECTED_LANG (from --lang argument)"
     return
   fi
 
-  # Non-interactive mode (pipe): default to en
-  if [ ! -t 0 ]; then
-    SELECTED_LANG="en"
-    info "Language: en (default, use --lang ja for Japanese)"
-    return
-  fi
-
-  # Interactive prompt
-  echo ""
-  echo "Select language / 言語を選択してください:"
-  echo ""
-  echo "  1) English (en)"
-  echo "  2) 日本語 (ja)"
-  echo ""
-
-  while true; do
-    read -rp "Enter 1 or 2 [1]: " choice
-    case "${choice:-1}" in
-      1|en)
-        SELECTED_LANG="en"
-        break
-        ;;
-      2|ja)
-        SELECTED_LANG="ja"
-        break
-        ;;
-      *)
-        echo "Please enter 1 or 2."
-        ;;
-    esac
-  done
-
-  info "Language: $SELECTED_LANG"
+  SELECTED_LANG="en"
+  info "Language: en (default, use --lang ja for Japanese)"
 }
 
 # Check Node.js version
@@ -247,19 +215,25 @@ print_next_steps() {
   echo ""
   echo "Next steps:"
   echo ""
-  echo "  1. Initialize shirokuma-docs in your project:"
+  echo "  1. Add required GitHub scopes for Projects V2:"
+  echo ""
+  echo "     gh auth refresh -s read:project,project"
+  echo ""
+  echo "     (required for session start, issues list, and project field updates)"
+  echo ""
+  echo "  2. Initialize shirokuma-docs in your project:"
   echo ""
   echo "     cd /path/to/your/project"
   echo "     shirokuma-docs init --with-skills${lang_flag}"
   echo ""
-  echo "  2. The init command will:"
+  echo "  3. The init command will:"
   echo "     - Create shirokuma-docs.config.yaml"
   echo "     - Install shirokuma-skills-${SELECTED_LANG} plugin"
   echo "     - Deploy rules to .claude/rules/shirokuma/"
   echo "     - Set language to ${SELECTED_LANG} in .claude/settings.json"
   echo "     - Register plugin in Claude Code's cache"
   echo ""
-  echo "  3. Start a new Claude Code session to use the skills"
+  echo "  4. Start a new Claude Code session to use the skills"
   echo ""
   echo "Documentation: https://github.com/ShirokumaLibrary/shirokuma-docs"
   echo ""

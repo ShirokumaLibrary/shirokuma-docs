@@ -24,7 +24,12 @@ pnpm add -g @shirokuma-library/shirokuma-docs
 
 ## はじめかた
 
+> **前提**: git リポジトリ + GitHub リモート + `gh auth login` 済み。詳細は [Getting Started ガイド](docs/guide/getting-started.md) を参照。
+
 ```bash
+# 0. GitHub Projects V2 に必要なスコープを追加
+gh auth refresh -s read:project,project
+
 # 1. 初期化（スキル・ルール付き）
 cd /path/to/your/project
 shirokuma-docs init --with-skills --with-rules --lang ja

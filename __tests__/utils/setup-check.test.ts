@@ -105,13 +105,13 @@ describe("setup-check types (#345, #527)", () => {
         category: "project",
         name: "Priority",
         ok: false,
-        hint: 'Create "Priority" field: Project → Settings → Custom fields → New field (Single Select). Or run /github-project-setup skill for automated setup.',
+        hint: 'Create "Priority" field: Run \'shirokuma-docs projects setup --lang ja\' or Project → Settings → Custom fields → New field (Single Select).',
       };
 
       expect(item.category).toBe("project");
       expect(item.name).toBe("Priority");
       expect(item.ok).toBe(false);
-      expect(item.hint).toContain("/github-project-setup");
+      expect(item.hint).toContain("shirokuma-docs projects setup");
     });
   });
 
@@ -153,7 +153,7 @@ describe("setup-check types (#345, #527)", () => {
           { category: "project", name: "Project", ok: true },
           { category: "project", name: "Status", ok: true },
           { category: "project", name: "Priority", ok: true },
-          { category: "project", name: "Size", ok: false, hint: 'Create "Size" field: Project → Settings → Custom fields → New field (Single Select). Or run /github-project-setup skill for automated setup.' },
+          { category: "project", name: "Size", ok: false, hint: 'Create "Size" field: Run \'shirokuma-docs projects setup --lang ja\' or Project → Settings → Custom fields → New field (Single Select).' },
           { category: "workflows", name: "Item closed", ok: true },
           { category: "workflows", name: "Pull request merged", ok: false },
         ],

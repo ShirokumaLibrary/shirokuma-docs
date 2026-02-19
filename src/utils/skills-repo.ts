@@ -43,20 +43,22 @@ export const AVAILABLE_SKILLS = [
   "managing-output-styles",
   "managing-rules",
   // Development skills
-  "frontend-designing",
-  "nextjs-vibe-coding",
+  "coding-nextjs",
+  "designing-shadcn-ui",
   "reviewing-on-issue",
-  "codebase-rule-discovery",
+  "discovering-codebase-rules",
   // Fork skills (formerly agents, merged in #182)
-  "best-practices-researching",
-  "claude-config-reviewing",
+  "researching-best-practices",
+  "reviewing-claude-config",
   // Workflow skills
   "planning-on-issue",
   "working-on-issue",
   "committing-on-issue",
   "creating-pr-on-issue",
+  "creating-item",
   // GitHub integration skills
   "github-project-setup",
+  "setting-up-project",
   "starting-session",
   "ending-session",
   "showing-github",
@@ -79,13 +81,6 @@ export const AVAILABLE_RULES = [
   "github/discussions-usage.md",
   "github/pr-review-response.md",
   "github/project-items.md",
-  "nextjs/known-issues.md",
-  "nextjs/lib-structure.md",
-  "nextjs/radix-ui-hydration.md",
-  "nextjs/server-actions.md",
-  "nextjs/tailwind-v4.md",
-  "nextjs/tech-stack.md",
-  "nextjs/testing.md",
   "shirokuma-docs/cli-invocation.md",
   "shirokuma-docs/plugin-cache.md",
   "shirokuma-docs/shirokuma-annotations.md",
@@ -400,6 +395,10 @@ export function isSelfRepo(projectPath: string): boolean {
  */
 export function getEffectivePluginDir(projectPath: string): string {
   if (isSelfRepo(projectPath)) {
+    return getBundledPluginPath();
+  }
+  // Claude CLI 無効時はキャッシュが未インストール/古い可能性があるためバンドル版を使用
+  if (process.env.SHIROKUMA_NO_CLAUDE_CLI) {
     return getBundledPluginPath();
   }
   // 外部: キャッシュ → bundled フォールバック

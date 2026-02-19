@@ -24,6 +24,8 @@ pnpm add -g @shirokuma-library/shirokuma-docs
 
 ## Getting Started
 
+> **Prerequisites**: git repository + GitHub remote + `gh auth login` completed. See [Getting Started Guide](docs/guide/getting-started.md) for details.
+
 ```bash
 # 1. Initialize (with skills and rules)
 cd /path/to/your/project

@@ -21,9 +21,9 @@ Automatically invoke when the user:
 ## Migration: Agents → Skills with `context: fork`
 
 Claude Code skills now support `context: fork`, which runs the skill as an isolated sub-agent. This eliminates most use cases for standalone agents. Consider using skills with `context: fork` instead of agents for:
-- Research tasks (see `best-practices-researching` skill)
+- Research tasks (see `researching-best-practices` skill)
 - Review tasks (see `reviewing-on-issue` skill)
-- Config validation (see `claude-config-reviewing` skill)
+- Config validation (see `reviewing-claude-config` skill)
 
 **When agents are still appropriate:**
 - Truly open-ended, multi-step tasks requiring full autonomy
@@ -145,7 +145,7 @@ One clear, focused purpose per agent. Heavy agents (25k+ tokens) create bottlene
 | **Creator** | Implementation | "Do" rules only |
 | **Checker** | Review/Audit | "Do" + "Don't" rules |
 
-**Example**: `nextjs-vibe-coding (Creator) ←→ reviewing-on-issue (Checker)`
+**Example**: `coding-nextjs (Creator) ←→ reviewing-on-issue (Checker)`
 
 ### 4. Minimal Tool Access (ACI)
 

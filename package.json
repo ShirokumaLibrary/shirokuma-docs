@@ -1,11 +1,11 @@
 {
   "name": "@shirokuma-library/shirokuma-docs",
-  "version": "0.1.0-alpha.26",
+  "version": "0.2.0-alpha.5",
   "description": "Next.js プロジェクト用ドキュメント自動生成 CLI",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
-    "shirokuma-docs": "./bin/shirokuma-docs"
+    "shirokuma-docs": "bin/shirokuma-docs"
   },
   "publishConfig": {
     "access": "public"

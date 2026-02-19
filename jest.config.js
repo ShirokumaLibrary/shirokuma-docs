@@ -12,10 +12,7 @@ const config = {
       "ts-jest",
       {
         useESM: true,
-        tsconfig: {
-          module: "ESNext",
-          moduleResolution: "NodeNext",
-        },
+        tsconfig: "tsconfig.test.json",
       },
     ],
   },

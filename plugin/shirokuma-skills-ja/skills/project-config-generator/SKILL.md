@@ -6,7 +6,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 # プロジェクト設定ジェネレーター
 
-`nextjs-vibe-coding` や `reviewing-on-issue` 向けにプロジェクト固有の設定ディレクトリを作成・管理。
+`coding-nextjs` や `reviewing-on-issue` 向けにプロジェクト固有の設定ディレクトリを作成・管理。
 
 ## いつ使うか
 
@@ -50,7 +50,7 @@ ls .claude/skills/*/project/ 2>/dev/null || echo "No project configs found"
 ```
 
 対応スキル:
-- `nextjs-vibe-coding`
+- `coding-nextjs`
 - `reviewing-on-issue`
 
 ### ステップ 2: プロジェクト情報の収集
@@ -175,7 +175,7 @@ mkdir -p .claude/rules
 ## Project Config Generated
 
 ### Target Skills
-- nextjs-vibe-coding
+- coding-nextjs
 - reviewing-on-issue
 
 ### Files Created/Updated

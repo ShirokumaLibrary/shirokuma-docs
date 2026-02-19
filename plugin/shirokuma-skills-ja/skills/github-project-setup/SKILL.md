@@ -1,10 +1,12 @@
 ---
 name: github-project-setup
-description: GitHub ProjectのStatus、Priority、Sizeフィールド初期設定を自動化します。「project setup」「プロジェクト作成」「GitHub Project初期設定」「初期セットアップ」「プロジェクトのセットアップ」、カンバンワークフローで新規プロジェクト開始時に使用。
+description: "【非推奨: setting-up-project を使用】GitHub ProjectのStatus、Priority、Sizeフィールド初期設定を自動化します。"
 allowed-tools: Bash, Read, Glob
 ---
 
 # GitHub プロジェクトセットアップ
+
+> **非推奨**: このスキルは `setting-up-project` に統合されました。新規セットアップには `setting-up-project` を使用してください。
 
 GitHub Project の初期設定を実施。`create-project` コマンドで自動化可能な範囲を一括実行し、API 未対応の手動設定をガイドする。
 

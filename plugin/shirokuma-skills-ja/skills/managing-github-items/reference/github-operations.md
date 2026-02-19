@@ -18,7 +18,7 @@ Project 命名規約: Project 名 = リポジトリ名（例: `blogcms` リポ �
 ## 前提条件
 
 - `gh` CLI インストール・認証済み
-- GitHub Project 設定済み（未設定なら `/project-setup` を実行）
+- GitHub Project 設定済み（未設定なら `/setting-up-project` を実行）
 - Discussions 有効化（カテゴリ: Handovers, Ideas, Q&A）（任意）
 
 ## DraftIssue vs Issue
@@ -46,9 +46,11 @@ shirokuma-docs issues list --status "In Progress"   # ステータスフィル�
 shirokuma-docs issues show {number}                  # 詳細
 shirokuma-docs issues create \
   --title "Title" --body /tmp/body.md \
-  --labels feature \
+  --labels "area:cli" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
+shirokuma-docs issues update {number} --add-label "area:cli"       # ラベル追加
+shirokuma-docs issues update {number} --remove-label "area:docs"   # ラベル削除
 shirokuma-docs issues comment {number} --body - <<'EOF'
 コメント内容
 EOF
@@ -88,7 +90,7 @@ shirokuma-docs projects update {number} --field-status "Done"
 
 ```bash
 shirokuma-docs discussions list --category Handovers --limit 5
-shirokuma-docs discussions get {number}
+shirokuma-docs discussions show {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
@@ -112,9 +114,7 @@ shirokuma-docs issues create --repo docs --title "Title" --body /tmp/body.md
 ### gh フォールバック（CLI 未対応の操作のみ）
 
 ```bash
-# ラベル
-gh issue edit {number} --add-label "label"
-gh issue edit {number} --remove-label "label"
+# ラベル管理
 gh label list
 gh label create "name" --color "0E8A16" --description "Desc"
 
@@ -179,7 +179,7 @@ graph LR
 | `shirokuma-docs: command not found` | インストール: `npm i -g @shirokuma-library/shirokuma-docs` |
 | `gh: command not found` | インストール: `brew install gh` or `sudo apt install gh` |
 | `not logged in` / `not authenticated` | 実行: `gh auth login` |
-| No project found | `/project-setup` を実行してプロジェクト作成 |
+| No project found | `/setting-up-project` を実行してプロジェクト作成 |
 | Discussions disabled/category not found | ローカルファイルにフォールバック |
 | `HTTP 404` | リポジトリ名と権限を確認 |
 | API rate limit | キャッシュ済み/部分データを表示 |

@@ -18,7 +18,7 @@ Project naming convention: Project name = repository name (e.g., `blogcms` repo 
 ## Prerequisites
 
 - `gh` CLI installed and authenticated
-- GitHub Project configured (run `/project-setup` if not)
+- GitHub Project configured (run `/setting-up-project` if not)
 - Discussions enabled with categories: Handovers, Ideas, Q&A (optional)
 
 ## DraftIssue vs Issue
@@ -46,9 +46,11 @@ shirokuma-docs issues list --status "In Progress"   # Filter by status
 shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
   --title "Title" --body /tmp/body.md \
-  --labels feature \
+  --labels "area:cli" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
+shirokuma-docs issues update {number} --add-label "area:cli"       # Add label
+shirokuma-docs issues update {number} --remove-label "area:docs"   # Remove label
 shirokuma-docs issues comment {number} --body - <<'EOF'
 Comment content
 EOF
@@ -88,7 +90,7 @@ shirokuma-docs projects update {number} --field-status "Done"
 
 ```bash
 shirokuma-docs discussions list --category Handovers --limit 5
-shirokuma-docs discussions get {number}
+shirokuma-docs discussions show {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
@@ -112,9 +114,7 @@ shirokuma-docs issues create --repo docs --title "Title" --body /tmp/body.md
 ### gh Fallback (CLI unsupported only)
 
 ```bash
-# Labels
-gh issue edit {number} --add-label "label"
-gh issue edit {number} --remove-label "label"
+# Label management
 gh label list
 gh label create "name" --color "0E8A16" --description "Desc"
 
@@ -176,7 +176,7 @@ Labels are added manually based on project structure. Status is managed via Proj
 | `shirokuma-docs: command not found` | Install: `npm i -g @shirokuma-library/shirokuma-docs` |
 | `gh: command not found` | Install: `brew install gh` or `sudo apt install gh` |
 | `not logged in` / `not authenticated` | Run: `gh auth login` |
-| No project found | Run `/project-setup` to create one |
+| No project found | Run `/setting-up-project` to create one |
 | Discussions disabled/category not found | Use local file fallback |
 | `HTTP 404` | Check repository name and permissions |
 | API rate limit | Show cached/partial data |

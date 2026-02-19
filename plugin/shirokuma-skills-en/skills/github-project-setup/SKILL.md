@@ -1,10 +1,12 @@
 ---
 name: github-project-setup
-description: Automates GitHub Project initial setup with Status, Priority, and Size fields. Use when "project setup", "initial setup", "set up project", "GitHub Project setup", or starting a new project with kanban workflow.
+description: "[Deprecated: use setting-up-project] Automates GitHub Project initial setup with Status, Priority, and Size fields."
 allowed-tools: Bash, Read, Glob
 ---
 
 # GitHub Project Setup
+
+> **Deprecated**: This skill has been integrated into `setting-up-project`. Use `setting-up-project` for new setups.
 
 Performs GitHub Project initial setup. Runs `create-project` command for automated tasks and guides manual configuration for API-unsupported settings.
 

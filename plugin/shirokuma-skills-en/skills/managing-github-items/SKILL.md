@@ -1,6 +1,6 @@
 ---
 name: managing-github-items
-description: Create and manage GitHub project items (Issues / Discussions). Use when "create item", "create issue", "make this an issue", "create spec", "follow-up issue".
+description: Internal engine for creating and managing GitHub project items (Issues / Discussions). Delegated from creating-item skill. Direct invocation is deprecated (use creating-item).
 allowed-tools: Bash, AskUserQuestion, Read, Write
 ---
 
@@ -35,7 +35,7 @@ Create Issues / Discussions and manage spec Discussions.
 
 | Error | Action |
 |-------|--------|
-| No project found | "Run `/project-setup` to create one." |
+| No project found | "Run `/setting-up-project` to create one." |
 | gh not authenticated | "Run `gh auth login` first." |
 | Field not found | Use defaults, warn user |
 | Issue not found | "Issue #{n} not found. Check the number." |

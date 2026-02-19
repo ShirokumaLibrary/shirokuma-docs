@@ -263,6 +263,40 @@ describe("issues command options", () => {
     });
 
     /**
+     * @testdoc updateアクションで--add-label / --remove-labelオプションをサポートする (#745)
+     * @purpose ラベル操作オプションの構造を文書化
+     */
+    it("should support --add-label and --remove-label options for update (#745)", () => {
+      const options = {
+        addLabel: ["area:cli", "area:plugin"],
+        removeLabel: ["area:docs"],
+      };
+
+      expect(options.addLabel).toContain("area:cli");
+      expect(options.addLabel).toContain("area:plugin");
+      expect(options.removeLabel).toContain("area:docs");
+      expect(options.addLabel).toHaveLength(2);
+      expect(options.removeLabel).toHaveLength(1);
+    });
+
+    /**
+     * @testdoc --add-labelと--remove-labelは他のupdateオプションと同時指定可能 (#745)
+     * @purpose ラベル操作がフィールド更新と独立して動作することを文書化
+     */
+    it("should allow --add-label with other update options (#745)", () => {
+      const options = {
+        fieldStatus: "In Progress",
+        priority: "High",
+        addLabel: ["area:cli"],
+        removeLabel: undefined as string[] | undefined,
+      };
+
+      expect(options.fieldStatus).toBe("In Progress");
+      expect(options.addLabel).toContain("area:cli");
+      expect(options.removeLabel).toBeUndefined();
+    });
+
+    /**
      * @testdoc listアクションは--state未指定時にデフォルトで"open"をフィルタする (#535)
      * @purpose --stateデフォルト値削除後のリグレッション防止
      */
@@ -421,6 +455,33 @@ describe("issues command actions", () => {
 
       expect(isIssueNumber(validTarget)).toBe(true);
       expect(invalidTarget).toBeUndefined();
+    });
+
+    /**
+     * @testdoc updateアクションで--add-labelは存在しないラベルを警告する (#745)
+     * @purpose ラベル名の検証動作を文書化
+     */
+    it("update --add-label should warn on non-existent labels (#745)", () => {
+      // 実装: allLabels[name] が falsy なら logger.warn
+      const allLabels: Record<string, string> = {
+        "area:cli": "LA_abc",
+        "area:plugin": "LA_def",
+      };
+
+      const requestedLabels = ["area:cli", "nonexistent"];
+      const found: string[] = [];
+      const notFound: string[] = [];
+
+      for (const name of requestedLabels) {
+        if (allLabels[name]) {
+          found.push(name);
+        } else {
+          notFound.push(name);
+        }
+      }
+
+      expect(found).toEqual(["area:cli"]);
+      expect(notFound).toEqual(["nonexistent"]);
     });
 
     /**
@@ -923,6 +984,7 @@ describe("issues output format", () => {
       const expectedOutput = {
         number: 42,
         title: "Issue Title",
+        type: "Feature" as string | null,
         body: "Issue body content",
         url: "https://github.com/owner/repo/issues/42",
         state: "OPEN",
@@ -940,9 +1002,61 @@ describe("issues output format", () => {
       };
 
       expect(expectedOutput.number).toBe(42);
+      expect(expectedOutput.type).toBeDefined();
       expect(expectedOutput.body).toBeDefined();
       expect(expectedOutput.project_item_id).toBeDefined();
       expect(expectedOutput.status_option_id).toBeDefined();
+    });
+  });
+
+  describe("update output structure", () => {
+    /**
+     * @testdoc update出力のJSON構造（最小出力）
+     * @purpose ミューテーション出力形式を文書化
+     */
+    it("should document update output structure (minimal)", () => {
+      const expectedOutput = {
+        number: 42,
+        title: "Issue Title",
+        type: "Feature" as string | null,
+        state: "OPEN",
+        labels: ["enhancement", "area:cli"],
+        status: "In Progress",
+        priority: "High",
+        size: "M",
+      };
+
+      expect(expectedOutput.number).toBe(42);
+      expect(expectedOutput.type).toBeDefined();
+      expect(expectedOutput.labels).toContain("area:cli");
+      // body, url, created_at, updated_at, project_item_id, *_option_id は含まない
+      expect(expectedOutput).not.toHaveProperty("body");
+      expect(expectedOutput).not.toHaveProperty("url");
+      expect(expectedOutput).not.toHaveProperty("created_at");
+      expect(expectedOutput).not.toHaveProperty("project_item_id");
+      expect(expectedOutput).not.toHaveProperty("status_option_id");
+    });
+
+    /**
+     * @testdoc update出力でラベル操作結果が反映される (#745)
+     * @purpose --add-label/--remove-label使用時の出力構造を文書化
+     */
+    it("should include labels in update output after label operations (#745)", () => {
+      const expectedOutput = {
+        number: 42,
+        title: "Test Issue",
+        type: "Feature" as string | null,
+        state: "OPEN",
+        labels: ["area:cli", "area:plugin"],
+        status: "In Progress",
+        priority: "High",
+        size: "M",
+      };
+
+      // ラベル操作後も labels フィールドに最新の状態が反映される
+      expect(expectedOutput.labels).toContain("area:cli");
+      expect(expectedOutput.labels).toContain("area:plugin");
+      expect(expectedOutput.labels).not.toContain("area:docs");
     });
   });
 

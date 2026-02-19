@@ -26,6 +26,9 @@ interface InitResult {
   gitignore_entries_added: number;
   skills_installed: string[];
   rules_installed: string[];
+  rules_deployed: number;
+  nextjs_scaffolded: boolean;
+  nextjs_directories_created: number;
 }
 
 // =============================================================================
@@ -165,10 +168,10 @@ describe("init command", () => {
     });
 
     /**
-     * @testdoc インストール済みスキルが16個含まれる
+     * @testdoc インストール済みスキルが24個含まれる
      * @purpose 全バンドルスキルがインストールされることを確認
      */
-    it("should install all 22 bundled skills", () => {
+    it("should install all 24 bundled skills", () => {
       const result = runCli([
         "init",
         "--project", TEST_OUTPUT_DIR,
@@ -178,11 +181,11 @@ describe("init command", () => {
 
       expect(result.status).toBe(0);
       const output = extractJson<InitResult>(result.stdout);
-      expect(output.skills_installed).toHaveLength(22);
+      expect(output.skills_installed).toHaveLength(24);
 
       // スキル名リストで検証（ファイルは marketplace + cache にあるためローカルには存在しない）
       expect(output.skills_installed).toContain("managing-agents");
-      expect(output.skills_installed).toContain("nextjs-vibe-coding");
+      expect(output.skills_installed).toContain("coding-nextjs");
       expect(output.skills_installed).toContain("reviewing-on-issue");
       expect(output.skills_installed).toContain("publishing");
     });
@@ -195,7 +198,7 @@ describe("init command", () => {
       const result = runCli([
         "init",
         "--project", TEST_OUTPUT_DIR,
-        "--with-skills=nextjs-vibe-coding,reviewing-on-issue",
+        "--with-skills=coding-nextjs,reviewing-on-issue",
         "--verbose",
       ]);
 
@@ -342,9 +345,9 @@ describe("init command", () => {
 
       // スキル名リストで検証（#486: ローカルコピーなし、marketplace + cache 方式）
       const output = extractJson<InitResult>(result.stdout);
-      expect(output.skills_installed).toContain("best-practices-researching");
+      expect(output.skills_installed).toContain("researching-best-practices");
       expect(output.skills_installed).toContain("reviewing-on-issue");
-      expect(output.skills_installed).toContain("claude-config-reviewing");
+      expect(output.skills_installed).toContain("reviewing-claude-config");
     });
 
     /**
@@ -620,6 +623,151 @@ describe("init command", () => {
 
       expect(result.status).toBe(0);
       expect(result.stdout).toContain("discussion-templates generate");
+    });
+  });
+
+  describe("--nextjs option", () => {
+    /**
+     * @testdoc --nextjs でモノレポ設定テンプレートが生成される
+     * @purpose --nextjs 指定時に Next.js モノレポ向け設定ファイルが作成されることを確認
+     * @precondition テスト用ディレクトリが空の状態
+     * @expected 設定ファイルに apps/web と packages/database のパスが含まれる
+     */
+    it("should create config with nextjs monorepo template", () => {
+      const result = runCli(["init", "--nextjs", "--project", TEST_OUTPUT_DIR]);
+
+      expect(result.status).toBe(0);
+      const configPath = join(TEST_OUTPUT_DIR, "shirokuma-docs.config.yaml");
+      expect(existsSync(configPath)).toBe(true);
+      const config = readFileSync(configPath, "utf-8");
+      expect(config).toContain("apps/web");
+      expect(config).toContain("packages/database");
+    });
+
+    /**
+     * @testdoc --nextjs でモノレポディレクトリ構造が生成される
+     * @purpose apps/ と packages/ のディレクトリ構造が正しく作成されることを確認
+     * @precondition テスト用ディレクトリが空の状態
+     * @expected apps/web, packages/database, packages/shared が作成される
+     */
+    it("should scaffold monorepo directory structure", () => {
+      const result = runCli(["init", "--nextjs", "--project", TEST_OUTPUT_DIR]);
+
+      expect(result.status).toBe(0);
+      expect(existsSync(join(TEST_OUTPUT_DIR, "apps", "web"))).toBe(true);
+      expect(existsSync(join(TEST_OUTPUT_DIR, "packages", "database"))).toBe(true);
+      expect(existsSync(join(TEST_OUTPUT_DIR, "packages", "shared"))).toBe(true);
+    });
+
+    /**
+     * @testdoc --nextjs で git init が実行される
+     * @purpose --nextjs 指定時に git リポジトリが初期化されることを確認
+     * @precondition テスト用ディレクトリに .git が存在しない
+     * @expected .git ディレクトリが生成される
+     */
+    it("should initialize git repository", () => {
+      const result = runCli(["init", "--nextjs", "--project", TEST_OUTPUT_DIR]);
+
+      expect(result.status).toBe(0);
+      expect(existsSync(join(TEST_OUTPUT_DIR, ".git"))).toBe(true);
+    });
+
+    /**
+     * @testdoc --nextjs --lang ja で設定ファイルが生成される
+     * @purpose --nextjs と --lang ja の組み合わせが機能することを確認
+     * @precondition テスト用ディレクトリが空の状態
+     * @expected settings.json に japanese が設定される
+     */
+    it("should work with --lang ja", () => {
+      const result = runCli([
+        "init",
+        "--nextjs",
+        "--lang", "ja",
+        "--project", TEST_OUTPUT_DIR,
+      ]);
+
+      expect(result.status).toBe(0);
+      expect(existsSync(join(TEST_OUTPUT_DIR, "shirokuma-docs.config.yaml"))).toBe(true);
+      const settingsPath = join(TEST_OUTPUT_DIR, ".claude", "settings.json");
+      expect(existsSync(settingsPath)).toBe(true);
+      const settings = JSON.parse(readFileSync(settingsPath, "utf-8")) as Record<string, unknown>;
+      expect(settings.language).toBe("japanese");
+    });
+
+    /**
+     * @testdoc --nextjs --with-skills が組み合わせて使用できる
+     * @purpose --nextjs と --with-skills の組み合わせが機能することを確認
+     * @precondition テスト用ディレクトリが空の状態
+     * @expected config_created と plugin_installed が true
+     */
+    it("should work with --with-skills", () => {
+      const result = runCli([
+        "init",
+        "--nextjs",
+        "--with-skills",
+        "--verbose",
+        "--project", TEST_OUTPUT_DIR,
+      ]);
+
+      expect(result.status).toBe(0);
+      const output = extractJson<InitResult>(result.stdout);
+      expect(output.config_created).toBe(true);
+      expect(output.plugin_installed).toBe(true);
+      expect(existsSync(join(TEST_OUTPUT_DIR, "apps", "web"))).toBe(true);
+    });
+
+    /**
+     * @testdoc --nextjs は既存ディレクトリをスキップする
+     * @purpose 既存のディレクトリ内容が上書きされないことを確認
+     * @precondition apps/web に既存ファイルが存在する
+     * @expected 既存ファイルが保持される
+     */
+    it("should skip existing directories without overwriting files", () => {
+      mkdirSync(join(TEST_OUTPUT_DIR, "apps", "web"), { recursive: true });
+      const testFile = join(TEST_OUTPUT_DIR, "apps", "web", "existing.txt");
+      writeFileSync(testFile, "existing content", "utf-8");
+
+      const result = runCli(["init", "--nextjs", "--project", TEST_OUTPUT_DIR]);
+
+      expect(result.status).toBe(0);
+      expect(existsSync(testFile)).toBe(true);
+      expect(readFileSync(testFile, "utf-8")).toBe("existing content");
+    });
+
+    /**
+     * @testdoc --nextjs でモノレポ root package.json が生成される
+     * @purpose ワークスペース設定を含む root package.json が作成されることを確認
+     * @precondition テスト用ディレクトリに package.json が存在しない
+     * @expected package.json に workspaces フィールドが含まれる
+     */
+    it("should create root package.json with workspaces", () => {
+      const result = runCli(["init", "--nextjs", "--project", TEST_OUTPUT_DIR]);
+
+      expect(result.status).toBe(0);
+      const pkgPath = join(TEST_OUTPUT_DIR, "package.json");
+      expect(existsSync(pkgPath)).toBe(true);
+      const pkg = JSON.parse(readFileSync(pkgPath, "utf-8")) as Record<string, unknown>;
+      expect(pkg.workspaces).toBeDefined();
+    });
+
+    /**
+     * @testdoc --nextjs --verbose で nextjs_scaffolded が true になる
+     * @purpose verbose 出力に nextjs_scaffolded フィールドが含まれることを確認
+     * @precondition テスト用ディレクトリが空の状態
+     * @expected verbose JSON 出力に nextjs_scaffolded: true が含まれる
+     */
+    it("should report nextjs_scaffolded in verbose output", () => {
+      const result = runCli([
+        "init",
+        "--nextjs",
+        "--verbose",
+        "--project", TEST_OUTPUT_DIR,
+      ]);
+
+      expect(result.status).toBe(0);
+      const output = extractJson<InitResult>(result.stdout);
+      expect(output.nextjs_scaffolded).toBe(true);
+      expect(output.nextjs_directories_created).toBeGreaterThan(0);
     });
   });
 
