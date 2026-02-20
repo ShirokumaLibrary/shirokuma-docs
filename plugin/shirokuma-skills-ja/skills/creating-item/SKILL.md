@@ -35,35 +35,16 @@ allowed-tools: Bash, AskUserQuestion, Read, Write, TodoWrite
 | Size | 作業量 |
 | エリアラベル | 影響するコード領域 |
 
-### ステップ 2: ユーザー確認
+### ステップ 2: `managing-github-items` に委任
 
-AskUserQuestion で推定結果を提示:
-
-```
-以下の内容で Issue を作成します:
-
-**タイトル:** {推定タイトル}
-**Type:** {推定 Type}
-**Priority:** {推定 Priority}
-**Size:** {推定 Size}
-**ラベル:** {推定ラベル}
-```
-
-選択肢:
-- この内容で作成
-- 修正してから作成
-- キャンセル
-
-### ステップ 3: `managing-github-items` に委任
-
-確認後、Skill ツールで `managing-github-items` を起動:
+コンテキスト分析後、事前確認なしで即座に Skill ツールで `managing-github-items` を起動:
 
 ```
 Skill: managing-github-items
 Args: create-item {推定メタデータ}
 ```
 
-### ステップ 4: チェーン判定
+### ステップ 3: チェーン判定
 
 作成完了後、AskUserQuestion で次のアクションを確認:
 
@@ -92,6 +73,6 @@ Args: create-item {推定メタデータ}
 
 ## 注意事項
 
-- 推定結果は必ずユーザーに確認してから作成
+- 作成後にユーザーに案内し、修正指示の機会を提供する
 - Issue 作成の CLI 実行は `managing-github-items` に委任（直接 CLI を叩かない）
 - `managing-github-items` の `reference/create-item.md` に詳細な推定テーブルがある

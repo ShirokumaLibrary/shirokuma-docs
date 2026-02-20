@@ -9,6 +9,7 @@
 import {
   toTableJson,
   formatOutput,
+  formatFrontmatter,
   OutputFormat,
   TableJsonOutput,
 } from "../../src/utils/formatters.js";
@@ -240,6 +241,181 @@ describe("formatOutput", () => {
     const parsed = JSON.parse(result);
     expect(parsed.repository).toBe("owner/repo");
     expect(parsed.total_count).toBe(2);
+  });
+});
+
+describe("formatFrontmatter", () => {
+  /**
+   * @testdoc 基本的な frontmatter 形式で出力する
+   * @purpose メタデータが YAML frontmatter、body が Markdown として出力されることを確認
+   */
+  it("should format data as YAML frontmatter with Markdown body", () => {
+    const data = {
+      number: 803,
+      title: "Release 0.2.0-alpha.6",
+      body: "## 目的\nユーザーが...",
+      state: "OPEN",
+      status: "In Progress",
+    };
+
+    const result = formatFrontmatter(data);
+
+    expect(result).toContain("---");
+    expect(result).toContain("number: 803");
+    expect(result).toContain("title: Release 0.2.0-alpha.6");
+    expect(result).toContain("state: OPEN");
+    expect(result).toContain("status: In Progress");
+    // body は frontmatter 外に出力
+    expect(result).toContain("## 目的\nユーザーが...");
+    // body は frontmatter 内に含まれない
+    const frontmatterSection = result.split("---")[1];
+    expect(frontmatterSection).not.toContain("body:");
+  });
+
+  /**
+   * @testdoc null 値のフィールドを省略する
+   * @purpose null/undefined は frontmatter に含まれないことを確認
+   */
+  it("should omit null and undefined values", () => {
+    const data = {
+      number: 42,
+      title: "Test",
+      type: null,
+      size: undefined,
+    };
+
+    const result = formatFrontmatter(data);
+
+    expect(result).toContain("number: 42");
+    expect(result).not.toContain("type:");
+    expect(result).not.toContain("size:");
+  });
+
+  /**
+   * @testdoc 配列値を YAML フロー形式で出力する
+   * @purpose labels 等の配列が ["item1", "item2"] 形式で出力されることを確認
+   */
+  it("should format arrays in YAML flow style", () => {
+    const data = {
+      number: 808,
+      labels: ["area:cli", "area:plugin"],
+    };
+
+    const result = formatFrontmatter(data);
+
+    expect(result).toContain('labels: ["area:cli", "area:plugin"]');
+  });
+
+  /**
+   * @testdoc 特殊文字を含む文字列をクォートする
+   * @purpose YAML の特殊文字（: # [ ] 等）を含む値がクォートされることを確認
+   */
+  it("should quote strings with special characters", () => {
+    const data = {
+      title: "feat: add new feature (#42)",
+      status: "In Progress",
+    };
+
+    const result = formatFrontmatter(data);
+
+    expect(result).toContain('title: "feat: add new feature (#42)"');
+    // "In Progress" は YAML 特殊文字を含まないのでクォート不要
+    expect(result).toContain("status: In Progress");
+  });
+
+  /**
+   * @testdoc body がない場合は frontmatter のみ出力する
+   * @purpose body が null/空の場合は --- で閉じて終わることを確認
+   */
+  it("should output only frontmatter when body is empty or null", () => {
+    const data = {
+      number: 42,
+      title: "Test",
+      body: null,
+    };
+
+    const result = formatFrontmatter(data);
+    const lines = result.split("\n");
+
+    // 最後の行が --- であること（body セクションがない）
+    expect(lines[lines.length - 1]).toBe("---");
+  });
+
+  /**
+   * @testdoc 内部フィールドを除外する
+   * @purpose project_item_id, project_id, *_option_id が出力されないことを確認
+   */
+  it("should exclude internal fields", () => {
+    const data = {
+      number: 42,
+      status: "Backlog",
+      project_item_id: "PVTI_xxx",
+      project_id: "PVT_xxx",
+      status_option_id: "abc123",
+      priority_option_id: "def456",
+      size_option_id: "ghi789",
+    };
+
+    const result = formatFrontmatter(data);
+
+    expect(result).toContain("number: 42");
+    expect(result).toContain("status: Backlog");
+    expect(result).not.toContain("project_item_id");
+    expect(result).not.toContain("project_id");
+    expect(result).not.toContain("status_option_id");
+    expect(result).not.toContain("priority_option_id");
+    expect(result).not.toContain("size_option_id");
+  });
+
+  /**
+   * @testdoc url / comment_url フィールドを除外する
+   * @purpose url と comment_url が frontmatter に含まれないことを確認
+   */
+  it("should exclude url and comment_url fields", () => {
+    const data = {
+      number: 42,
+      url: "https://github.com/owner/repo/issues/42",
+      comment_url: "https://github.com/owner/repo/issues/42#comment",
+    };
+
+    const result = formatFrontmatter(data);
+
+    expect(result).toContain("number: 42");
+    expect(result).not.toContain("url:");
+    expect(result).not.toContain("comment_url:");
+  });
+
+  /**
+   * @testdoc boolean 値を正しく出力する
+   * @purpose true/false がそのまま出力されることを確認
+   */
+  it("should format boolean values correctly", () => {
+    const data = {
+      number: 456,
+      answer_chosen: false,
+    };
+
+    const result = formatFrontmatter(data);
+
+    expect(result).toContain("answer_chosen: false");
+  });
+
+  /**
+   * @testdoc formatOutput から frontmatter 形式で呼び出せる
+   * @purpose formatOutput の format="frontmatter" が formatFrontmatter を呼ぶことを確認
+   */
+  it("should be accessible via formatOutput with frontmatter format", () => {
+    const data = {
+      number: 42,
+      title: "Test",
+      body: "Body content",
+    };
+
+    const result = formatOutput(data, "frontmatter");
+
+    expect(result).toContain("---");
+    expect(result).toContain("number: 42");
+    expect(result).toContain("Body content");
   });
 });
 

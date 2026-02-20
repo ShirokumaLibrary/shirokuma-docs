@@ -192,6 +192,34 @@ git checkout develop && git pull origin develop
 
 ステップ 1-6 → ステップ 7（PR チェーン）→ ステップ 8（マージチェーン）を順次実行。
 
+## バッチモード
+
+バッチブランチ（`*-batch-*` パターン）上にいる場合、または `working-on-issue` からバッチコンテキストが渡された場合:
+
+### バッチコミットフロー
+
+単一コミットではなく、`filesByIssue` マッピングを使って **Issue ごとのコミット**を作成:
+
+1. バッチコンテキスト内の各 Issue に対して:
+   ```bash
+   git add {files-for-this-issue}
+   git commit -m "{type}: {description} (#{issue-number})"
+   ```
+
+2. **ステップ 2.5（Plugin Version Bump）**: バッチの**最後のコミット時のみ**実行。全コミットでは実行しない。
+
+3. **ステップ 5（プッシュ）**: 全コミット完了後に1回のみ実行。
+
+4. **ステップ 7（PR チェーン）**: プッシュ後にバッチコンテキスト（全 Issue 番号）付きで `creating-pr-on-issue` を自動起動。
+
+### バッチブランチ検出
+
+```bash
+git branch --show-current | grep -q '\-batch-'
+```
+
+明示的なバッチコンテキストがなくても、検出された場合はバッチモードとして扱う。
+
 ## 引数
 
 メッセージ引数付きで起動された場合（例: `/committing-on-issue fix typo in config`）:

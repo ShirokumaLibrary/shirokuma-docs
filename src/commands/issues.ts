@@ -764,12 +764,11 @@ async function cmdGet(
   const projectItems = node.projectItems?.nodes ?? [];
   const matchingItem = projectItems.find((p) => p?.project?.title === projectName);
 
-  const output = {
+  const output: Record<string, unknown> = {
     number: node.number,
     title: node.title,
     type: node.issueType?.name ?? null,
     body: node.body,
-    url: node.url,
     state: node.state,
     labels: (node.labels?.nodes ?? []).map((l) => l?.name ?? "").filter(Boolean),
     created_at: node.createdAt,
@@ -785,7 +784,8 @@ async function cmdGet(
     size_option_id: matchingItem?.size?.optionId,
   };
 
-  console.log(JSON.stringify(output, null, 2));
+  const outputFormat = options.format ?? "frontmatter";
+  console.log(formatOutput(output, outputFormat));
   return 0;
 }
 
@@ -929,7 +929,6 @@ async function cmdCreate(
   const output = {
     number: issue.number,
     title: issue.title,
-    url: issue.url,
     project_item_id: projectItemId,
   };
 
@@ -1328,7 +1327,6 @@ async function cmdComment(
     target_type: targetType,
     comment_id: comment?.id,
     comment_database_id: comment?.databaseId,
-    comment_url: comment?.url,
   };
 
   console.log(JSON.stringify(output, null, 2));
@@ -1450,12 +1448,10 @@ async function cmdCommentEdit(
     return 1;
   }
 
-  const commentUrl = result.data?.html_url;
   logger.success(`Edited comment ${commentId}`);
 
   const output = {
     comment_id: commentId,
-    comment_url: commentUrl,
     updated: true,
   };
 
@@ -1558,7 +1554,6 @@ async function cmdClose(
     state: "CLOSED",
     stateReason,
     status: statusUpdated ? targetStatus : undefined,
-    url: `https://github.com/${owner}/${repo}/issues/${issueNumber}`,
   };
 
   console.log(JSON.stringify(output, null, 2));
@@ -1610,7 +1605,6 @@ async function cmdReopen(
   const output = {
     number: issueNumber,
     state: "OPEN",
-    url: `https://github.com/${owner}/${repo}/issues/${issueNumber}`,
   };
 
   console.log(JSON.stringify(output, null, 2));

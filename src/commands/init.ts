@@ -44,6 +44,8 @@ import {
   PLUGIN_NAME_JA,
   PLUGIN_REGISTRY_ID_JA,
   PLUGIN_REGISTRY_ID_HOOKS,
+  cleanDeployedRules,
+  ensureSingleLanguagePlugin,
 } from "../utils/skills-repo.js";
 
 /**
@@ -533,6 +535,14 @@ export async function initCommand(options: InitOptions): Promise<void> {
           const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
           if (hooksCacheResult.success) {
             logger.success(t("commands.init.hooksCacheRegistered"));
+          }
+
+          // 逆言語プラグインを削除 (#812)
+          const singleLangResult = ensureSingleLanguagePlugin(projectPath, effectiveLang, { verbose: options.verbose ?? false });
+          if (singleLangResult.attempted) {
+            logger.info(`${singleLangResult.oppositePlugin}: opposite language plugin removed`);
+            // 逆言語のルールが残っている可能性があるため、デプロイ前にクリーン
+            await cleanDeployedRules(projectPath, { verbose: options.verbose ?? false });
           }
         } else {
           logger.warn("Marketplace registration failed");

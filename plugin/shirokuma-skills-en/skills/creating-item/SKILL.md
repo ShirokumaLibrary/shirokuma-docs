@@ -35,35 +35,16 @@ Infer from conversation context:
 | Size | Work effort |
 | Area labels | Affected code areas |
 
-### Step 2: User Confirmation
+### Step 2: Delegate to `managing-github-items`
 
-Present inferred results via AskUserQuestion:
-
-```
-Creating Issue with the following:
-
-**Title:** {inferred title}
-**Type:** {inferred Type}
-**Priority:** {inferred Priority}
-**Size:** {inferred Size}
-**Labels:** {inferred labels}
-```
-
-Options:
-- Create with these settings
-- Modify before creating
-- Cancel
-
-### Step 3: Delegate to `managing-github-items`
-
-After confirmation, invoke via Skill tool:
+After context analysis, invoke via Skill tool immediately (no pre-creation confirmation):
 
 ```
 Skill: managing-github-items
 Args: create-item {inferred metadata}
 ```
 
-### Step 4: Chain Decision
+### Step 3: Chain Decision
 
 After creation, confirm next action via AskUserQuestion:
 
@@ -92,6 +73,6 @@ Item created: #{number}
 
 ## Notes
 
-- Always confirm inferred results with user before creation
+- After creation, inform the user and offer the opportunity to request modifications
 - Delegate CLI execution to `managing-github-items` (don't call CLI directly)
 - Detailed inference tables are in `managing-github-items`'s `reference/create-item.md`

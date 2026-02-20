@@ -330,6 +330,30 @@ Draft | Review | Approved | Rejected | Implementing
 |----------|---------|--------------|
 | [reference/github-operations.md](reference/github-operations.md) | GitHub CLI commands and status workflow | All subcommands |
 
+## Batch Candidates in /show-items
+
+When displaying project items via `/show-items`, add a batch candidate section after the grouped view.
+
+### Detection
+
+1. From the items list, filter: Status = Backlog, Size = XS or S
+2. Group by `area:*` label (primary) or title keyword similarity (fallback: 2+ common nouns)
+3. Show groups with 3+ issues, max 3 groups
+
+### Display
+
+```markdown
+### Batch Candidates
+| Group | Issues | Area |
+|-------|--------|------|
+| Plugin fixes | #101, #102, #105 | area:plugin |
+| CLI improvements | #110, #112, #115 | area:cli |
+
+Batch processing: `/working-on-issue #101 #102 #105`
+```
+
+If no batch candidates found, omit this section.
+
 ## Notes
 
 - All data fetched on-demand (not cached)

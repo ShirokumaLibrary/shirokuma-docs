@@ -161,11 +161,82 @@ After work completes, execute the chain **automatically**. No user confirmation 
   - Stop if issue count increases between iterations
 - On failure: stop chain, report status, return control to user
 
+## Batch Mode
+
+When multiple issue numbers are provided (e.g., `#101 #102 #103`), activate batch mode.
+
+### Batch Detection
+
+Detect multiple `#N` patterns in the arguments. If 2+ issues detected → batch mode.
+
+### Batch Eligibility Check
+
+Before starting, verify all issues meet `batch-workflow` rule criteria:
+- All issues are Size XS or S
+- Issues share a common `area:*` label or affect related files
+- Total issues ≤ 5
+
+If any issue fails eligibility, inform user and suggest individual processing.
+
+### Batch TodoWrite Template
+
+```
+[1] Implement #N1 / Implementing #N1
+[2] Implement #N2 / Implementing #N2
+...
+[K] Commit and push all changes / Committing and pushing
+[K+1] Create pull request / Creating pull request
+[K+2] Run self-review / Running self-review
+```
+
+### Batch Workflow
+
+1. **Bulk status update**: All issues → In Progress simultaneously
+   ```bash
+   shirokuma-docs issues update {n} --field-status "In Progress"
+   # (repeat for each issue)
+   ```
+
+2. **Branch creation** (first time only):
+   ```bash
+   git checkout develop && git pull origin develop
+   git checkout -b {type}/{issue-numbers}-batch-{slug}
+   ```
+   Type determination: single type → use it; mixed → `chore`.
+
+3. **Issue loop**: For each issue:
+   - Fetch issue details: `shirokuma-docs issues show {number}`
+   - Execute implementation (select skill per dispatch table)
+   - Quality checkpoint: verify changed files + run related tests
+   - Track `filesByIssue` mapping for scoped commits
+   - **Do NOT chain** Commit → PR during the loop
+
+4. **Post-loop chain**: After all issues are implemented:
+   - Chain to `committing-on-issue` with batch context
+   - `committing-on-issue` handles per-issue scoped commits
+   - Then chain to `creating-pr-on-issue` for a single batch PR
+
+### Batch Context
+
+Maintain across the issue loop:
+
+```
+{
+  currentIssue: number,
+  remainingIssues: number[],
+  completedIssues: number[],
+  filesByIssue: Map<number, string[]>
+}
+```
+
+Track files changed per issue using `git diff --name-only` before/after each implementation.
+
 ## Arguments
 
 | Format | Example | Behavior |
 |--------|---------|----------|
 | Issue number | `#42` | Fetch issue, analyze type |
+| Multiple issues | `#101 #102 #103` | Batch mode |
 | Description | `implement dashboard` | Text classification → `creating-item` |
 | No argument | — | AskUserQuestion |
 
@@ -184,6 +255,7 @@ After work completes, execute the chain **automatically**. No user confirmation 
 | Rule | Usage |
 |------|-------|
 | `branch-workflow` | Branch naming, creation from `develop` |
+| `batch-workflow` | Batch eligibility, quality standards, branch naming |
 | `project-items` | Status workflow, field requirements |
 | `git-commit-style` | Commit message format |
 

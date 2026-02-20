@@ -168,24 +168,35 @@ For typo fixes, single-line changes, and other XS-sized issues:
 
 ## Step 4: Create
 
+### Temp File Naming Convention
+
+Issue numbers are assigned by GitHub at creation time — they are unknown beforehand. Do NOT use predicted issue numbers in temp file names.
+
+| Timing | Pattern | Example |
+|--------|---------|---------|
+| Before creation | `/tmp/{slug}-body.md` | `/tmp/add-format-option-body.md` |
+| After creation | `/tmp/issue-{number}-body.md` allowed | `/tmp/issue-42-body.md` |
+
 ```bash
 # Issue (recommended - supports #number)
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/add-format-option-body.md \
   --labels "area:cli" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
 # DraftIssue (lightweight)
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/add-format-option-body.md \
   --field-status "Backlog" --priority "Medium"
 ```
 
-## Step 5: Display Result
+## Step 5: Display Result and Post-Creation Review
 
 ```markdown
 ## Item Created
 **Issue:** #123 | **Label:** area:cli | **Priority:** Medium | **Status:** Backlog
 
-Please review the created issue. Use `issues update` if changes are needed.
+Review the issue body content on GitHub. If the title, body, or fields need changes, provide instructions.
 ```
+
+After displaying the result, pause and give the user the opportunity to review and request modifications before proceeding to chain decision.

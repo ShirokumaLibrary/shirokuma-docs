@@ -723,6 +723,57 @@ export const MARKETPLACE_NAME = "shirokuma-library";
 export const MARKETPLACE_REPO = "ShirokumaLibrary/shirokuma-plugins";
 
 /**
+ * marketplace ローカルクローンを最新に更新する
+ *
+ * `claude plugin install` は `~/.claude/plugins/marketplaces/` のローカルクローンから
+ * プラグインを読み取るため、クローンが古いと旧バージョンがインストールされる (#805)。
+ *
+ * known_marketplaces.json から installLocation を取得し `git pull --ff-only` を実行する。
+ * 失敗時は warn ログを出して続行する（graceful degradation）。
+ *
+ * @returns true: 更新成功、false: 更新失敗（呼び出し元は続行可能）
+ */
+export function refreshMarketplaceClone(): boolean {
+  const logger = createLogger(false);
+  const knownPath = join(homedir(), ".claude", "plugins", "known_marketplaces.json");
+
+  if (!existsSync(knownPath)) {
+    return false;
+  }
+
+  let installLocation: string;
+  try {
+    const content = readFileSync(knownPath, "utf-8");
+    const known = JSON.parse(content) as Record<string, { installLocation?: string }>;
+    const entry = known[MARKETPLACE_NAME];
+    if (!entry?.installLocation) {
+      return false;
+    }
+    installLocation = entry.installLocation;
+  } catch {
+    return false;
+  }
+
+  if (!existsSync(installLocation)) {
+    return false;
+  }
+
+  try {
+    execFileSync(
+      "git",
+      ["-C", installLocation, "pull", "--ff-only"],
+      { encoding: "utf-8", timeout: 15000, stdio: "pipe" },
+    );
+    return true;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    logger.warn(`marketplace clone の更新に失敗しました: ${message}`);
+    logger.warn(`手動更新: cd ${installLocation} && git pull origin main`);
+    return false;
+  }
+}
+
+/**
  * マーケットプレースが登録済みか確認し、未登録なら追加する
  *
  * `claude plugin marketplace list` で確認し、MARKETPLACE_NAME が
@@ -753,6 +804,8 @@ export function ensureMarketplace(): boolean {
         }
       }
       if (!needsReRegister) {
+        // ローカルクローンを最新に更新してから返す (#805)
+        refreshMarketplaceClone();
         return true;
       }
     }
@@ -1041,4 +1094,85 @@ export function cleanupOldCacheVersions(pluginName: string, keepCount = 3): stri
   } catch {
     return [];
   }
+}
+
+// ========================================
+// Single Language Plugin Enforcement
+// ========================================
+
+/**
+ * ensureSingleLanguagePlugin の結果
+ */
+export interface SingleLanguageResult {
+  /** 逆言語プラグインの uninstall を試行したか */
+  attempted: boolean;
+  /** 逆言語プラグインの名前（試行した場合） */
+  oppositePlugin?: string;
+  /** キャッシュディレクトリを削除したか */
+  cacheRemoved: boolean;
+}
+
+/**
+ * 言語設定と異なるプラグインを削除し、単一言語のみを保持する (#812)
+ *
+ * `claude plugin uninstall` で逆言語プラグインの登録を解除し、
+ * キャッシュディレクトリも削除する。`claude plugin list` のパースは
+ * 行わない（出力フォーマットへの依存を回避）。
+ *
+ * @param projectPath - プロジェクトルートパス
+ * @param languageSetting - 言語設定（"english" | "japanese" | null）
+ * @param options - オプション（verbose）
+ * @returns 削除結果
+ */
+export function ensureSingleLanguagePlugin(
+  projectPath: string,
+  languageSetting: string | null,
+  options: { verbose?: boolean } = {},
+): SingleLanguageResult {
+  const logger = createLogger(options.verbose ?? false);
+
+  // 言語未設定の場合は安全側に倒してスキップ
+  if (!languageSetting) {
+    return { attempted: false, cacheRemoved: false };
+  }
+
+  // claude CLI が利用不可の場合はスキップ
+  if (!isClaudeCliAvailable()) {
+    return { attempted: false, cacheRemoved: false };
+  }
+
+  // 逆言語プラグインを特定
+  const oppositeRegistryId = languageSetting === "japanese"
+    ? PLUGIN_REGISTRY_ID
+    : PLUGIN_REGISTRY_ID_JA;
+  const oppositePluginName = languageSetting === "japanese"
+    ? PLUGIN_NAME
+    : PLUGIN_NAME_JA;
+
+  // claude plugin uninstall を常に試行（インストール済みでなくてもエラーを無視）
+  try {
+    execFileSync(
+      "claude",
+      ["plugin", "uninstall", oppositeRegistryId, "--scope", "project"],
+      { cwd: projectPath, stdio: "pipe", timeout: 15000 },
+    );
+    logger.info(`${oppositeRegistryId}: uninstalled`);
+  } catch {
+    // 未インストールの場合のエラーは無視
+  }
+
+  // キャッシュディレクトリを削除
+  let cacheRemoved = false;
+  const cacheBase = join(homedir(), ".claude", "plugins", "cache", MARKETPLACE_NAME, oppositePluginName);
+  if (existsSync(cacheBase)) {
+    rmSync(cacheBase, { recursive: true, force: true });
+    cacheRemoved = true;
+    logger.info(`${oppositePluginName}: cache directory removed`);
+  }
+
+  return {
+    attempted: true,
+    oppositePlugin: oppositePluginName,
+    cacheRemoved,
+  };
 }

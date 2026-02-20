@@ -138,6 +138,48 @@ shirokuma-docs issues update {number} --field-status "Review"
 
 Issue 番号なしの場合はこのステップをスキップ（`ending-session` のセーフティネットでカバー）。
 
+## バッチモード
+
+バッチブランチ上、またはバッチコンテキスト（複数 Issue 番号）が渡された場合:
+
+### バッチ PR 本文
+
+バッチブランチのコミットログから Issue 番号を抽出し、Issue 別変更サマリーを生成:
+
+```bash
+git log --oneline develop..HEAD
+```
+
+**PR 本文フォーマット:**
+
+```markdown
+## 概要
+{バッチ全体の説明}
+
+## Issue 別変更内容
+
+### #{N1}: {タイトル}
+- {コミットからの変更サマリー}
+
+### #{N2}: {タイトル}
+- {コミットからの変更サマリー}
+
+## 関連 Issue
+Closes #{N1}, #{N2}, #{N3}
+
+## テスト計画
+- [ ] {検証項目}
+```
+
+### バッチ Status 更新（ステップ 7）
+
+リンクされた全 Issue の Status を Review に更新:
+
+```bash
+shirokuma-docs issues update {n} --field-status "Review"
+# (各 Issue に対して繰り返し)
+```
+
 ## 引数
 
 Issue 番号付きで起動された場合（例: `/creating-pr-on-issue 39`）：

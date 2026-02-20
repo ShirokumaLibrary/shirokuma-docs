@@ -63,6 +63,22 @@ chore/27-plugin-directory-structure
 docs/32-session-naming-convention
 ```
 
+### Batch Branches
+
+```
+{type}/{issue-numbers}-batch-{slug}
+```
+
+Used when processing multiple XS/S issues together. See `batch-workflow` rule for eligibility, quality standards, and full details.
+
+**Type determination:** Single type → use it. Mixed types → `chore`.
+
+**Examples:**
+```
+chore/794-795-798-807-batch-docs-fixes
+feat/101-102-batch-button-components
+```
+
 ### Hotfix Branches
 
 ```
@@ -251,7 +267,7 @@ Ensure branch protection rules are set for both `main` and `develop`:
 ## Rules
 
 1. **Always branch from develop** - Ensure `develop` is up to date before branching
-2. **One branch per issue** - Do not mix unrelated changes
+2. **One branch per issue** - Do not mix unrelated changes (exception: batch mode per `batch-workflow` rule)
 3. **Push before session end** - Unpushed work risks being lost
 4. **PR required for merge** - No direct pushes to `develop` or `main`
 5. **Never merge without user approval** - Enforced by PreToolUse hook

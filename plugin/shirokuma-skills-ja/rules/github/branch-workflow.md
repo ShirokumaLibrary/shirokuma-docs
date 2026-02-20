@@ -30,6 +30,22 @@
 3. プッシュ + PR 作成: `git push -u origin {branch}` → `gh pr create --base develop`
 4. レビュー → スカッシュマージ → ブランチ削除
 
+### バッチブランチ
+
+```
+{type}/{issue-numbers}-batch-{slug}
+```
+
+複数の XS/S Issue をまとめて処理する場合に使用。適格性・品質基準・詳細は `batch-workflow` ルール参照。
+
+**type の決定:** 単一 type → その type を使用。混在 → `chore`。
+
+**例:**
+```
+chore/794-795-798-807-batch-docs-fixes
+feat/101-102-batch-button-components
+```
+
 ## ホットフィックス
 
 `main` から分岐、`main` への PR、マージ後に `develop` へチェリーピック。
@@ -41,7 +57,7 @@
 ## ルール
 
 1. 常に `develop` から分岐（最新化してから）
-2. 1 Issue 1ブランチ
+2. 1 Issue 1ブランチ（例外: バッチモードは `batch-workflow` ルール参照）
 3. セッション終了前にプッシュ
 4. マージには PR が必要（直接プッシュ禁止）
 5. **ユーザー承認なしにマージしない**（PreToolUse フックで強制）

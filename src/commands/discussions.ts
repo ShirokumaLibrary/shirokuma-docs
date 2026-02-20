@@ -532,12 +532,11 @@ async function cmdGet(
     return 1;
   }
 
-  const output = {
+  const output: Record<string, unknown> = {
     id: discussion.id,
     number: discussion.number,
     title: discussion.title,
     body: discussion.body,
-    url: discussion.url,
     created_at: discussion.createdAt,
     updated_at: discussion.updatedAt,
     author: discussion.author?.login,
@@ -545,7 +544,8 @@ async function cmdGet(
     answer_chosen: !!discussion.answerChosenAt,
   };
 
-  console.log(JSON.stringify(output, null, 2));
+  const outputFormat = options.format ?? "frontmatter";
+  console.log(formatOutput(output, outputFormat));
   return 0;
 }
 
@@ -653,7 +653,6 @@ async function cmdCreate(
     id: discussion.id,
     number: discussion.number,
     title: discussion.title,
-    url: discussion.url,
     category: categoryName,
   };
 
@@ -756,7 +755,6 @@ async function cmdUpdate(
     id: discussion.id,
     number: discussion.number,
     title: discussion.title,
-    url: discussion.url,
   };
 
   console.log(JSON.stringify(output, null, 2));
@@ -951,7 +949,6 @@ async function cmdComment(
     discussion_id: discussionId,
     discussion_number: discussionNumber > 0 ? discussionNumber : undefined,
     comment_id: comment.id,
-    comment_url: comment.url,
   };
 
   console.log(JSON.stringify(output, null, 2));

@@ -208,45 +208,50 @@ cd - && rm -rf "$TMPDIR"
 
 ### shirokuma-plugins（marketplace）
 
-プラグインを marketplace リポジトリに公開。`staging-publish` ローカルスキルが管理。
+プラグインを marketplace リポジトリに公開。本番リリースは `release-production.mjs`、ステージングは `publish-staging.mjs` を使用。
 
 ```bash
-# ステージング確認
-node publish-staging.mjs plugins --branch main --dry-run
+# 本番リリース（main ブランチ）
+node .claude/skills/release/release-production.mjs plugins
 
-# 公開
-node publish-staging.mjs plugins --branch main
+# ステージング（staging ブランチ）
+node .claude/skills/staging-publish/publish-staging.mjs plugins
+
+# ドライラン
+node .claude/skills/release/release-production.mjs plugins --dry-run
 ```
 
 ### npm publish
 
-npm レジストリにパッケージを公開。
+npm レジストリへのパッケージ公開は `release-production.mjs` を使用。
 
 ```bash
 # ドライラン
-npm publish --dry-run
+node .claude/skills/release/release-production.mjs npm --dry-run
 
-# alpha リリース（prerelease 版）
-npm publish --tag alpha
+# alpha リリース（デフォルト）
+node .claude/skills/release/release-production.mjs npm
 
-# latest タグを最新 alpha に設定（安定版リリースまで）
-npm dist-tag add shirokuma-docs@{version} latest
+# カスタムタグ
+node .claude/skills/release/release-production.mjs npm --npm-tag latest
 ```
 
 #### npm タグ運用
 
 | フェーズ | npm publish | latest タグ |
 |---------|-------------|-------------|
-| 安定版リリース前（現在） | `--tag alpha` → `dist-tag add ... latest` | 最新 alpha に設定 |
-| 安定版リリース後 | alpha は `--tag alpha` のみ、安定版はタグなし | 安定版に固定 |
+| 安定版リリース前（現在） | `--npm-tag alpha`（デフォルト）→ 自動で `dist-tag add ... latest` | 最新 alpha に設定 |
+| 安定版リリース後 | alpha は `--npm-tag alpha` のみ、安定版は `--npm-tag latest` | 安定版に固定 |
 
 ### フルリリースチェックリスト
+
+`release-shirokuma-docs` ローカルスキルで 3 経路を統括:
 
 | # | リリース先 | コマンド | 完了 |
 |---|-----------|---------|------|
 | 1 | GitHub Public リポ | `shirokuma-docs repo-pairs release <alias> --tag <version>` | |
-| 2 | shirokuma-plugins | `node publish-staging.mjs plugins --branch main` | |
-| 3 | npm registry | `npm publish --tag alpha` + `npm dist-tag add ... latest` | |
+| 2 | shirokuma-plugins | `node .claude/skills/release/release-production.mjs plugins` | |
+| 3 | npm registry | `node .claude/skills/release/release-production.mjs npm` | |
 
 ## 注意事項
 

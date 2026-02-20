@@ -183,6 +183,48 @@ shirokuma-docs issues update {number} --field-status "Review"
 
 If no issue number was provided, skip this step (`ending-session` safety net covers it).
 
+## Batch Mode
+
+When on a batch branch or when batch context (multiple issue numbers) is provided:
+
+### Batch PR Body
+
+Extract issue numbers from the batch branch commit log and generate an issue-by-issue change summary:
+
+```bash
+git log --oneline develop..HEAD
+```
+
+**PR body format:**
+
+```markdown
+## Summary
+{Overall batch description}
+
+## Changes by Issue
+
+### #{N1}: {title}
+- {change summary from commits}
+
+### #{N2}: {title}
+- {change summary from commits}
+
+## Related Issues
+Closes #{N1}, #{N2}, #{N3}
+
+## Test Plan
+- [ ] {verification steps}
+```
+
+### Batch Status Update (Step 7)
+
+Update all linked issues to Review status:
+
+```bash
+shirokuma-docs issues update {n} --field-status "Review"
+# (repeat for each issue)
+```
+
 ## Arguments
 
 If invoked with an issue number (e.g., `/creating-pr-on-issue 39`):

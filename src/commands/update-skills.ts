@@ -48,8 +48,10 @@ import {
   getGlobalCachePath,
   cleanupLegacyPluginDir,
   cleanupOldCacheVersions,
+  cleanDeployedRules,
   isClaudeCliAvailable,
   getLanguageSetting,
+  ensureSingleLanguagePlugin,
   type DeployedRuleItem,
 } from "../utils/skills-repo.js";
 
@@ -186,6 +188,14 @@ async function updateExternalProject(
         if (removed.length > 0) {
           logger.info(`${pn}: ${removed.length} old cache version(s) removed`);
         }
+      }
+
+      // 逆言語プラグインを削除 (#812)
+      const singleLangResult = ensureSingleLanguagePlugin(projectPath, languageSetting, { verbose });
+      if (singleLangResult.attempted) {
+        logger.info(`${singleLangResult.oppositePlugin}: opposite language plugin removed`);
+        // 逆言語のルールが残っている可能性があるため、デプロイ前にクリーン
+        await cleanDeployedRules(projectPath, { verbose });
       }
     }
   } else {

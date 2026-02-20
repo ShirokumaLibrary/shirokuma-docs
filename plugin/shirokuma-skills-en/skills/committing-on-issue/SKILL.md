@@ -192,6 +192,34 @@ git checkout develop && git pull origin develop
 
 Execute Steps 1-6 → Step 7 (PR Chain) → Step 8 (Merge Chain) sequentially.
 
+## Batch Mode
+
+When on a batch branch (`*-batch-*` pattern) or when batch context is passed from `working-on-issue`:
+
+### Batch Commit Flow
+
+Instead of a single commit, create **per-issue commits** using the `filesByIssue` mapping:
+
+1. For each issue in the batch context:
+   ```bash
+   git add {files-for-this-issue}
+   git commit -m "{type}: {description} (#{issue-number})"
+   ```
+
+2. **Step 2.5 (Plugin Version Bump)**: Execute only on the **last commit** in the batch, not on every commit.
+
+3. **Step 5 (Push)**: Execute once after all commits are complete.
+
+4. **Step 7 (PR Chain)**: Auto-invoke `creating-pr-on-issue` after push with batch context (all issue numbers).
+
+### Batch Branch Detection
+
+```bash
+git branch --show-current | grep -q '\-batch-'
+```
+
+If detected, treat as batch mode even without explicit batch context.
+
 ## Arguments
 
 If invoked with a message argument (e.g., `/committing-on-issue fix typo in config`):

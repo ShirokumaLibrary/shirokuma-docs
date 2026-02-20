@@ -158,6 +158,42 @@ shirokuma-docs session start --team
 | issues is empty | Show "No active issues" |
 | git pull fails | Warn and continue with local base branch |
 
+## Batch Candidate Suggestion
+
+After displaying active issues (Step 2), check for batch candidates among Backlog items.
+
+### Detection
+
+1. Filter issues from `session start` output: Status = Backlog, Size = XS or S
+2. Group by `area:*` label (primary) or title keyword similarity (fallback: 2+ common nouns)
+3. Show groups with 3+ issues, max 3 groups
+
+### Display
+
+If candidates found, add after the Active Issues section:
+
+```markdown
+### Batch Candidates
+| Group | Issues | Area |
+|-------|--------|------|
+| Plugin fixes | #101, #102, #105 | area:plugin |
+| CLI improvements | #110, #112, #115 | area:cli |
+```
+
+### AskUserQuestion Integration
+
+Include batch options alongside individual issue options in Step 3:
+
+```
+Options:
+- #42 Current task (In Progress)
+- #50 Next feature (Backlog)
+- Batch: #101 #102 #105 (Plugin fixes)    ← batch option
+- Other
+```
+
+When a batch option is selected, invoke `working-on-issue` with all issue numbers (e.g., `#101 #102 #105`).
+
 ## Notes
 
 - Always show current time in session header

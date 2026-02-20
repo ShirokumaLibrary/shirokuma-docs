@@ -119,8 +119,8 @@ The `planning-on-issue` skill writes a plan to the issue body and transitions Pl
 
 ### Rules
 
-1. **One In Progress at a time** - Move previous item out before starting new one
-2. **Branch per issue** - Create a feature branch when starting work (see `branch-workflow` rule)
+1. **One In Progress at a time** - Move previous item out before starting new one (exception: batch mode allows multiple simultaneous In Progress per `batch-workflow` rule)
+2. **Branch per issue** - Create a feature branch when starting work (see `branch-workflow` rule; exception: batch mode shares one branch per `batch-workflow` rule)
 3. **Event-driven**: Status changes happen immediately when events occur (`creating-pr-on-issue` sets Review after self-review completion, `issues merge` sets Done)
 4. **Session end safety net** - `ending-session` catches any missed status updates
 5. **Pending requires reason** - Add a comment explaining the blocker

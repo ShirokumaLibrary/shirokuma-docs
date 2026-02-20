@@ -208,45 +208,50 @@ cd - && rm -rf "$TMPDIR"
 
 ### shirokuma-plugins (marketplace)
 
-Publish plugins to the marketplace repository. Managed by `staging-publish` local skill.
+Publish plugins to the marketplace repository. For production releases, use `release-production.mjs`. For staging, use `publish-staging.mjs`.
 
 ```bash
-# Preview
-node publish-staging.mjs plugins --branch main --dry-run
+# Production release (main branch)
+node .claude/skills/release/release-production.mjs plugins
 
-# Publish
-node publish-staging.mjs plugins --branch main
+# Staging (staging branch)
+node .claude/skills/staging-publish/publish-staging.mjs plugins
+
+# Dry run
+node .claude/skills/release/release-production.mjs plugins --dry-run
 ```
 
 ### npm publish
 
-Publish package to npm registry.
+Publish package to npm registry via `release-production.mjs`.
 
 ```bash
 # Dry run
-npm publish --dry-run
+node .claude/skills/release/release-production.mjs npm --dry-run
 
-# Alpha release (prerelease)
-npm publish --tag alpha
+# Alpha release (default)
+node .claude/skills/release/release-production.mjs npm
 
-# Set latest tag to newest alpha (until stable release)
-npm dist-tag add shirokuma-docs@{version} latest
+# With custom tag
+node .claude/skills/release/release-production.mjs npm --npm-tag latest
 ```
 
 #### npm Tag Policy
 
 | Phase | npm publish | latest tag |
 |-------|-------------|------------|
-| Pre-stable (current) | `--tag alpha` → `dist-tag add ... latest` | Points to latest alpha |
-| Post-stable | alpha uses `--tag alpha` only, stable uses no tag | Points to stable |
+| Pre-stable (current) | `--npm-tag alpha` (default) → auto `dist-tag add ... latest` | Points to latest alpha |
+| Post-stable | alpha uses `--npm-tag alpha` only, stable uses `--npm-tag latest` | Points to stable |
 
 ### Full Release Checklist
+
+Use the `release-shirokuma-docs` local skill to orchestrate all 3 targets:
 
 | # | Target | Command | Done |
 |---|--------|---------|------|
 | 1 | GitHub Public repo | `shirokuma-docs repo-pairs release <alias> --tag <version>` | |
-| 2 | shirokuma-plugins | `node publish-staging.mjs plugins --branch main` | |
-| 3 | npm registry | `npm publish --tag alpha` + `npm dist-tag add ... latest` | |
+| 2 | shirokuma-plugins | `node .claude/skills/release/release-production.mjs plugins` | |
+| 3 | npm registry | `node .claude/skills/release/release-production.mjs npm` | |
 
 ## Notes
 

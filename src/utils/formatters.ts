@@ -37,7 +37,7 @@ export interface TableJsonOutput {
 /**
  * Supported output formats
  */
-export type OutputFormat = "json" | "table-json";
+export type OutputFormat = "json" | "table-json" | "frontmatter";
 
 /**
  * Options for formatOutput function
@@ -171,6 +171,9 @@ export function formatOutput(
       return JSON.stringify(output, null, 2);
     }
 
+    case "frontmatter":
+      return formatFrontmatter(data);
+
     default:
       return "";
   }
@@ -248,3 +251,97 @@ export const GH_DISCUSSIONS_SEARCH_COLUMNS = [
   "answer_chosen",
   "created_at",
 ];
+
+// =============================================================================
+// Frontmatter Formatter (#808)
+// =============================================================================
+
+/**
+ * frontmatter 出力から除外するフィールド（内部用・冗長）
+ */
+const FRONTMATTER_EXCLUDED_FIELDS = new Set([
+  "body",
+  "url",
+  "comment_url",
+  "project_item_id",
+  "project_id",
+]);
+
+/**
+ * frontmatter から除外すべきフィールドか判定する。
+ * FRONTMATTER_EXCLUDED_FIELDS に含まれるか、*_option_id パターンに一致する場合 true。
+ */
+function isFrontmatterExcluded(key: string): boolean {
+  return FRONTMATTER_EXCLUDED_FIELDS.has(key) || key.endsWith("_option_id");
+}
+
+/**
+ * YAML 文字列値にクォートが必要か判定する
+ */
+function needsYamlQuote(s: string): boolean {
+  if (s === "") return true;
+  if (s === "true" || s === "false" || s === "null" || s === "~") return true;
+  if (/^-?\d+(\.\d+)?$/.test(s)) return true;
+  if (/[:#\[\]{}|>&*!?,`'"@%]/.test(s)) return true;
+  if (s.startsWith(" ") || s.endsWith(" ")) return true;
+  if (s.includes("\n")) return true;
+  return false;
+}
+
+/**
+ * YAML ダブルクォート用にエスケープする
+ */
+function escapeYamlString(s: string): string {
+  return s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\n/g, "\\n");
+}
+
+/**
+ * 値を YAML frontmatter 用にフォーマットする
+ */
+function formatYamlValue(value: unknown): string {
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  if (Array.isArray(value)) {
+    const items = value.map((v) => `"${escapeYamlString(String(v))}"`);
+    return `[${items.join(", ")}]`;
+  }
+  const s = String(value);
+  if (needsYamlQuote(s)) {
+    return `"${escapeYamlString(s)}"`;
+  }
+  return s;
+}
+
+/**
+ * データを YAML frontmatter + Markdown body 形式にフォーマットする。
+ *
+ * - メタデータフィールドは YAML frontmatter (`---` 区切り) に出力
+ * - `body` フィールドは frontmatter の後に Markdown として出力
+ * - 内部フィールド（project_item_id, *_option_id 等）は除外
+ * - `url` / `comment_url` フィールドは除外
+ * - `null` / `undefined` 値のフィールドは省略
+ * - 配列値は YAML フロー形式で出力
+ *
+ * @param data - フォーマットするデータオブジェクト
+ * @returns frontmatter 文字列（オプションで body 付き）
+ */
+export function formatFrontmatter(data: Record<string, unknown>): string {
+  const lines: string[] = ["---"];
+
+  for (const [key, value] of Object.entries(data)) {
+    if (isFrontmatterExcluded(key)) continue;
+    if (value === null || value === undefined) continue;
+    lines.push(`${key}: ${formatYamlValue(value)}`);
+  }
+
+  lines.push("---");
+
+  const body = data.body;
+  if (body && typeof body === "string" && body.trim()) {
+    lines.push("");
+    lines.push(body);
+  }
+
+  return lines.join("\n");
+}

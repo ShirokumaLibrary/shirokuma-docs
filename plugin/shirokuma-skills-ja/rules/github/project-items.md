@@ -57,8 +57,8 @@ graph LR
 
 ### ルール
 
-1. **同時に In Progress は1つ**
-2. **Issue ごとにブランチ**（`branch-workflow` 参照）
+1. **同時に In Progress は1つ**（例外: バッチモードでは複数 Issue が同時に In Progress 可。`batch-workflow` ルール参照）
+2. **Issue ごとにブランチ**（`branch-workflow` 参照。例外: バッチモードは1ブランチを共有。`batch-workflow` ルール参照）
 3. **イベント駆動**: Status 変更はイベント発生時に即座に実行する（`creating-pr-on-issue` がセルフレビュー完了時に Review、`issues merge` が Done）
 4. **セッション終了時**に `ending-session` が取りこぼしを補完（セーフティネット）
 5. **Pending は理由必須**

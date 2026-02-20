@@ -168,24 +168,35 @@ C) その他（具体的に教えてください）
 
 ## ステップ 4: 作成
 
+### 一時ファイル命名規約
+
+Issue 番号は GitHub が作成時に採番するため、作成前には不明。予測番号を一時ファイル名に使わないこと。
+
+| タイミング | パターン | 例 |
+|-----------|---------|-----|
+| 作成前 | `/tmp/{slug}-body.md` | `/tmp/add-format-option-body.md` |
+| 作成後 | `/tmp/issue-{number}-body.md` 可 | `/tmp/issue-42-body.md` |
+
 ```bash
 # Issue（推奨 — #番号をサポート）
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/add-format-option-body.md \
   --labels "area:cli" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
 # DraftIssue（軽量）
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/add-format-option-body.md \
   --field-status "Backlog" --priority "Medium"
 ```
 
-## ステップ 5: 結果表示
+## ステップ 5: 結果表示と作成後レビュー
 
 ```markdown
 ## アイテム作成完了
 **Issue:** #123 | **ラベル:** area:cli | **優先度:** Medium | **ステータス:** Backlog
 
-作成された Issue の内容を確認してください。修正が必要な場合は `issues update` で更新できます。
+GitHub 上で Issue の本文を確認してください。タイトル・本文・フィールドに修正が必要であれば指示してください。
 ```
+
+結果表示後、チェーン判定に進む前にユーザーが内容を確認し修正指示を出す機会を設ける。
