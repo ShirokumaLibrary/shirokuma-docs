@@ -191,24 +191,6 @@ export function getBundledPluginPathJa(): string {
 }
 
 /**
- * Check if the Japanese plugin is bundled in this package
- *
- * @returns true if the Japanese plugin directory exists
- */
-export function hasJaPlugin(): boolean {
-  return existsSync(join(getBundledPluginPathJa(), ".claude-plugin", "plugin.json"));
-}
-
-/**
- * Check if the hooks plugin is bundled in this package
- *
- * @returns true if the hooks plugin directory exists
- */
-export function hasHooksPlugin(): boolean {
-  return existsSync(join(getBundledPluginPathFor(PLUGIN_NAME_HOOKS), ".claude-plugin", "plugin.json"));
-}
-
-/**
  * Get version from package.json
  *
  * @returns Package version string or "unknown"
@@ -290,30 +272,6 @@ export function isValidSkillName(name: string): boolean {
 }
 
 // ========================================
-// Bundled Skills Discovery
-// ========================================
-
-/**
- * Get list of skill names from the bundled plugin directory
- *
- * Scans the plugin/skills/ directory to detect available skills,
- * independent of the AVAILABLE_SKILLS constant.
- *
- * @returns Array of valid skill names found in the bundled plugin
- */
-export function getBundledSkillNames(): string[] {
-  const skillsDir = join(getBundledPluginPath(), "skills");
-  if (!existsSync(skillsDir)) {
-    return [];
-  }
-
-  return readdirSync(skillsDir).filter(name => {
-    const fullPath = join(skillsDir, name);
-    return statSync(fullPath).isDirectory() && isValidSkillName(name);
-  });
-}
-
-// ========================================
 // Bundled Rules Discovery
 // ========================================
 
@@ -367,41 +325,23 @@ export function getBundledRuleNamesFrom(rulesDir: string): string[] {
 }
 
 // ========================================
-// Self-Repository Detection
+// Effective Plugin Directory
 // ========================================
-
-/**
- * Detect if the project is the shirokuma-docs repository itself
- *
- * When running inside the shirokuma-docs repo, the bundled plugin source
- * (plugin/shirokuma-skills-en/) is directly available, so copying to
- * .claude/plugins/ is unnecessary.
- *
- * @param projectPath - Project root path
- * @returns true if the project contains the plugin source
- */
-export function isSelfRepo(projectPath: string): boolean {
-  return existsSync(join(projectPath, "plugin", PLUGIN_NAME, ".claude-plugin", "plugin.json"));
-}
 
 /**
  * Get the effective plugin directory for a project
  *
- * For self-repo (shirokuma-docs itself): returns the bundled source path
- * For external projects: global cache → bundled fallback
+ * Global cache → bundled fallback
  *
- * @param projectPath - Project root path
+ * @param projectPath - Project root path (unused, kept for API compatibility)
  * @returns Absolute path to the effective plugin directory
  */
-export function getEffectivePluginDir(projectPath: string): string {
-  if (isSelfRepo(projectPath)) {
-    return getBundledPluginPath();
-  }
+export function getEffectivePluginDir(_projectPath: string): string {
   // Claude CLI 無効時はキャッシュが未インストール/古い可能性があるためバンドル版を使用
   if (process.env.SHIROKUMA_NO_CLAUDE_CLI) {
     return getBundledPluginPath();
   }
-  // 外部: キャッシュ → bundled フォールバック
+  // キャッシュ → bundled フォールバック
   return getGlobalCachePath(PLUGIN_NAME) ?? getBundledPluginPath();
 }
 
@@ -410,19 +350,17 @@ export function getEffectivePluginDir(projectPath: string): string {
 // ========================================
 
 /**
- * Install the bundled plugin to a project (self-repo 用)
+ * Install the bundled plugin to a project
  *
- * self-repo（shirokuma-docs 自身）では bundled source を直接使用するためスキップ。
- * 外部プロジェクトでは ensureMarketplace() + registerPluginCache() を使用する。
- * この関数は後方互換性のために残しているが、外部プロジェクトでのローカルコピーは
- * 不要になった。
+ * ローカルコピーは不要（marketplace + cache 方式）。
+ * この関数は後方互換性のために残している。
  *
  * @param projectPath - Target project root path
  * @param verbose - Enable verbose logging
  * @returns true on success, false on failure
  */
 export async function installPlugin(
-  projectPath: string,
+  _projectPath: string,
   verbose: boolean,
   pluginName: string = PLUGIN_NAME,
 ): Promise<boolean> {
@@ -434,13 +372,7 @@ export async function installPlugin(
     return false;
   }
 
-  // self-repo / 外部ともにローカルコピーは不要
-  if (isSelfRepo(projectPath)) {
-    logger.info("Self-repo detected: skipping plugin copy (using bundled source directly)");
-  } else {
-    logger.info("External project: skipping local copy (using marketplace + cache)");
-  }
-
+  logger.info("Skipping local copy (using marketplace + cache)");
   return true;
 }
 

@@ -191,7 +191,6 @@ program
   .command("update-skills")
   .description("インストール済みスキル/ルールを最新版に更新")
   .option("-p, --project <path>", "プロジェクトパス", process.cwd())
-  .option("--skills <skills>", "更新するスキル（カンマ区切り）")
   .option("--with-rules", "ルールも更新")
   .option("--sync", "新スキル追加・旧スキル削除を検出（ルール同期も含む）")
   .option("--yes", "削除操作を確認なしで実行")

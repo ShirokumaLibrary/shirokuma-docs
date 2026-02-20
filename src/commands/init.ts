@@ -34,9 +34,7 @@ import {
   getInstalledSkills,
   getInstalledRules,
   updateGitignore,
-  isSelfRepo,
   isClaudeCliAvailable,
-  hasJaPlugin,
   getLanguageSetting,
   getBundledPluginPath,
   getBundledPluginPathJa,
@@ -504,13 +502,11 @@ export async function initCommand(options: InitOptions): Promise<void> {
     try {
       logger.info("\n" + t("commands.init.installingPlugin"));
 
-      const isExternal = !isSelfRepo(projectPath);
-
       // 言語設定を確認（--lang オプション優先、なければ既存 settings.json）
       const effectiveLang = options.lang ? LANG_MAP[options.lang] : getLanguageSetting(projectPath);
 
-      // 外部プロジェクト: marketplace 登録 + キャッシュインストール
-      if (isExternal && isClaudeCliAvailable()) {
+      // marketplace 登録 + キャッシュインストール (#801: 常に external フロー)
+      if (isClaudeCliAvailable()) {
         logger.info("\n" + t("commands.init.registeringCache"));
         const marketplaceOk = ensureMarketplace();
         if (marketplaceOk) {
@@ -541,7 +537,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
         } else {
           logger.warn("Marketplace registration failed");
         }
-      } else if (isExternal) {
+      } else {
         logger.warn("\n" + t("commands.init.claudeNotFound"));
         logger.info(t("commands.init.claudeInstallHint"));
       }
@@ -553,14 +549,14 @@ export async function initCommand(options: InitOptions): Promise<void> {
       // Deploy rules to .claude/rules/shirokuma/ (#254: 言語設定に基づき単一ディレクトリに統一)
       logger.info("\n" + t("commands.init.deployingRules"));
 
-      // #636: 外部プロジェクトでは marketplace キャッシュからデプロイするため hasJaPlugin() 不要
-      const useJaRules = effectiveLang === "japanese" && (isExternal || hasJaPlugin());
+      // #801: 常に marketplace キャッシュからデプロイするため hasJaPlugin() 不要
+      const useJaRules = effectiveLang === "japanese";
 
       let deployedNames: string[];
 
       if (useJaRules) {
         // 日本語ルールをデプロイ（キャッシュ → bundled フォールバック）
-        const jaRulesSource = (isExternal ? getGlobalCachePath(PLUGIN_NAME_JA) : null)
+        const jaRulesSource = getGlobalCachePath(PLUGIN_NAME_JA)
           ?? getBundledPluginPathJa();
         const deployResult = await deployRules(projectPath, {
           verbose: options.verbose ?? false,
@@ -572,7 +568,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
         result.rules_deployed = deployedNames.length;
       } else {
         // 英語ルールをデプロイ（キャッシュ → bundled フォールバック）
-        const enRulesSource = (isExternal ? getGlobalCachePath(PLUGIN_NAME) : null)
+        const enRulesSource = getGlobalCachePath(PLUGIN_NAME)
           ?? getBundledPluginPath();
         const deployResult = await deployRules(projectPath, {
           verbose: options.verbose ?? false,
@@ -591,9 +587,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
       }
 
       // レガシー .claude/plugins/ ディレクトリを削除（#486: マイグレーション）
-      if (isExternal) {
-        cleanupLegacyPluginDir(projectPath);
-      }
+      cleanupLegacyPluginDir(projectPath);
 
     } catch (error) {
       if (error instanceof InitError) {
@@ -708,8 +702,8 @@ export async function initCommand(options: InitOptions): Promise<void> {
     console.log(JSON.stringify(result, null, 2));
   }
 
-  // Next steps guidance (external projects only)
-  if (result.plugin_installed && !isSelfRepo(projectPath)) {
+  // Next steps guidance (#801: 常に external フロー)
+  if (result.plugin_installed) {
     const claudeCliFound = isClaudeCliAvailable();
     printNextSteps(logger, result.cache_registered, claudeCliFound);
   } else {

@@ -27,13 +27,10 @@
  */
 
 import { resolve, join } from "node:path";
-import { existsSync, mkdirSync, cpSync, rmSync } from "node:fs";
-import { execFileSync } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
 import { createLogger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import {
-  AVAILABLE_SKILLS,
-  AVAILABLE_RULES,
   PLUGIN_NAME,
   PLUGIN_NAME_JA,
   PLUGIN_NAME_HOOKS,
@@ -41,26 +38,17 @@ import {
   PLUGIN_REGISTRY_ID_JA,
   PLUGIN_REGISTRY_ID_HOOKS,
   DEPLOYED_RULES_DIR_JA,
-  isValidSkill,
-  isValidSkillName,
   getBundledPluginPath,
   getBundledPluginPathJa,
-  getBundledSkillNames,
   getPackageVersion,
   getPluginVersion,
-  getInstalledSkills,
-  getInstalledRules,
-  getEffectivePluginDir,
   deployRules,
   registerPluginCache,
   ensureMarketplace,
   getGlobalCachePath,
   cleanupLegacyPluginDir,
   cleanupOldCacheVersions,
-  isSelfRepo,
   isClaudeCliAvailable,
-  hasJaPlugin,
-  hasHooksPlugin,
   getLanguageSetting,
   type DeployedRuleItem,
 } from "../utils/skills-repo.js";
@@ -71,8 +59,6 @@ import {
 interface UpdateSkillsOptions {
   /** Project path */
   project: string;
-  /** Specific skills to update (comma-separated) */
-  skills?: string;
   /** Update rules as well */
   withRules?: boolean;
   /** Sync mode: detect and add new skills, detect removed skills */
@@ -112,305 +98,6 @@ interface UpdateResult {
 }
 
 /**
- * Check if a directory has local modifications compared to bundled version
- *
- * @param localPath - Local skill/rule path
- * @param bundledPath - Bundled skill/rule path
- * @returns true if local has modifications
- */
-function hasLocalChanges(localPath: string, bundledPath: string): boolean {
-  try {
-    const result = execFileSync("diff", [
-      "-rq",
-      "--exclude=project",
-      localPath,
-      bundledPath,
-    ], {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-    return result.trim().length > 0;
-  } catch {
-    // diff returns exit code 1 when files differ
-    return true;
-  }
-}
-
-/**
- * Backup project/ directory from a skill
- */
-function backupProjectDir(skillPath: string, backupDir: string, skillName: string): boolean {
-  const projectDir = join(skillPath, "project");
-  if (!existsSync(projectDir)) {
-    return false;
-  }
-
-  const backupPath = join(backupDir, skillName, "project");
-  mkdirSync(join(backupDir, skillName), { recursive: true });
-  cpSync(projectDir, backupPath, { recursive: true });
-  return true;
-}
-
-/**
- * Restore project/ directory to a skill
- */
-function restoreProjectDir(skillPath: string, backupDir: string, skillName: string): boolean {
-  const backupPath = join(backupDir, skillName, "project");
-  if (!existsSync(backupPath)) {
-    return false;
-  }
-
-  const projectDir = join(skillPath, "project");
-  cpSync(backupPath, projectDir, { recursive: true });
-  return true;
-}
-
-/**
- * Update skills from bundled plugin
- */
-async function updateSkills(
-  projectPath: string,
-  targetSkills: string[],
-  options: UpdateSkillsOptions
-): Promise<UpdateItem[]> {
-  const logger = createLogger(options.verbose ?? false);
-  const T = (key: string, params?: Record<string, string | number>) =>
-    t(`commands.updateSkills.${key}`, params);
-  const results: UpdateItem[] = [];
-  const bundledSkillsDir = join(getBundledPluginPath(), "skills");
-  const installedSkillsDir = join(getEffectivePluginDir(projectPath), "skills");
-  const backupDir = join("/tmp", `shirokuma-skills-backup-${Date.now()}`);
-
-  for (const skill of targetSkills) {
-    if (!isValidSkill(skill) && !isValidSkillName(skill)) {
-      results.push({ name: skill, status: "error", reason: "Invalid skill name" });
-      continue;
-    }
-
-    const srcPath = join(bundledSkillsDir, skill);
-    const destPath = join(installedSkillsDir, skill);
-
-    if (!existsSync(srcPath)) {
-      results.push({ name: skill, status: "error", reason: "Not found in bundled plugin" });
-      continue;
-    }
-
-    const isNewInstall = !existsSync(destPath);
-
-    if (isNewInstall) {
-      if (options.dryRun) {
-        results.push({ name: skill, status: "added", reason: "Would be added (new)" });
-        logger.info(T("logItemNew", { name: skill }));
-      } else {
-        mkdirSync(installedSkillsDir, { recursive: true });
-        cpSync(srcPath, destPath, { recursive: true });
-        results.push({ name: skill, status: "added" });
-        logger.info(T("logItemNew", { name: skill }));
-      }
-      continue;
-    }
-
-    // Check for local changes
-    if (!options.force && hasLocalChanges(destPath, srcPath)) {
-      results.push({
-        name: skill,
-        status: "skipped",
-        reason: "Local changes detected (use --force to override)",
-      });
-      logger.warn(T("logItemLocalChangesSkipped", { name: skill }));
-      continue;
-    }
-
-    // Check if actually different from bundled (excluding project/)
-    if (!hasLocalChanges(destPath, srcPath)) {
-      results.push({ name: skill, status: "unchanged" });
-      logger.debug(T("logItemUnchanged", { name: skill }));
-      continue;
-    }
-
-    if (options.dryRun) {
-      results.push({ name: skill, status: "updated", reason: "Would be updated" });
-      logger.info(T("logItemWouldUpdate", { name: skill }));
-      continue;
-    }
-
-    // Backup project/ directory
-    const hadProjectDir = backupProjectDir(destPath, backupDir, skill);
-
-    // Replace skill with bundled version
-    try {
-      rmSync(destPath, { recursive: true, force: true });
-      cpSync(srcPath, destPath, { recursive: true });
-
-      // Restore project/ directory
-      if (hadProjectDir) {
-        restoreProjectDir(destPath, backupDir, skill);
-      }
-
-      results.push({ name: skill, status: "updated" });
-      logger.info(hadProjectDir
-        ? T("logItemUpdatedProjectPreserved", { name: skill })
-        : T("logItemUpdated", { name: skill }));
-    } catch (error) {
-      results.push({
-        name: skill,
-        status: "error",
-        reason: error instanceof Error ? error.message : String(error),
-      });
-      logger.warn(T("logItemError", { name: skill, reason: error instanceof Error ? error.message : String(error) }));
-    }
-  }
-
-  // Cleanup backup dir
-  if (existsSync(backupDir)) {
-    rmSync(backupDir, { recursive: true, force: true });
-  }
-
-  return results;
-}
-
-/**
- * Update rules from bundled plugin
- */
-async function updateRules(
-  projectPath: string,
-  options: UpdateSkillsOptions
-): Promise<UpdateItem[]> {
-  const logger = createLogger(options.verbose ?? false);
-  const T = (key: string, params?: Record<string, string | number>) =>
-    t(`commands.updateSkills.${key}`, params);
-  const results: UpdateItem[] = [];
-  const bundledRulesDir = join(getBundledPluginPath(), "rules");
-  const installedRulesDir = join(getEffectivePluginDir(projectPath), "rules");
-
-  for (const rule of AVAILABLE_RULES) {
-    const srcPath = join(bundledRulesDir, rule);
-    const destPath = join(installedRulesDir, rule);
-
-    if (!existsSync(srcPath)) {
-      results.push({ name: rule, status: "error", reason: "Not found in bundled plugin" });
-      continue;
-    }
-
-    const isNewInstall = !existsSync(destPath);
-
-    if (isNewInstall) {
-      if (options.dryRun) {
-        results.push({ name: rule, status: "added", reason: "Would be added (new)" });
-        logger.info(T("logItemNew", { name: rule }));
-      } else {
-        const destDir = join(installedRulesDir, rule.includes("/") ? rule.split("/")[0] : "");
-        if (destDir !== installedRulesDir) {
-          mkdirSync(destDir, { recursive: true });
-        }
-        cpSync(srcPath, destPath, { recursive: true });
-        results.push({ name: rule, status: "added" });
-        logger.info(T("logItemNew", { name: rule }));
-      }
-      continue;
-    }
-
-    // For rules, check diff at file level
-    try {
-      execFileSync("diff", ["-q", destPath, srcPath], {
-        encoding: "utf-8",
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-      results.push({ name: rule, status: "unchanged" });
-      logger.debug(T("logItemUnchanged", { name: rule }));
-    } catch {
-      if (!options.force) {
-        results.push({
-          name: rule,
-          status: "skipped",
-          reason: "Local changes detected (use --force to override)",
-        });
-        logger.warn(T("logItemLocalChangesSkipped", { name: rule }));
-      } else if (options.dryRun) {
-        results.push({ name: rule, status: "updated", reason: "Would be updated" });
-        logger.info(T("logItemWouldUpdate", { name: rule }));
-      } else {
-        cpSync(srcPath, destPath, { recursive: true });
-        results.push({ name: rule, status: "updated" });
-        logger.info(T("logItemUpdated", { name: rule }));
-      }
-    }
-  }
-
-  return results;
-}
-
-/**
- * Detect skills that exist locally (in metadata) but no longer in bundled plugin
- */
-function detectObsoleteSkills(metaSkills: string[], bundledSkills: string[]): string[] {
-  const bundledSet = new Set(bundledSkills);
-  return metaSkills.filter(skill => !bundledSet.has(skill));
-}
-
-/**
- * Detect skills that exist in bundled plugin but not installed locally
- */
-function detectNewBundledSkills(localSkills: string[], bundledSkills: string[]): string[] {
-  const localSet = new Set(localSkills);
-  return bundledSkills.filter(skill => !localSet.has(skill));
-}
-
-/**
- * Remove obsolete skills from local installation
- */
-function removeObsoleteSkills(
-  projectPath: string,
-  obsoleteSkills: string[],
-  options: UpdateSkillsOptions,
-): UpdateItem[] {
-  const logger = createLogger(options.verbose ?? false);
-  const T = (key: string, params?: Record<string, string | number>) =>
-    t(`commands.updateSkills.${key}`, params);
-  const results: UpdateItem[] = [];
-  const skillsDir = join(getEffectivePluginDir(projectPath), "skills");
-
-  for (const skill of obsoleteSkills) {
-    const destPath = join(skillsDir, skill);
-
-    if (!existsSync(destPath)) {
-      continue;
-    }
-
-    if (!options.yes) {
-      results.push({
-        name: skill,
-        status: "skipped",
-        reason: "Removed from bundled plugin (use --yes to delete)",
-      });
-      logger.warn(T("logItemRemovedFromBundled", { name: skill }));
-      continue;
-    }
-
-    if (options.dryRun) {
-      results.push({ name: skill, status: "removed", reason: "Would be removed" });
-      logger.info(T("logItemWouldRemove", { name: skill }));
-      continue;
-    }
-
-    try {
-      rmSync(destPath, { recursive: true, force: true });
-      results.push({ name: skill, status: "removed" });
-      logger.info(T("logItemRemoved", { name: skill }));
-    } catch (error) {
-      results.push({
-        name: skill,
-        status: "error",
-        reason: error instanceof Error ? error.message : String(error),
-      });
-      logger.warn(T("logItemRemovalFailed", { name: skill, reason: error instanceof Error ? error.message : String(error) }));
-    }
-  }
-
-  return results;
-}
-
-/**
  * update-skills command handler
  */
 export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise<void> {
@@ -434,154 +121,18 @@ export async function updateSkillsCommand(options: UpdateSkillsOptions): Promise
 
   logger.info(T("cliVersion", { version: newVersion }));
 
-  // 外部プロジェクト: marketplace からキャッシュ経由で更新（#486, #674）
+  // marketplace からキャッシュ経由で更新（#486, #674, #801）
   // バンドルプラグインが存在しなくても動作する
-  if (!isSelfRepo(projectPath)) {
-    const newPluginVersion = getPluginVersion();
-    logger.info(T("pluginVersion", { version: newPluginVersion }));
-    return updateExternalProject(projectPath, options, logger, T, newVersion, newPluginVersion, verbose);
-  }
-
-  // === 以下は self-repo（shirokuma-docs 自身）専用 ===
-
-  // self-repo ではバンドルプラグインが必須
-  const bundledPath = getBundledPluginPath();
-  if (!existsSync(bundledPath)) {
-    logger.error(T("errorNoBundledPlugin"));
-    process.exit(1);
-  }
-
   const newPluginVersion = getPluginVersion();
   logger.info(T("pluginVersion", { version: newPluginVersion }));
-
-  // Version mismatch detection (CLI vs plugin)
-  // Strip prerelease suffixes (e.g., "0.1.0-beta.1" → "0.1.0") before comparing
-  if (newVersion !== "unknown" && newPluginVersion !== "unknown") {
-    const [pkgMajor, pkgMinor] = newVersion.split("-")[0].split(".").map(Number);
-    const [plgMajor, plgMinor] = newPluginVersion.split("-")[0].split(".").map(Number);
-
-    if (pkgMajor !== plgMajor || pkgMinor !== plgMinor) {
-      logger.warn(T("warnVersionMismatch", { cliVersion: newVersion, pluginVersion: newPluginVersion }));
-    }
-  }
-
-  // Determine which skills to update
-  let targetSkills: string[];
-  if (options.skills) {
-    targetSkills = options.skills.split(",").map(s => s.trim()).filter(s => s.length > 0);
-  } else {
-    targetSkills = getInstalledSkills(projectPath);
-    if (targetSkills.length === 0 && !options.sync) {
-      logger.warn(T("noInstalledSkills"));
-      logger.info(T("installSkillsHint"));
-      return;
-    }
-  }
-
-  // In --sync mode, detect new and obsolete skills
-  let syncNewSkills: string[] = [];
-  let syncObsoleteSkills: string[] = [];
-
-  if (options.sync) {
-    const bundledSkills = getBundledSkillNames();
-    const localSkills = getInstalledSkills(projectPath);
-
-    syncNewSkills = detectNewBundledSkills(localSkills, bundledSkills);
-    syncObsoleteSkills = detectObsoleteSkills(localSkills, bundledSkills);
-
-    if (syncNewSkills.length > 0) {
-      logger.info(T("newSkillsDetected", { count: syncNewSkills.length }));
-      targetSkills = [...new Set([...targetSkills, ...syncNewSkills])];
-    }
-
-    if (syncObsoleteSkills.length > 0) {
-      logger.info(T("obsoleteSkillsDetected", { count: syncObsoleteSkills.length }));
-    }
-
-    // Filter out obsolete/custom skills from update targets
-    // They are handled separately by removeObsoleteSkills()
-    const bundledSet = new Set(bundledSkills);
-    targetSkills = targetSkills.filter(skill => bundledSet.has(skill));
-  }
-
-  // Update skills
-  logger.info(T("updatingSkills"));
-  const skillResults = await updateSkills(projectPath, targetSkills, options);
-
-  // Remove obsolete skills in sync mode
-  if (options.sync && syncObsoleteSkills.length > 0) {
-    logger.info(T("processingObsoleteSkills"));
-    const removeResults = removeObsoleteSkills(projectPath, syncObsoleteSkills, options);
-    skillResults.push(...removeResults);
-  }
-
-  // Update rules if requested (--sync automatically includes rules)
-  let ruleResults: UpdateItem[] = [];
-  let deployedRuleResults: DeployedRuleItem[] = [];
-  const shouldUpdateRules = options.withRules || options.sync;
-  if (shouldUpdateRules) {
-    if (options.sync && !options.withRules) {
-      logger.info(T("syncModeIncludesRules"));
-    }
-    logger.info(T("updatingRules"));
-    ruleResults = await updateRules(projectPath, options);
-
-    // Deploy rules to .claude/rules/shirokuma/ (#254: 言語設定に基づき単一ディレクトリに統一)
-    const languageSetting = getLanguageSetting(projectPath);
-    const useJaRules = languageSetting === "japanese" && hasJaPlugin();
-
-    if (useJaRules) {
-      logger.info(T("deployingRulesJa"));
-      const deployResult = await deployRules(projectPath, {
-        dryRun: options.dryRun,
-        verbose: options.verbose ?? false,
-        bundledPluginPath: getBundledPluginPathJa(),
-      });
-      deployedRuleResults = deployResult.deployed;
-    } else {
-      logger.info(T("deployingRules"));
-      const deployResult = await deployRules(projectPath, {
-        dryRun: options.dryRun,
-        verbose: options.verbose ?? false,
-      });
-      deployedRuleResults = deployResult.deployed;
-    }
-
-    // Clean up legacy shirokuma-ja/ directory if it exists (#254)
-    const legacyJaDir = resolve(projectPath, DEPLOYED_RULES_DIR_JA);
-    if (existsSync(legacyJaDir) && !options.dryRun) {
-      rmSync(legacyJaDir, { recursive: true, force: true });
-      logger.info(T("legacyDirRemoved"));
-    }
-  }
-
-  // Hooks (self-repo: always skip)
-  const hooksStatus: "updated" | "skipped" | "error" | "not-applicable" = hasHooksPlugin() ? "skipped" : "not-applicable";
-
-  // Summary
-  const result: UpdateResult = {
-    skills: skillResults,
-    rules: ruleResults,
-    deployedRules: deployedRuleResults,
-    version: newVersion,
-    pluginVersion: newPluginVersion,
-    dryRun: options.dryRun ?? false,
-    hooksStatus,
-  };
-
-  printSummary(result, logger);
-
-  if (verbose) {
-    console.log(JSON.stringify(result, null, 2));
-  }
+  return updateExternalProject(projectPath, options, logger, T, newVersion, newPluginVersion, verbose);
 }
 
 /**
- * 外部プロジェクト向け update-skills: claude plugin update に委譲（#486）
+ * update-skills 本体: marketplace キャッシュ経由で更新（#486, #801）
  *
- * updateSkills()/updateRules()/removeObsoleteSkills() はキャッシュ内に
- * 書き込んでしまうため、外部プロジェクトでは完全にスキップし、
- * claude plugin update でリモートから最新を取得する。
+ * claude plugin update でリモートから最新を取得し、
+ * ルールを .claude/rules/shirokuma/ に展開する。
  */
 async function updateExternalProject(
   projectPath: string,

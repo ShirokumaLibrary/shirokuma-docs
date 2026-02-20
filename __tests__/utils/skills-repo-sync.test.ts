@@ -1,7 +1,7 @@
 /**
  * skills-repo bundled plugin utility tests
  *
- * Tests for getBundledPluginPath(), getBundledSkillNames(),
+ * Tests for getBundledPluginPath(),
  * installPlugin(), getPackageVersion(), and validation functions.
  *
  * @testdoc バンドルプラグインユーティリティのテスト
@@ -12,12 +12,10 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   getBundledPluginPath,
-  getBundledSkillNames,
   getPackageVersion,
   installPlugin,
   isValidSkillName,
   isValidSkill,
-  isSelfRepo,
   getEffectivePluginDir,
   updateGitignore,
   AVAILABLE_SKILLS,
@@ -319,41 +317,6 @@ describe("getPackageVersion", () => {
 });
 
 // ========================================
-// Bundled Skill Names
-// ========================================
-
-describe("getBundledSkillNames", () => {
-  /**
-   * @testdoc バンドルされた plugin/skills/ からスキル名一覧を返す
-   */
-  it("should return skill names from bundled plugin/skills/", () => {
-    const skills = getBundledSkillNames();
-    expect(skills.length).toBeGreaterThan(0);
-    expect(skills).toContain("managing-agents");
-    expect(skills).toContain("reviewing-on-issue");
-  });
-
-  /**
-   * @testdoc 全24スキルが含まれる
-   */
-  it("should contain all 24 bundled skills", () => {
-    const skills = getBundledSkillNames();
-    expect(skills).toHaveLength(24);
-  });
-
-  /**
-   * @testdoc 隠しディレクトリやファイルを含まない
-   */
-  it("should not include hidden directories or files", () => {
-    const skills = getBundledSkillNames();
-    for (const skill of skills) {
-      expect(skill).not.toMatch(/^\./);
-      expect(isValidSkillName(skill)).toBe(true);
-    }
-  });
-});
-
-// ========================================
 // Install Plugin
 // ========================================
 
@@ -388,59 +351,9 @@ describe("installPlugin", () => {
     expect(existsSync(join(projectPath, ".claude", "agents"))).toBe(false);
   });
 
-  /**
-   * @testdoc self-repo ではコピーをスキップする
-   * @purpose shirokuma-docs リポジトリ自身ではプラグインコピーが不要
-   */
-  it("should skip copy for self-repo", async () => {
-    const repoRoot = join(__dirname, "..", "..");
-    const pluginsDir = join(repoRoot, ".claude", "plugins", "shirokuma-skills-en");
-    const hadPlugins = existsSync(pluginsDir);
-
-    const result = await installPlugin(repoRoot, false);
-
-    expect(result).toBe(true);
-    if (!hadPlugins) {
-      expect(existsSync(pluginsDir)).toBe(false);
-    }
-  });
-
-});
-
-// ========================================
-// Self-Repo Detection
-// ========================================
-
-describe("isSelfRepo", () => {
-  /**
-   * @testdoc shirokuma-docs リポジトリ自身を検出する
-   * @purpose plugin/shirokuma-skills-en/.claude-plugin/plugin.json の存在で判定
-   */
-  it("should detect the shirokuma-docs repo as self-repo", () => {
-    const repoRoot = join(__dirname, "..", "..");
-    expect(isSelfRepo(repoRoot)).toBe(true);
-  });
-
-  /**
-   * @testdoc 外部プロジェクトを self-repo と判定しない
-   */
-  it("should return false for external projects", () => {
-    const externalPath = join(TEST_DIR, "external-project");
-    mkdirSync(externalPath, { recursive: true });
-    expect(isSelfRepo(externalPath)).toBe(false);
-  });
 });
 
 describe("getEffectivePluginDir", () => {
-  /**
-   * @testdoc self-repo ではバンドルパスを返す
-   */
-  it("should return bundled path for self-repo", () => {
-    const repoRoot = join(__dirname, "..", "..");
-    const result = getEffectivePluginDir(repoRoot);
-    expect(result).toBe(getBundledPluginPath());
-  });
-
   /**
    * @testdoc 外部プロジェクトではグローバルキャッシュまたは bundled フォールバックを返す
    * @purpose #486: marketplace + cache 方式でプラグインを配置
