@@ -20,6 +20,7 @@ import {
   PLUGIN_NAME_HOOKS,
 } from "../utils/skills-repo.js";
 import { loadConfig } from "../utils/config.js";
+import { safeRegExp } from "../utils/sanitize.js";
 
 // ========================================
 // Types
@@ -139,14 +140,10 @@ export function evaluateCommand(
   const stripped = stripQuotedStrings(command);
 
   for (const rule of activeRules) {
-    try {
-      const regex = new RegExp(rule.pattern);
-      if (regex.test(stripped)) {
-        return rule;
-      }
-    } catch {
-      // 不正な正規表現パターンはスキップ（fail-open）
-      continue;
+    const regex = safeRegExp(rule.pattern);
+    if (!regex) continue;
+    if (regex.test(stripped)) {
+      return rule;
     }
   }
 
@@ -165,7 +162,7 @@ export function evaluateCommand(
  * - 許可時: 何も出力せず exit 0
  * - エラー時: fail-open（全許可）
  */
-export async function hooksEvaluateCommand(): Promise<void> {
+export async function hooksEvaluateCommand(configPath?: string): Promise<void> {
   try {
     // stdin を読み取る
     const input = await readStdin();
@@ -199,7 +196,7 @@ export async function hooksEvaluateCommand(): Promise<void> {
     // hooks.enabled を config から取得
     let enabledIds: string[] | undefined;
     try {
-      const config = loadConfig(process.cwd(), "shirokuma-docs.config.yaml");
+      const config = loadConfig(process.cwd(), configPath ?? "shirokuma-docs.config.yaml");
       enabledIds = config.hooks?.enabled;
     } catch {
       // config が存在しない/読み取り不可 → 全ルール有効

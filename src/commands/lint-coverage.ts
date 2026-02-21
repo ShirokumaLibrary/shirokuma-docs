@@ -10,6 +10,7 @@ import { globSync } from "glob";
 import { loadConfig } from "../utils/config.js";
 import { readFile, writeFile, fileExists } from "../utils/file.js";
 import { createLogger } from "../utils/logger.js";
+import { safeRegExp } from "../utils/sanitize.js";
 import type {
   CoverageConfig,
   CoverageReport,
@@ -223,7 +224,8 @@ function getExpectedTestPath(
   for (const conv of conventions) {
     // source パターンにマッチするかチェック
     const sourcePattern = conv.source.replace(/\*\*/g, "(.*)").replace(/\*/g, "([^/]*)");
-    const sourceRegex = new RegExp(`^${sourcePattern}$`);
+    const sourceRegex = safeRegExp(`^${sourcePattern}$`);
+    if (!sourceRegex) continue;
     const match = sourcePath.match(sourceRegex);
 
     if (match) {
@@ -252,7 +254,8 @@ function getExpectedSourcePath(
 ): string | undefined {
   for (const conv of conventions) {
     const testPattern = conv.test.replace(/\*\*/g, "(.*)").replace(/\*/g, "([^/]*)");
-    const testRegex = new RegExp(`^${testPattern.replace(".test.ts", "\\.test\\.tsx?")}$`);
+    const testRegex = safeRegExp(`^${testPattern.replace(".test.ts", "\\.test\\.tsx?")}$`);
+    if (!testRegex) continue;
 
     // 正規化されたパスでマッチ
     const normalizedTestPath = testPath.replace(/\.test\.tsx?$/, ".test.ts");

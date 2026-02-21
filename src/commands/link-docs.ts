@@ -10,6 +10,7 @@ import { globSync } from "glob";
 import { loadConfig, getOutputPath, resolvePath } from "../utils/config.js";
 import { ensureDir, writeFile, readFile, fileExists } from "../utils/file.js";
 import { createLogger } from "../utils/logger.js";
+import { safeRegExp } from "../utils/sanitize.js";
 import { wrapHtmlDocument, escapeHtml, icons } from "../utils/html.js";
 import type {
   CoverageConfig,
@@ -220,7 +221,8 @@ function getExpectedTestPath(
 ): string | undefined {
   for (const conv of conventions) {
     const sourcePattern = conv.source.replace(/\*\*/g, "(.*)").replace(/\*/g, "([^/]*)");
-    const sourceRegex = new RegExp(`^${sourcePattern}$`);
+    const sourceRegex = safeRegExp(`^${sourcePattern}$`);
+    if (!sourceRegex) continue;
     const match = sourcePath.match(sourceRegex);
 
     if (match) {

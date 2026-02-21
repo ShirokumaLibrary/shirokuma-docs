@@ -1,6 +1,6 @@
 {
   "name": "@shirokuma-library/shirokuma-docs",
-  "version": "0.2.0-alpha.12",
+  "version": "0.2.0-alpha.13",
   "description": "Next.js プロジェクト用ドキュメント自動生成 CLI",
   "type": "module",
   "main": "dist/index.js",
@@ -16,6 +16,7 @@
     "start": "node dist/index.js",
     "lint": "eslint src",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
+    "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "prepare": "[ -d .githooks ] && git config core.hooksPath .githooks; tsc"
   },
   "keywords": [

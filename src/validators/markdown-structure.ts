@@ -8,6 +8,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { resolve, dirname, join, basename } from "node:path";
 import { parseFrontmatter, validateFrontmatterField } from "./frontmatter.js";
 import { extractLinks, validateInternalLink } from "./link-checker.js";
+import { safeRegExp } from "../utils/sanitize.js";
 import type {
   DocValidationResult,
   DocIssue,
@@ -63,7 +64,17 @@ export function checkSections(
   const lines = content.split("\n");
 
   for (const rule of rules) {
-    const pattern = new RegExp(rule.pattern, "m");
+    const pattern = safeRegExp(rule.pattern, "m");
+    if (!pattern) {
+      result.valid = false;
+      result.errors.push({
+        type: "error",
+        message: `Invalid regex pattern: ${rule.pattern} (${rule.description})`,
+        file: filePath,
+        rule: "invalid-pattern",
+      });
+      continue;
+    }
     const found = lines.some((line) => pattern.test(line));
 
     if (!found) {
@@ -249,7 +260,17 @@ export function checkFilePattern(
     .replace(/\./g, "\\.")
     .replace(/\*/g, ".*");
 
-  const regex = new RegExp(`^${regexPattern}$`);
+  const regex = safeRegExp(`^${regexPattern}$`);
+  if (!regex) {
+    result.valid = false;
+    result.errors.push({
+      type: "error",
+      message: `Invalid file pattern: ${pattern}`,
+      file: directory,
+      rule: "invalid-pattern",
+    });
+    return result;
+  }
 
   // ディレクトリ内のファイルをスキャン
   try {

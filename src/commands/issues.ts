@@ -31,6 +31,7 @@ import {
   isIssueNumber,
   parseIssueNumber,
   GhResult,
+  GhVariableValue,
 } from "../utils/github.js";
 import {
   cmdPrComments,
@@ -318,6 +319,28 @@ query($owner: String!, $name: String!, $number: Int!) {
 // =============================================================================
 // Helper Functions
 // =============================================================================
+
+/**
+ * Build GraphQL mutation variables for updateIssue.
+ * When issueType is not specified, omit issueTypeId to preserve existing Type.
+ */
+export function buildUpdateIssueVariables(params: {
+  issueId: string;
+  title: string;
+  body: string;
+  issueType?: string;
+  issueTypeId?: string | null;
+}): Record<string, GhVariableValue> {
+  const vars: Record<string, GhVariableValue> = {
+    id: params.issueId,
+    title: params.title,
+    body: params.body,
+  };
+  if (params.issueType) {
+    vars.issueTypeId = params.issueTypeId ?? null;
+  }
+  return vars;
+}
 
 /**
  * Get issue GraphQL ID by number
@@ -989,12 +1012,14 @@ async function cmdUpdate(
   if (options.title !== undefined || options.body !== undefined || issueTypeId) {
     const issueId = getIssueId(owner, repo, issueNumber);
     if (issueId) {
-      const updateResult = runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, {
-        id: issueId,
+      const updateVars = buildUpdateIssueVariables({
+        issueId,
         title: options.title !== undefined ? options.title : (issueNode.title ?? ""),
         body: options.body !== undefined ? options.body : (issueNode.body ?? ""),
-        issueTypeId: issueTypeId ?? null,
+        issueType: options.issueType,
+        issueTypeId,
       });
+      const updateResult = runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, updateVars);
       if (updateResult.success) {
         updated = true;
         if (options.issueType) {

@@ -639,9 +639,10 @@ program
 program
   .command("hooks <action>")
   .description("Hooks 管理 (evaluate)")
-  .action(async (action) => {
+  .option("-c, --config <file>", "設定ファイルパス")
+  .action(async (action, options) => {
     if (action === "evaluate") {
-      await hooksEvaluateCommand();
+      await hooksEvaluateCommand(options.config);
     } else {
       console.error(`Unknown hooks action: ${action}`);
       process.exitCode = 1;

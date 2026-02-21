@@ -35,13 +35,14 @@ interface HookDenyOutput {
 // =============================================================================
 
 const CLI_PATH = join(__dirname, "..", "..", "dist", "index.js");
+const FIXTURE_CONFIG = join(__dirname, "..", "fixtures", "hooks", "all-rules-enabled.yaml");
 
 // =============================================================================
 // Test Helpers
 // =============================================================================
 
 function runHooksEvaluate(stdinInput: string): { stdout: string; stderr: string; status: number } {
-  const result = spawnSync("node", [CLI_PATH, "hooks", "evaluate"], {
+  const result = spawnSync("node", [CLI_PATH, "hooks", "evaluate", "--config", FIXTURE_CONFIG], {
     input: stdinInput,
     encoding: "utf-8",
     cwd: join(__dirname, "..", ".."),

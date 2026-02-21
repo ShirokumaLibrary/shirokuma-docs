@@ -19,11 +19,11 @@ const config = {
   extensionsToTreatAsEsm: [".ts"],
   transformIgnorePatterns: [
     // Transform ESM packages
-    "node_modules/(?!(chalk|ansi-styles)/)",
+    "node_modules/(?!(chalk|ansi-styles|unified|remark-.*|unist-.*|mdast-.*|micromark.*|vfile.*|bail|trough|is-plain-obj|devlop|markdown-it)/)",
   ],
   collectCoverageFrom: ["src/**/*.ts", "!src/**/*.d.ts"],
   coverageDirectory: "coverage",
-  coverageReporters: ["text", "lcov"],
+  coverageReporters: ["text", "text-summary", "lcov"],
   // Make Jest globals available without import
   injectGlobals: true,
 };

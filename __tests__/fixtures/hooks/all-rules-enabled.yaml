@@ -1,0 +1,10 @@
+# Fixture: 全ルール有効の hooks 設定
+# hooks.test.ts が実設定に依存しないようにするための固定設定
+hooks:
+  enabled:
+    - pr-merge
+    - force-push
+    - hard-reset
+    - discard-worktree
+    - clean-untracked
+    - force-delete-branch

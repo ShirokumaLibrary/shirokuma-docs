@@ -138,6 +138,51 @@ This is the introduction.
   });
 
   /**
+   * @testdoc 無効な正規表現パターンでerrorを返す
+   */
+  it("should return error for invalid regex pattern", () => {
+    const content = `# Project Overview
+
+## Introduction
+
+This is the introduction.
+`;
+    const rules: SectionRule[] = [
+      { pattern: "^# .+$", description: "Main title", required: true },
+      { pattern: "[invalid(", description: "Invalid pattern", required: true },
+    ];
+
+    const result = checkSections(content, rules, "test.md");
+
+    expect(result.valid).toBe(false);
+    expect(result.errors.some((e) => e.rule === "invalid-pattern")).toBe(true);
+    expect(result.errors.some((e) => e.message.includes("[invalid("))).toBe(true);
+  });
+
+  /**
+   * @testdoc 無効な正規表現パターンをスキップして残りのルールを処理する
+   */
+  it("should skip invalid pattern and continue checking remaining rules", () => {
+    const content = `# Project Overview
+
+## Features
+
+Feature list.
+`;
+    const rules: SectionRule[] = [
+      { pattern: "[bad(", description: "Bad pattern", required: true },
+      { pattern: "^## Features$", description: "Features section", required: true },
+    ];
+
+    const result = checkSections(content, rules, "test.md");
+
+    // 無効パターンのエラーはあるが、残りのルールも処理される
+    expect(result.valid).toBe(false);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].rule).toBe("invalid-pattern");
+  });
+
+  /**
    * @testdoc 正規表現パターンで柔軟にマッチする
    */
   it("should match with flexible regex patterns", () => {

@@ -27,6 +27,7 @@ import { ensureDir, writeFile, readFile, fileExists } from "../utils/file.js";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { parseScreenshotAnnotations } from "../parsers/screenshot-annotations.js";
 import { inferRouteFromPath, applyRouteParams } from "../utils/route-inference.js";
+import { escapeRegExp } from "../utils/sanitize.js";
 
 /**
  * コマンドオプション
@@ -1298,7 +1299,7 @@ function generateScreenshotCode(
   const gotoUrl = isDynamic ? `\`${resolvedRoute}\`` : `'${resolvedRoute}'`;
 
   // ダッシュボードルート（ロケールのみ）を判定
-  const dashboardRoutePattern = new RegExp(`^/${config.locale}/?$`);
+  const dashboardRoutePattern = new RegExp(`^/${escapeRegExp(config.locale)}/?$`);
   const isDashboardRoute = !isDynamic && dashboardRoutePattern.test(resolvedRoute);
 
   // ダッシュボードルートはログイン後すでにいるのでナビゲート不要（グループ内最初のスクリーンショット用）
@@ -1437,7 +1438,7 @@ function generateScreenshotCodeForApp(
   }
 
   // ダッシュボードルート（ロケールのみ）を判定
-  const dashboardRoutePattern = new RegExp(`^/${config.locale}/?$`);
+  const dashboardRoutePattern = new RegExp(`^/${escapeRegExp(config.locale)}/?$`);
   const isDashboardRoute = !isDynamic && dashboardRoutePattern.test(resolvedRoute);
 
   // ダッシュボードルートはログイン後すでにいるのでナビゲート不要（グループ内最初のスクリーンショット用）

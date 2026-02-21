@@ -19,7 +19,7 @@ import {
   MAX_TITLE_LENGTH,
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
-import { getPullRequestId, getOrganizationIssueTypes } from "../../src/commands/issues.js";
+import { getPullRequestId, getOrganizationIssueTypes, buildUpdateIssueVariables } from "../../src/commands/issues.js";
 import { generateTimestamp } from "../../src/utils/project-fields.js";
 import { GH_ISSUES_SEARCH_COLUMNS } from "../../src/utils/formatters.js";
 
@@ -1644,5 +1644,69 @@ describe("generateTimestamp (#342)", () => {
 
     expect(parsed).toBeGreaterThanOrEqual(before - 1000);
     expect(parsed).toBeLessThanOrEqual(after + 1000);
+  });
+});
+
+describe("buildUpdateIssueVariables (#918)", () => {
+  // ===========================================================================
+  // updateIssue mutation variables 構築テスト
+  // ===========================================================================
+
+  /**
+   * @testdoc --issue-type 未指定時に issueTypeId が variables に含まれない
+   * @purpose Type フィールド消失バグ (#918) の回帰防止
+   */
+  it("should omit issueTypeId when issueType is not specified", () => {
+    const vars = buildUpdateIssueVariables({
+      issueId: "I_abc123",
+      title: "Test Issue",
+      body: "Updated body",
+    });
+
+    expect(vars).toEqual({
+      id: "I_abc123",
+      title: "Test Issue",
+      body: "Updated body",
+    });
+    expect("issueTypeId" in vars).toBe(false);
+  });
+
+  /**
+   * @testdoc --issue-type 指定時に issueTypeId が variables に含まれる
+   * @purpose issueType 指定時の正常動作を確認
+   */
+  it("should include issueTypeId when issueType is specified", () => {
+    const vars = buildUpdateIssueVariables({
+      issueId: "I_abc123",
+      title: "Test Issue",
+      body: "Body",
+      issueType: "Bug",
+      issueTypeId: "IT_def456",
+    });
+
+    expect(vars).toEqual({
+      id: "I_abc123",
+      title: "Test Issue",
+      body: "Body",
+      issueTypeId: "IT_def456",
+    });
+    expect(vars.issueTypeId).toBe("IT_def456");
+  });
+
+  /**
+   * @testdoc --issue-type 指定で issueTypeId が null の場合も含まれる
+   * @purpose issueType 名解決失敗時の動作を確認
+   */
+  it("should include issueTypeId as null when issueType is specified but ID is null", () => {
+    const vars = buildUpdateIssueVariables({
+      issueId: "I_abc123",
+      title: "Test",
+      body: "Body",
+      issueType: "UnknownType",
+      issueTypeId: null,
+    });
+
+    expect("issueTypeId" in vars).toBe(true);
+    expect(vars.issueTypeId).toBeNull();
   });
 });
