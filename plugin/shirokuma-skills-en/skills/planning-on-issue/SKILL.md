@@ -148,6 +148,7 @@ You are a plan reviewer. Review the plan for the following issue.
 |-----------|-------------|----------|
 | Purpose section validity | Does `## Purpose` clearly state who, what, and why? | Is the role specific? Is "why" not omitted? |
 | Requirements coverage | Are all requirements from overview/tasks covered by the plan? | Deliverables have corresponding tasks |
+| Language & style compliance | Does plan content comply with `output-language` rule (output language) and `github-writing-style` rule (bullet-point guidelines)? | Plan written in wrong language, prose where bullets are appropriate |
 | Target file validity | Any missing or unnecessary files? | Overlooked dependent modules |
 | Task granularity | Appropriate breakdown (~1 task ≈ ~1 commit)? | Too coarse or too fine |
 | Risks | Any overlooked risks? | Breaking changes, performance impact |
@@ -217,6 +218,8 @@ EOF
 
 **Template intent**: The comment records "why this approach was chosen". The body's plan section documents "what will be done" in a structured format, so comments and body serve distinct roles.
 
+> Comment language and style must comply with the `output-language` rule and `github-writing-style` rule.
+
 #### 5b: Append Plan Section to Issue Body
 
 Append a `## Plan` section to the existing issue body. Use the template from the depth level determined in Step 3.
@@ -226,6 +229,8 @@ shirokuma-docs issues update {number} --body /tmp/body.md
 ```
 
 **Important**: Preserve the existing body (overview, tasks, deliverables). **Append** the `## Plan` section. If an existing `## Tasks` section exists, the plan's `### Task Breakdown` coexists as more specific implementation steps.
+
+> Plan section headings and content must comply with the `output-language` rule. Follow `github-writing-style` rule bullet-point guidelines.
 
 ### Step 6: Update Status
 
@@ -270,6 +275,24 @@ Review the plan. If approved, run `/working-on-issue #{number}` to start impleme
 If changes are needed, provide feedback.
 ```
 
+## GitHub Writing Rules
+
+Issue comments and body content must comply with the `output-language` rule and `github-writing-style` rule.
+
+**NG example (English setting but wrong language):**
+
+```
+### アプローチ
+各スキルに GitHub 書き込みルールの参照を追加し...  ← Wrong language for English setting
+```
+
+**OK example:**
+
+```
+### Approach
+Add GitHub writing rule references to each skill...
+```
+
 ## Arguments
 
 | Format | Example | Behavior |
@@ -293,6 +316,8 @@ If changes are needed, provide feedback.
 |------|-------|
 | `project-items` | Spec Review status workflow |
 | `branch-workflow` | Branch naming reference (for plan documentation) |
+| `output-language` | Output language for issue comments and body |
+| `github-writing-style` | Bullet-point vs prose guidelines |
 
 ## Tool Usage
 

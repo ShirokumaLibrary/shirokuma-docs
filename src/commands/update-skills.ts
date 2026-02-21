@@ -50,7 +50,10 @@ import {
   isClaudeCliAvailable,
   getLanguageSetting,
   ensureSingleLanguagePlugin,
+  getCliInstallDir,
+  updateCliPackage,
   type DeployedRuleItem,
+  type CliUpdateResult,
 } from "../utils/skills-repo.js";
 
 /**
@@ -94,6 +97,7 @@ interface UpdateResult {
   version: string;
   pluginVersion: string;
   dryRun: boolean;
+  cliUpdate?: CliUpdateResult;
 }
 
 /**
@@ -143,6 +147,28 @@ async function updateExternalProject(
   verbose: boolean,
 ): Promise<void> {
   const deployedRuleResults: DeployedRuleItem[] = [];
+  let cliUpdateResult: CliUpdateResult | undefined;
+
+  // CLI 本体の自動更新 (#867)
+  const installDir = getCliInstallDir();
+  if (installDir) {
+    logger.info(T("updatingCli"));
+    cliUpdateResult = updateCliPackage(installDir, { dryRun: options.dryRun });
+    if (cliUpdateResult.status === "updated") {
+      logger.success(T("cliUpdated", {
+        oldVersion: cliUpdateResult.oldVersion ?? "unknown",
+        newVersion: cliUpdateResult.newVersion ?? "unknown",
+      }));
+    } else if (cliUpdateResult.status === "upToDate") {
+      logger.info(T("cliAlreadyUpToDate"));
+    } else if (cliUpdateResult.status === "failed") {
+      logger.warn(T("cliUpdateFailed", { reason: cliUpdateResult.message ?? "unknown error" }));
+    } else if (cliUpdateResult.status === "skipped" && cliUpdateResult.message === "npm not found in PATH") {
+      logger.warn(T("cliUpdateSkippedNoNpm"));
+    }
+  } else {
+    logger.debug(T("cliUpdateSkippedDev"));
+  }
 
   // 言語設定を確認（#495: キャッシュ登録とルール展開の両方で使用）
   const languageSetting = getLanguageSetting(projectPath);
@@ -232,6 +258,7 @@ async function updateExternalProject(
     version: newVersion,
     pluginVersion: newPluginVersion,
     dryRun: options.dryRun ?? false,
+    cliUpdate: cliUpdateResult,
   };
 
   printSummary(result, logger);
@@ -294,6 +321,18 @@ function printSummary(
 
   logger.info(T("cliVersion", { version: result.version }));
   logger.info(T("pluginVersion", { version: result.pluginVersion }));
+
+  // CLI 自動更新結果 (#867)
+  if (result.cliUpdate) {
+    const cu = result.cliUpdate;
+    if (cu.status === "updated") {
+      logger.success(`✓ ${T("cliUpdateSummary", { oldVersion: cu.oldVersion ?? "unknown", newVersion: cu.newVersion ?? "unknown" })}`);
+    } else if (cu.status === "upToDate") {
+      logger.info(`✓ ${T("cliAlreadyUpToDate")}`);
+    } else if (cu.status === "failed") {
+      logger.warn(`⚠ ${T("cliUpdateFailed", { reason: cu.message ?? "unknown error" })}`);
+    }
+  }
 
   let totalErrors = 0;
 

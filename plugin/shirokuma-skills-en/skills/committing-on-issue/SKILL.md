@@ -228,6 +228,14 @@ If invoked with a message argument (e.g., `/committing-on-issue fix typo in conf
 | PR has unresolved reviews | Warn user, ask for confirmation |
 | No issue references in PR body | Skip status update, inform user |
 
+## Rule References
+
+| Rule | Usage |
+|------|-------|
+| `git-commit-style` | Commit message format and language |
+| `output-language` | Commit message output language |
+| `branch-workflow` | Branch model and push constraints |
+
 ## Notes
 
 - Always review changes before committing

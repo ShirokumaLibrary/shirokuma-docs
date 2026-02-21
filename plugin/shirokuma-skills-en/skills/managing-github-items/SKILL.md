@@ -43,8 +43,12 @@ Create Issues / Discussions and manage spec Discussions.
 | Discussions disabled | Save spec to `.claude/specs/` |
 | Empty required field | Prompt user for input |
 
+## GitHub Writing Rules
+
+Issue / Discussion titles and body content must comply with the `output-language` rule and `github-writing-style` rule. When using templates from reference documents, fill placeholders in the language specified by the `output-language` rule.
+
 ## Notes
 
-- Always set required fields (Status, Priority) on new items
+- Always set required fields (Status, Priority, Issue Type) on new items
 - XL items should prompt user to consider splitting
 - Prefix spec titles with "[Spec]" for filtering

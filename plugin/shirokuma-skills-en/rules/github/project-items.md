@@ -92,7 +92,7 @@ AI MUST update issue status at these points:
 | Planning started | → Planning + assign | `planning-on-issue` | `issues update {n} --field-status "Planning"` + `gh issue edit {n} --add-assignee @me` |
 | Plan created | → Spec Review | `planning-on-issue` | `issues update {n} --field-status "Spec Review"` |
 | User approves plan, starts work | → In Progress + branch | `working-on-issue` | `issues update {n} --field-status "In Progress"` |
-| Self-review complete | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` |
+| Self-review complete | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` (Status MUST remain In Progress **during** self-review. Transition to Review only after self-review completes) |
 | PR merged | → Done | `committing-on-issue` (via `issues merge`) | Automatic |
 | Blocked by dependency | → Pending | Manual | `issues update {n} --field-status "Pending"` + comment |
 | Complete (no PR needed) | → Done | `ending-session` | `session end --done {n}` |

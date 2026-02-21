@@ -29,17 +29,34 @@ Analyze conversation to extract:
 6. **Modified Files**: From `git status --short`
 7. **Commits**: From `git log --oneline` (this session)
 
-### Step 2: Get Modified Files, Commits, and Branch Info
+### Step 2: Get Pre-End-Session Data
 
 ```bash
-git status --short | head -20
-git log --oneline -10
-git branch --show-current
+shirokuma-docs session preflight
 ```
+
+Single command to fetch all session-ending data:
+- `git.branch` / `git.baseBranch` / `git.isFeatureBranch` — Branch state
+- `git.uncommittedChanges` / `git.hasUncommittedChanges` — Uncommitted changes
+- `git.unpushedCommits` — Unpushed commit count (`null` when upstream not set)
+- `git.recentCommits` — Recent commits (max 10, `{hash, message}` array)
+- `issues` — Active issues (excludes Done/Released). Array of:
+  - `number`: Issue number
+  - `title`: Issue title
+  - `status`: Project status (`string | null`)
+  - `hasMergedPr`: Whether a merged PR exists for this issue (`boolean`). Only checked for In Progress / Review status; always `false` for other statuses
+  - `labels`: Area labels (`string[]`)
+  - `priority`: Project priority (`string | null`)
+- `prs` — Open PRs. Array of:
+  - `number`: PR number
+  - `title`: PR title
+  - `reviewDecision`: Review status (`"APPROVED"` | `"CHANGES_REQUESTED"` | `"REVIEW_REQUIRED"` | `null`)
+- `sessionBackups` — PreCompact backup count (`number`). Non-zero indicates an interrupted previous session (diagnostic field)
+- `warnings` — Warning messages array
 
 ### Step 3: Push Branch and Create PR (if on feature branch)
 
-If on a feature branch (not the base branch):
+If preflight output `git.isFeatureBranch` is `true`:
 
 #### 3a. Check for Uncommitted Changes
 
@@ -133,7 +150,7 @@ Example: `2026-02-19 - Plugin feature` → `2026-02-19 [alice] - Plugin feature`
 | 3 | Work complete, no PR needed | `--done` |
 | 4 | Work still in progress | Do not update status |
 
-Use `shirokuma-docs issues show {number}` to check PR state.
+Use the `issues[].hasMergedPr` flag and `prs` array from `session preflight` output to determine the action. Issues with `hasMergedPr: true` use `--done`; issues with an open PR use `--review`. No additional `shirokuma-docs issues show` call is needed.
 
 **Idempotency**: If `creating-pr-on-issue` already set Review after self-review, `--review` is a no-op. If `committing-on-issue` merge chain already set Done, `--done` is a no-op. `ending-session` acts as a safety net, catching any status updates that other skills missed.
 
@@ -215,6 +232,24 @@ On success, `session end` automatically cleans up any PreCompact backups in `.cl
 ```
 
 > **Note**: Write section headers and content in English.
+
+## GitHub Writing Rules
+
+Handover Discussion body, PR title, and PR body must comply with the `output-language` rule and `github-writing-style` rule.
+
+**NG example (English setting but wrong language):**
+
+```
+## サマリー
+機能を実装しました...  ← Wrong language for English setting
+```
+
+**OK example:**
+
+```
+## Summary
+Implemented the feature...
+```
 
 ## Error Handling
 

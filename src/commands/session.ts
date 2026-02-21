@@ -97,6 +97,44 @@ export interface GitState {
   hasUncommittedChanges: boolean;
 }
 
+/** Extended git state for session preflight */
+export interface PreflightGitState {
+  branch: string | null;
+  baseBranch: string | null;
+  isFeatureBranch: boolean;
+  uncommittedChanges: string[];
+  hasUncommittedChanges: boolean;
+  unpushedCommits: number | null;
+  recentCommits: Array<{ hash: string; message: string }>;
+}
+
+/** Flattened issue info for preflight (not TableJSON) */
+export interface PreflightIssue {
+  number: number;
+  title: string;
+  status: string | null;
+  hasMergedPr: boolean;
+  labels: string[];
+  priority: string | null;
+}
+
+/** Flattened PR info for preflight */
+export interface PreflightPr {
+  number: number;
+  title: string;
+  reviewDecision: string | null;
+}
+
+/** Full preflight output structure */
+export interface PreflightOutput {
+  repository: string;
+  git: PreflightGitState;
+  issues: PreflightIssue[];
+  prs: PreflightPr[];
+  sessionBackups: number;
+  warnings: string[];
+}
+
 // =============================================================================
 // Types - session check
 // =============================================================================
@@ -695,8 +733,10 @@ export function isIssueClosed(owner: string, repo: string, num: number): boolean
 /**
  * Get current git repository state (branch + uncommitted changes).
  * Returns safe defaults if git commands fail.
+ *
+ * @returns ブランチ名と未コミット変更リスト。git 未使用時はデフォルト値を返す
  */
-export function getGitState(): GitState {
+export function getGitState(logger?: Logger): GitState {
   let currentBranch: string | null = null;
   let uncommittedChanges: string[] = [];
 
@@ -708,8 +748,8 @@ export function getGitState(): GitState {
     if (branchResult.status === 0 && branchResult.stdout.trim()) {
       currentBranch = branchResult.stdout.trim();
     }
-  } catch {
-    // Git not available or not in a repo - return defaults
+  } catch (e) {
+    logger?.debug(`getGitState: git branch --show-current failed: ${e}`);
   }
 
   try {
@@ -723,14 +763,113 @@ export function getGitState(): GitState {
         .split("\n")
         .filter((line) => line.length > 0);
     }
-  } catch {
-    // Git not available or not in a repo - return defaults
+  } catch (e) {
+    logger?.debug(`getGitState: git status --short failed: ${e}`);
   }
 
   return {
     currentBranch,
     uncommittedChanges,
     hasUncommittedChanges: uncommittedChanges.length > 0,
+  };
+}
+
+// =============================================================================
+// Preflight git state (#861)
+// =============================================================================
+
+const PROTECTED_BRANCHES = ["main", "develop"];
+
+/**
+ * Get extended git state for session preflight.
+ * Includes base branch detection, unpushed commit count, and recent commits.
+ *
+ * @returns 拡張 git 状態（ベースブランチ、未プッシュコミット数、最近のコミット含む）
+ * @see getGitState 基本 git 状態の取得
+ */
+export function getPreflightGitState(logger?: Logger): PreflightGitState {
+  const basic = getGitState(logger);
+  const branch = basic.currentBranch;
+
+  // Base branch detection
+  let baseBranch: string | null = null;
+  try {
+    const headResult = spawnSync(
+      "git",
+      ["symbolic-ref", "refs/remotes/origin/HEAD"],
+      { encoding: "utf-8", timeout: 5000 }
+    );
+    if (headResult.status === 0 && headResult.stdout.trim()) {
+      baseBranch = headResult.stdout.trim().replace(/^refs\/remotes\/origin\//, "");
+    }
+  } catch (e) {
+    logger?.debug(`getPreflightGitState: git symbolic-ref failed: ${e}`);
+  }
+  if (!baseBranch) {
+    try {
+      const ghResult = spawnSync(
+        "gh",
+        ["repo", "view", "--json", "defaultBranchRef", "-q", ".defaultBranchRef.name"],
+        { encoding: "utf-8", timeout: 10000 }
+      );
+      if (ghResult.status === 0 && ghResult.stdout.trim()) {
+        baseBranch = ghResult.stdout.trim();
+      }
+    } catch (e) {
+      logger?.debug(`getPreflightGitState: gh repo view failed: ${e}`);
+    }
+  }
+
+  // isFeatureBranch
+  const isFeatureBranch = branch !== null && !PROTECTED_BRANCHES.includes(branch);
+
+  // Unpushed commits
+  let unpushedCommits: number | null = null;
+  try {
+    const upstreamResult = spawnSync(
+      "git",
+      ["rev-list", "@{u}..HEAD", "--count"],
+      { encoding: "utf-8", timeout: 5000 }
+    );
+    if (upstreamResult.status === 0 && upstreamResult.stdout.trim()) {
+      unpushedCommits = parseInt(upstreamResult.stdout.trim(), 10);
+      if (isNaN(unpushedCommits)) unpushedCommits = null;
+    }
+  } catch (e) {
+    logger?.debug(`getPreflightGitState: git rev-list @{u}..HEAD failed: ${e}`);
+  }
+
+  // Recent commits (max 10)
+  const recentCommits: Array<{ hash: string; message: string }> = [];
+  try {
+    const logResult = spawnSync(
+      "git",
+      ["log", "--oneline", "-10"],
+      { encoding: "utf-8", timeout: 5000 }
+    );
+    if (logResult.status === 0 && logResult.stdout.trim()) {
+      for (const line of logResult.stdout.trim().split("\n")) {
+        const spaceIdx = line.indexOf(" ");
+        if (spaceIdx > 0) {
+          recentCommits.push({
+            hash: line.slice(0, spaceIdx),
+            message: line.slice(spaceIdx + 1),
+          });
+        }
+      }
+    }
+  } catch (e) {
+    logger?.debug(`getPreflightGitState: git log --oneline failed: ${e}`);
+  }
+
+  return {
+    branch,
+    baseBranch,
+    isFeatureBranch,
+    uncommittedChanges: basic.uncommittedChanges,
+    hasUncommittedChanges: basic.hasUncommittedChanges,
+    unpushedCommits,
+    recentCommits,
   };
 }
 
@@ -866,7 +1005,7 @@ async function cmdStart(
   logger.debug(`Open PRs: ${openPRs.length}`);
 
   // 4. Get git state
-  const git = getGitState();
+  const git = getGitState(logger);
   logger.debug(`Branch: ${git.currentBranch ?? "(detached)"}`);
   logger.debug(`Uncommitted changes: ${git.uncommittedChanges.length}`);
 
@@ -950,6 +1089,132 @@ async function cmdStart(
   const outputFormat = options.format ?? "json";
   const formatted = formatOutput(output, outputFormat);
   console.log(formatted);
+  return 0;
+}
+
+// =============================================================================
+// session preflight (#861)
+// =============================================================================
+
+/**
+ * Generate preflight warnings from git state and backup count.
+ * Pure function - no API calls, fully testable.
+ */
+export function generatePreflightWarnings(
+  git: PreflightGitState,
+  sessionBackups: number,
+): string[] {
+  const warnings: string[] = [];
+
+  if (git.branch && PROTECTED_BRANCHES.includes(git.branch)) {
+    warnings.push(
+      `On protected branch "${git.branch}". Create a feature branch before committing.`
+    );
+  }
+
+  if (git.hasUncommittedChanges) {
+    warnings.push(
+      `${git.uncommittedChanges.length} uncommitted change(s) detected.`
+    );
+  }
+
+  if (git.unpushedCommits !== null && git.unpushedCommits > 0) {
+    warnings.push(
+      `${git.unpushedCommits} unpushed commit(s). Push before ending session.`
+    );
+  }
+
+  if (sessionBackups > 0) {
+    warnings.push(
+      `${sessionBackups} PreCompact backup(s) found. A previous session may have been interrupted.`
+    );
+  }
+
+  return warnings;
+}
+
+/**
+ * Session preflight: gather all pre-end-session data in a single command.
+ * Returns flat JSON for programmatic consumption by ending-session skill.
+ */
+async function cmdPreflight(
+  options: SessionOptions,
+  logger: Logger,
+): Promise<number> {
+  const config = loadGhConfig();
+  const repoInfo = getRepoInfo();
+  if (!repoInfo) {
+    logger.error("Could not determine repository");
+    return 1;
+  }
+
+  const { owner: repoOwner, name: repo } = repoInfo;
+  const owner = options.owner || repoOwner;
+  const limit = getDefaultLimit(config);
+
+  logger.debug(`Repository: ${owner}/${repo}`);
+
+  // 1. Extended git state
+  const git = getPreflightGitState(logger);
+  logger.debug(`Branch: ${git.branch ?? "(detached)"}`);
+  logger.debug(`Base branch: ${git.baseBranch ?? "(unknown)"}`);
+  logger.debug(`Feature branch: ${git.isFeatureBranch}`);
+  logger.debug(`Unpushed: ${git.unpushedCommits ?? "unknown"}`);
+
+  // 2. Active issues (flat JSON, not TableJSON)
+  const allIssues = fetchActiveIssues(owner, repo, limit);
+  const activeIssues = allIssues.filter(
+    (i) => !DEFAULT_EXCLUDE_STATUSES.includes(i.status ?? "")
+  );
+  logger.debug(`Issues: ${allIssues.length} total, ${activeIssues.length} active`);
+
+  // 3. Detect merged PRs for In Progress / Review issues
+  const preflightIssues: PreflightIssue[] = activeIssues.map((issue) => {
+    let hasMergedPr = false;
+    if (issue.status === "In Progress" || issue.status === "Review") {
+      const mergedPr = findMergedPrForIssue(owner, repo, issue.number, logger);
+      hasMergedPr = mergedPr !== null;
+    }
+    return {
+      number: issue.number,
+      title: issue.title,
+      status: issue.status,
+      hasMergedPr,
+      labels: issue.labels,
+      priority: issue.priority,
+    };
+  });
+
+  // 4. Open PRs (flat JSON)
+  const openPRs = fetchOpenPRs(owner, repo);
+  const preflightPrs: PreflightPr[] = openPRs.map((pr) => ({
+    number: pr.number,
+    title: pr.title,
+    reviewDecision: pr.reviewDecision,
+  }));
+  logger.debug(`Open PRs: ${openPRs.length}`);
+
+  // 5. Session backups
+  const backups = getSessionBackups();
+  const sessionBackups = backups.length;
+
+  // 6. Generate warnings
+  const warnings = generatePreflightWarnings(git, sessionBackups);
+  for (const w of warnings) {
+    logger.warn(`Warning: ${w}`);
+  }
+
+  // 7. Build flat JSON output
+  const output: PreflightOutput = {
+    repository: `${owner}/${repo}`,
+    git,
+    issues: preflightIssues,
+    prs: preflightPrs,
+    sessionBackups,
+    warnings,
+  };
+
+  console.log(JSON.stringify(output, null, 2));
   return 0;
 }
 
@@ -1105,7 +1370,7 @@ async function cmdEnd(
   const owner = options.owner || repoOwner;
 
   // Check for uncommitted changes and warn
-  const git = getGitState();
+  const git = getGitState(logger);
   const endWarnings: string[] = [];
   if (git.hasUncommittedChanges) {
     endWarnings.push(
@@ -1760,9 +2025,13 @@ export async function sessionCommand(
       exitCode = await cmdCheck(options, logger);
       break;
 
+    case "preflight":
+      exitCode = await cmdPreflight(options, logger);
+      break;
+
     default:
       logger.error(`Unknown action: ${action}`);
-      logger.info("Available actions: start, end, check");
+      logger.info("Available actions: start, end, check, preflight");
       exitCode = 1;
   }
 

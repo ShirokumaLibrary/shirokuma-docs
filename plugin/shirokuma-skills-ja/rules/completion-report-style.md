@@ -32,6 +32,8 @@
 | 3列以上の多列データ | テーブル |
 | 順序のあるリスト | 番号付きリスト |
 
+GitHub 書き込み（Issues, PRs, Discussions）での箇条書き vs 散文の詳細判定は `github-writing-style` ルールを参照。
+
 ## GitHub 参照
 
 | 対象 | 形式 |

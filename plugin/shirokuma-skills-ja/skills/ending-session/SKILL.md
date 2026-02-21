@@ -14,7 +14,7 @@ allowed-tools: Bash, Read, Write, Grep, Glob, AskUserQuestion
 
 - 重要な作業がなくても、議論や調査の簡潔なサマリーを記載
 - ユーザーが引き継ぎをスキップしようとした場合、重要性を説明して作成を続行
-- Summary や Next Steps セクションを空にしない — 各セクション最低 1 行は記載
+- サマリー や 次のステップ セクションを空にしない — 各セクション最低 1 行は記載
 
 ## ワークフロー
 
@@ -32,14 +32,31 @@ allowed-tools: Bash, Read, Write, Grep, Glob, AskUserQuestion
 ### ステップ 2: 変更情報取得
 
 ```bash
-git status --short | head -20
-git log --oneline -10
-git branch --show-current
+shirokuma-docs session preflight
 ```
+
+1コマンドでセッション終了に必要な全情報を取得:
+- `git.branch` / `git.baseBranch` / `git.isFeatureBranch` — ブランチ状態
+- `git.uncommittedChanges` / `git.hasUncommittedChanges` — 未コミット変更
+- `git.unpushedCommits` — 未プッシュコミット数（upstream 未設定時は `null`）
+- `git.recentCommits` — 最近のコミット（最大10件、`{hash, message}` 配列）
+- `issues` — アクティブ Issue 一覧（Done/Released を除外）。各要素:
+  - `number`: Issue 番号
+  - `title`: Issue タイトル
+  - `status`: プロジェクトステータス（`string | null`）
+  - `hasMergedPr`: マージ済み PR の有無（`boolean`）。In Progress / Review ステータスのみ検出し、他ステータスでは常に `false`
+  - `labels`: エリアラベル（`string[]`）
+  - `priority`: プロジェクト優先度（`string | null`）
+- `prs` — オープン PR 一覧。各要素:
+  - `number`: PR 番号
+  - `title`: PR タイトル
+  - `reviewDecision`: レビューステータス（`"APPROVED"` | `"CHANGES_REQUESTED"` | `"REVIEW_REQUIRED"` | `null`）
+- `sessionBackups` — PreCompact バックアップ数（`number`）。0 以外は前回セッションの中断を示す（診断用フィールド）
+- `warnings` — 警告メッセージ配列
 
 ### ステップ 3: プッシュ・PR 作成（フィーチャーブランチの場合）
 
-フィーチャーブランチ（ベースブランチ以外）にいる場合:
+preflight 出力の `git.isFeatureBranch` が `true` の場合:
 
 #### 3a. 未コミット変更の確認
 
@@ -62,17 +79,19 @@ git push -u origin {branch-name}
 
 ```bash
 gh pr create --base develop --title "{タイトル}" --body "$(cat <<'EOF'
-## Summary
+## 概要
 {達成内容の箇条書き 1-3 点}
 
-## Related Issues
+## 関連 Issue
 {完了: Closes #N / 継続中: Refs #N}
 
-## Test plan
+## テスト計画
 - [ ] {テストチェックリスト}
 EOF
 )"
 ```
+
+> PR のタイトルと本文は `output-language` ルールに準拠すること。`github-writing-style` ルールの箇条書きガイドラインにも従う。
 
 **PR タイトル**: 70 文字以内の簡潔なサマリー。
 **PR 本文**: 完了アイテムは `Closes #{number}`、継続中は `Refs #{number}`。
@@ -133,7 +152,7 @@ shirokuma-docs session end \
 | 3 | PR 不要で作業完了 | `--done` |
 | 4 | 作業継続中（未完了） | ステータス更新しない |
 
-判定に必要な情報は `shirokuma-docs issues show {number}` で PR 状態を確認する。
+判定に必要な情報は `session preflight` 出力の `issues[].hasMergedPr` フラグと `prs` 配列で確認する。`hasMergedPr` が `true` の Issue は `--done`、オープン PR がある Issue は `--review` とする。追加の `shirokuma-docs issues show` 呼び出しは不要。
 
 **冪等性**: `creating-pr-on-issue` がセルフレビュー完了時に既に Review に更新済みの場合、`--review` は no-op。`committing-on-issue` のマージチェーンが Done に更新済みの場合、`--done` は no-op。`ending-session` はセーフティネットとして機能し、スキルが更新し損ねた Status を補完する。
 
@@ -214,6 +233,26 @@ Write ツールで `.claude/sessions/{YYYY-MM-DD-HHMMSS}-handover.md` に引き�
 {追加情報}
 ```
 
+> **注意**: セクションヘッダーと内容は日本語で記述してください。
+
+## GitHub 書き込みルール
+
+引き継ぎ Discussion の本文・PR のタイトルと本文は `output-language` ルールと `github-writing-style` ルールに準拠すること。
+
+**NG例（日本語設定なのに英語）:**
+
+```
+## Summary
+Implemented the feature...  ← 日本語設定では不正
+```
+
+**OK例:**
+
+```
+## サマリー
+機能を実装しました...
+```
+
 ## エラーハンドリング
 
 | エラー | 対処 |
@@ -235,6 +274,6 @@ Write ツールで `.claude/sessions/{YYYY-MM-DD-HHMMSS}-handover.md` に引き�
 - `session end` で引き継ぎ作成 + ステータス更新を 1 回で処理
 - PR 作成済みアイテムには `--review`、レビュー不要の完了アイテムには `--done`
 - トレーサビリティのため引き継ぎ本文に PR URL を含める
-- Summary / Next Steps を空にしない（最低 1 行ずつ記載）
+- サマリー / 次のステップ を空にしない（最低 1 行ずつ記載）
 - PR 作成済みアイテムには `--review` を使用（`--done` ではない）
 - 複数アイテム更新時は TodoWrite で進捗管理

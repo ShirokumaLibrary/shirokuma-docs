@@ -296,15 +296,18 @@ When blocked, the AI receives a denial reason and must ask the user for approval
 
 ### Project Override
 
-Projects can disable specific rules by creating `.claude/shirokuma-hooks.json`:
+Projects can configure which rules are active via `shirokuma-docs.config.yaml`:
 
-```json
-{
-  "disabled": ["pr-merge"]
-}
+```yaml
+# shirokuma-docs.config.yaml
+hooks:
+  enabled:
+    - force-push
+    - hard-reset
+    # pr-merge  ← commented out = disabled
 ```
 
-This disables the listed rule IDs, allowing those commands to run. Other rules remain active.
+When `hooks.enabled` is unset, all rules are active (default). When set, only listed rule IDs are active.
 
 ### False-Positive Prevention
 

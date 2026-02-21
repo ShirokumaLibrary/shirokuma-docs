@@ -259,6 +259,8 @@ Issue ループ間で以下を保持:
 | `batch-workflow` | バッチ適格性、品質基準、ブランチ命名 |
 | `project-items` | ステータスワークフロー、フィールド要件 |
 | `git-commit-style` | コミットメッセージ形式 |
+| `output-language` | GitHub 出力の言語規約 |
+| `github-writing-style` | 箇条書き vs 散文のガイドライン |
 
 ## ツール使用
 

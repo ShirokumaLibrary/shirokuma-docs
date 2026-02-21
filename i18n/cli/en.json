@@ -145,6 +145,13 @@
       "logItemWouldRemove": "  - {name} (would remove)",
       "logItemRemoved": "  ✗ {name} (removed)",
       "logItemRemovalFailed": "  ✗ {name} (removal failed: {reason})",
+      "updatingCli": "\nUpdating CLI...",
+      "cliUpdated": "CLI updated: {oldVersion} → {newVersion}",
+      "cliAlreadyUpToDate": "CLI is up to date",
+      "cliUpdateFailed": "CLI update failed: {reason} (continuing with remaining steps)",
+      "cliUpdateSkippedDev": "CLI update skipped (development environment)",
+      "cliUpdateSkippedNoNpm": "CLI update skipped (npm not found)",
+      "cliUpdateSummary": "CLI update: {oldVersion} → {newVersion}",
       "restartSessionNotice": "Restart your Claude Code session to apply the updates.",
       "restartSessionHint": "  Start a new conversation to use the updated skills."
     }

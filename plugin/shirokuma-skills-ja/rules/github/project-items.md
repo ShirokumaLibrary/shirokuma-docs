@@ -30,7 +30,7 @@ graph LR
 | 計画策定開始 | → Planning + アサイン | `planning-on-issue` | `issues update {n} --field-status "Planning"` + `gh issue edit {n} --add-assignee @me` |
 | 計画策定完了 | → Spec Review | `planning-on-issue` | `issues update {n} --field-status "Spec Review"` |
 | ユーザーが計画承認、実装開始 | → In Progress + ブランチ | `working-on-issue` | `issues update {n} --field-status "In Progress"` |
-| セルフレビュー完了 | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` |
+| セルフレビュー完了 | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"`（セルフレビュー**中**は In Progress を維持。Review への遷移はセルフレビュー完了後のみ） |
 | マージ | → Done | `committing-on-issue` (via `issues merge`) | 自動更新 |
 | ブロック | → Pending | 手動 | `issues update {n} --field-status "Pending"` + 理由 |
 | 完了（PR不要） | → Done | `ending-session` | `session end --done {n}` |

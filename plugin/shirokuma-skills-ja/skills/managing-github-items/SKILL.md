@@ -43,8 +43,12 @@ Issue / Discussion の作成と仕様 Discussion の管理を行う。
 | Discussions 無効 | `.claude/specs/` に保存 |
 | 必須フィールド空 | ユーザーに入力を求める |
 
+## GitHub 書き込みルール
+
+Issue / Discussion のタイトル・本文は `output-language` ルールと `github-writing-style` ルールに準拠すること。各リファレンス内のテンプレートを使用する際、プレースホルダの内容は `output-language` ルールの指定言語で記述する。
+
 ## 注意事項
 
-- 新規アイテムには必ず必須フィールド（Status, Priority）を設定
+- 新規アイテムには必ず必須フィールド（Status, Priority, Issue Type）を設定
 - XL アイテムは分割を検討するようユーザーに提案
 - 仕様タイトルには "[Spec]" プレフィックスを付与（フィルタリング用）

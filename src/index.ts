@@ -190,7 +190,7 @@ program
 // スキル/ルール更新
 program
   .command("update-skills")
-  .description("インストール済みスキル/ルールを最新版に更新")
+  .description("CLI本体・スキル・ルールを最新版に更新")
   .option("-p, --project <path>", "プロジェクトパス", process.cwd())
   .option("--with-rules", "ルールも更新")
   .option("--sync", "新スキル追加・旧スキル削除を検出（ルール同期も含む）")
@@ -206,7 +206,7 @@ program
 // スキル/ルール更新（短縮コマンド）
 program
   .command("update")
-  .description("スキル/ルールを最新版に更新（update-skills --sync の短縮形）")
+  .description("CLI本体・スキル・ルールを最新版に更新（update-skills --sync の短縮形）")
   .option("-p, --project <path>", "プロジェクトパス", process.cwd())
   .option("--dry-run", "プレビュー（実際には更新しない）")
   .option("-f, --force", "ローカル変更を無視して強制更新")
@@ -594,7 +594,7 @@ program
 // セッション管理 (start/end/check)
 program
   .command("session <action>")
-  .description("セッション管理 (start, end, check)")
+  .description("セッション管理 (start, end, check, preflight)")
   .option("--owner <owner>", "リポジトリオーナー（デフォルト: 現在のリポジトリ）")
   .option("--format <format>", "出力形式: json, table-json (start用)", "json")
   .option("--user <name>", "GitHub ユーザー名で引き継ぎをフィルタ (start用)")

@@ -1040,6 +1040,139 @@ export interface SingleLanguageResult {
   cacheRemoved: boolean;
 }
 
+// ========================================
+// CLI Self-Update
+// ========================================
+
+/**
+ * CLI 自動更新の結果
+ */
+export interface CliUpdateResult {
+  success: boolean;
+  status: "updated" | "upToDate" | "skipped" | "failed";
+  oldVersion?: string;
+  newVersion?: string;
+  message?: string;
+}
+
+/**
+ * CLI のインストール先ディレクトリを検出する
+ *
+ * `import.meta.url` からファイルパスを取得し、`/node_modules/` の最初の出現位置を
+ * 基に wrapper ディレクトリを特定する。wrapper ディレクトリの `package.json` に
+ * `@shirokuma-library/shirokuma-docs` の依存があることを検証する。
+ *
+ * 開発環境（リポジトリ直接実行）の場合は `null` を返す。
+ *
+ * @returns wrapper ディレクトリのパス、検出できない場合は null
+ */
+export function getCliInstallDir(): string | null {
+  const thisFile = fileURLToPath(import.meta.url);
+  const nodeModulesIndex = thisFile.indexOf("/node_modules/");
+
+  if (nodeModulesIndex === -1) {
+    // 開発環境: リポジトリから直接実行されている
+    return null;
+  }
+
+  const wrapperDir = thisFile.substring(0, nodeModulesIndex);
+
+  // wrapper ディレクトリの package.json に依存があることを検証
+  try {
+    const pkgPath = join(wrapperDir, "package.json");
+    if (!existsSync(pkgPath)) return null;
+
+    const content = readFileSync(pkgPath, "utf-8");
+    const pkg = JSON.parse(content) as { dependencies?: Record<string, string> };
+    if (!pkg.dependencies?.["@shirokuma-library/shirokuma-docs"]) {
+      return null;
+    }
+
+    return wrapperDir;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * CLI パッケージを npm install で更新する
+ *
+ * @param installDir - wrapper ディレクトリのパス
+ * @param options - オプション（dryRun）
+ * @returns 更新結果
+ */
+export function updateCliPackage(
+  installDir: string,
+  options: { dryRun?: boolean } = {},
+): CliUpdateResult {
+  // npm の存在確認
+  try {
+    execFileSync("npm", ["--version"], { stdio: "pipe", timeout: 5000 });
+  } catch {
+    return {
+      success: false,
+      status: "skipped",
+      message: "npm not found in PATH",
+    };
+  }
+
+  // 更新前バージョンを取得（ESM キャッシュから）
+  const oldVersion = getPackageVersion();
+
+  if (options.dryRun) {
+    return {
+      success: true,
+      status: "skipped",
+      oldVersion,
+      message: "dry-run mode",
+    };
+  }
+
+  // npm install で更新
+  try {
+    execFileSync(
+      "npm",
+      ["install", "@shirokuma-library/shirokuma-docs@latest"],
+      { cwd: installDir, stdio: "pipe", timeout: 90000 },
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return {
+      success: false,
+      status: "failed",
+      oldVersion,
+      message,
+    };
+  }
+
+  // 更新後バージョンをディスクから直接読み取り
+  let newVersion: string;
+  try {
+    const pkgPath = join(installDir, "node_modules", "@shirokuma-library", "shirokuma-docs", "package.json");
+    const content = readFileSync(pkgPath, "utf-8");
+    const pkg = JSON.parse(content) as { version?: string };
+    newVersion = pkg.version ?? "unknown";
+  } catch {
+    newVersion = "unknown";
+  }
+
+  if (oldVersion === newVersion) {
+    return {
+      success: true,
+      status: "upToDate",
+      oldVersion,
+      newVersion,
+    };
+  }
+
+  return {
+    success: true,
+    status: "updated",
+    oldVersion,
+    newVersion,
+  };
+}
+
 /**
  * 言語設定と異なるプラグインを削除し、単一言語のみを保持する (#812)
  *

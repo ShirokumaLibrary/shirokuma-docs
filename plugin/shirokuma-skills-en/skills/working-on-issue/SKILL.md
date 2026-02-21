@@ -259,6 +259,8 @@ Track files changed per issue using `git diff --name-only` before/after each imp
 | `batch-workflow` | Batch eligibility, quality standards, branch naming |
 | `project-items` | Status workflow, field requirements |
 | `git-commit-style` | Commit message format |
+| `output-language` | GitHub output language convention |
+| `github-writing-style` | Bullet-point vs prose guidelines |
 
 ## Tool Usage
 

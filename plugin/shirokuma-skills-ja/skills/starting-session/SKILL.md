@@ -34,8 +34,8 @@ shirokuma-docs session start
 
 ### 前回の引き継ぎ
 {lastHandover.title or "なし"}
-- サマリー: {Summary セクション}
-- 次のステップ: {Next Steps セクション}
+- サマリー: {サマリー セクション}
+- 次のステップ: {次のステップ セクション}
 
 ### オープン PR
 | # | タイトル | レビュー | スレッド |
@@ -100,7 +100,7 @@ Other 選択
     └── 作成された Issue で planning-on-issue にルーティング
 ```
 
-**引き継ぎ残タスクの場合**: 引き継ぎの Next Steps セクションの内容を Issue 本文のコンテキストとして `managing-github-items` に渡す。
+**引き継ぎ残タスクの場合**: 引き継ぎの 次のステップ セクションの内容を Issue 本文のコンテキストとして `managing-github-items` に渡す。
 
 ## マルチ開発者モード
 
@@ -176,7 +176,7 @@ shirokuma-docs session start --team
 ## 注意事項
 
 - セッションヘッダーに現在時刻を表示
-- 引き継ぎから Summary / Next Steps をパース
+- 引き継ぎから サマリー / 次のステップ をパース
 - 優先度順に表示
 - アイテム選択後はステータスベースルーティングに従い `working-on-issue` または `planning-on-issue` に委任（ステータス更新・ブランチ作成を重複しない）
 - 直接 `gh` コマンドを使わない（`shirokuma-docs session start` を使用）

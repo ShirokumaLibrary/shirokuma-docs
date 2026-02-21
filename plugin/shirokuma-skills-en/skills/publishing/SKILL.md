@@ -204,61 +204,11 @@ cd - && rm -rf "$TMPDIR"
 
 **Important**: Always confirm with the user before using `--force` push.
 
-## Additional Release Targets
-
-### shirokuma-plugins (marketplace)
-
-Publish plugins to the marketplace repository. For production releases, use `release-production.mjs`. For staging, use `publish-staging.mjs`.
-
-```bash
-# Production release (main branch)
-node .claude/skills/release/release-production.mjs plugins
-
-# Staging (staging branch)
-node .claude/skills/staging-publish/publish-staging.mjs plugins
-
-# Dry run
-node .claude/skills/release/release-production.mjs plugins --dry-run
-```
-
-### npm publish
-
-Publish package to npm registry via `release-production.mjs`.
-
-```bash
-# Dry run
-node .claude/skills/release/release-production.mjs npm --dry-run
-
-# Alpha release (default)
-node .claude/skills/release/release-production.mjs npm
-
-# With custom tag
-node .claude/skills/release/release-production.mjs npm --npm-tag latest
-```
-
-#### npm Tag Policy
-
-| Phase | npm publish | latest tag |
-|-------|-------------|------------|
-| Pre-stable (current) | `--npm-tag alpha` (default) → auto `dist-tag add ... latest` | Points to latest alpha |
-| Post-stable | alpha uses `--npm-tag alpha` only, stable uses `--npm-tag latest` | Points to stable |
-
-### Full Release Checklist
-
-Use the `release-shirokuma-docs` local skill to orchestrate all 3 targets:
-
-| # | Target | Command | Done |
-|---|--------|---------|------|
-| 1 | GitHub Public repo | `shirokuma-docs repo-pairs release <alias> --tag <version>` | |
-| 2 | shirokuma-plugins | `node .claude/skills/release/release-production.mjs plugins` | |
-| 3 | npm registry | `node .claude/skills/release/release-production.mjs npm` | |
-
 ## Notes
 
-- Use `TodoWrite` for progress tracking (per release target + verification)
+- Use `TodoWrite` for progress tracking
 - Do not execute a release without a dry run (`--dry-run`) first
 - Do not release when the working directory is not clean
-- Verify all 3 release targets are covered
 
 ## Quick Commands
 

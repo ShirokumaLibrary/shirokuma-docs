@@ -71,6 +71,10 @@ Args: create-item --title "{タイトル}" --issue-type "{Type}" --labels "{area
 → またはそのまま Backlog に配置
 ```
 
+## GitHub 書き込みルール
+
+Issue のタイトル・本文は `output-language` ルールと `github-writing-style` ルールに準拠すること。委任先の `managing-github-items` にもこのルールが適用される。
+
 ## 注意事項
 
 - 作成後にユーザーに案内し、修正指示の機会を提供する

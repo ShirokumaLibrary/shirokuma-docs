@@ -66,6 +66,8 @@ PR URL、ブランチ、コミット数、概要、リンクされた Issue を�
 
 PR 作成後、セルフレビューを**常に自動実行**する。
 
+> **⚠️ Status 変更禁止**: セルフレビュー中（ステップ 6 実行中）は Issue の Status を変更してはならない。Status は **In Progress を維持**する。Review への遷移はステップ 7 でのみ行う。
+
 #### 6a. ファイルカテゴリ検出
 
 `git diff --name-only develop..HEAD` で変更ファイルを取得し、カテゴリを判定：
@@ -105,7 +107,7 @@ graph LR
 **手順:**
 
 1. カテゴリ検出して適切なスキルを起動（PR 番号をコンテキストとして渡す）
-2. レビュー結果の Self-Review Result を確認：
+2. レビュー結果の Self-Review Result を確認し、PR コメントとしてレビューレポートが投稿済みであることも確認する。未投稿の場合は `shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md` で手動投稿する：
    - **PASS**: ループ終了、完了報告
    - **FAIL + Auto-fixable: yes**: 指摘に基づき自動修正 → `git add` → `git commit` → `git push` → 再レビュー
    - **FAIL + Auto-fixable: no**: ループ停止、手動対応が必要な指摘を報告
@@ -138,6 +140,8 @@ graph LR
 **条件付き実行**: レビューが PASS で指摘がない場合、本文更新は不要のためこのステップをスキップ。
 
 ### ステップ 7: Status 更新
+
+> **前提条件**: ステップ 6（セルフレビューチェーン）が完全に完了していること。セルフレビュー実行中にこのステップを先行実行してはならない。
 
 セルフレビューチェーン完了後（PASS またはループ停止）、Issue 番号ありで起動された場合に Status を Review に更新する:
 
@@ -198,6 +202,8 @@ Issue 番号付きで起動された場合（例: `/creating-pr-on-issue 39`）�
 ## 言語
 
 PR のタイトルと本文は日本語で記述する。Conventional commit プレフィックス (`feat:`, `fix:` 等) は常に英語。
+
+セルフレビューで起動される `reviewing-on-issue` のレポート出力言語も `output-language` ルールに準拠すること。
 
 **NGタイトル例（日本語設定なのに英語）:**
 

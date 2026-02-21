@@ -204,61 +204,11 @@ cd - && rm -rf "$TMPDIR"
 
 **重要**: `--force` プッシュ前に必ずユーザーに確認。
 
-## 追加リリース先
-
-### shirokuma-plugins（marketplace）
-
-プラグインを marketplace リポジトリに公開。本番リリースは `release-production.mjs`、ステージングは `publish-staging.mjs` を使用。
-
-```bash
-# 本番リリース（main ブランチ）
-node .claude/skills/release/release-production.mjs plugins
-
-# ステージング（staging ブランチ）
-node .claude/skills/staging-publish/publish-staging.mjs plugins
-
-# ドライラン
-node .claude/skills/release/release-production.mjs plugins --dry-run
-```
-
-### npm publish
-
-npm レジストリへのパッケージ公開は `release-production.mjs` を使用。
-
-```bash
-# ドライラン
-node .claude/skills/release/release-production.mjs npm --dry-run
-
-# alpha リリース（デフォルト）
-node .claude/skills/release/release-production.mjs npm
-
-# カスタムタグ
-node .claude/skills/release/release-production.mjs npm --npm-tag latest
-```
-
-#### npm タグ運用
-
-| フェーズ | npm publish | latest タグ |
-|---------|-------------|-------------|
-| 安定版リリース前（現在） | `--npm-tag alpha`（デフォルト）→ 自動で `dist-tag add ... latest` | 最新 alpha に設定 |
-| 安定版リリース後 | alpha は `--npm-tag alpha` のみ、安定版は `--npm-tag latest` | 安定版に固定 |
-
-### フルリリースチェックリスト
-
-`release-shirokuma-docs` ローカルスキルで 3 経路を統括:
-
-| # | リリース先 | コマンド | 完了 |
-|---|-----------|---------|------|
-| 1 | GitHub Public リポ | `shirokuma-docs repo-pairs release <alias> --tag <version>` | |
-| 2 | shirokuma-plugins | `node .claude/skills/release/release-production.mjs plugins` | |
-| 3 | npm registry | `node .claude/skills/release/release-production.mjs npm` | |
-
 ## 注意事項
 
-- `TodoWrite` で進捗管理（リリース先ごと + 検証）
+- `TodoWrite` で進捗管理
 - ドライラン（`--dry-run`）なしでリリースを実行しない
 - 作業ディレクトリがクリーンでない状態でリリースしない
-- 3つのリリース先すべてを確認すること
 
 ## クイックコマンド
 

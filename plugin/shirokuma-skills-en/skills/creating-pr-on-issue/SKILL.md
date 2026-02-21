@@ -111,6 +111,8 @@ docs: CLAUDE.md のコマンド一覧を更新      ← Wrong: not English
 
 After PR creation, **always auto-execute** self-review.
 
+> **⚠️ Do NOT change Status**: During self-review (while Step 6 is executing), do NOT change the Issue Status. Status MUST remain **In Progress**. Transition to Review happens only in Step 7.
+
 #### 6a. File Category Detection
 
 Get changed files via `git diff --name-only develop..HEAD` and classify:
@@ -150,7 +152,7 @@ graph LR
 **Steps:**
 
 1. Detect category and invoke appropriate skill(s) (pass PR number as context)
-2. Check the Self-Review Result:
+2. Check the Self-Review Result and verify that the review report was posted as a PR comment. If not posted, manually post via `shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md`:
    - **PASS**: End loop, report completion
    - **FAIL + Auto-fixable: yes**: Auto-fix based on findings → `git add` → `git commit` → `git push` → re-review
    - **FAIL + Auto-fixable: no**: Stop loop, report issues requiring manual intervention
@@ -183,6 +185,8 @@ After the self-review loop completes (PASS or loop stopped), if review findings 
 **Conditional execution**: If the review is PASS with no findings, skip this step — no body update is needed.
 
 ### Step 7: Update Status
+
+> **Precondition**: Step 6 (self-review chain) must be fully complete. Do NOT execute this step while self-review is still running.
 
 After the self-review chain completes (PASS or loop stopped), update Status to Review if invoked with an issue number:
 
@@ -243,6 +247,8 @@ If invoked with an issue number (e.g., `/creating-pr-on-issue 39`):
 ## Language
 
 PR titles and bodies must be in English. Conventional commit prefixes (`feat:`, `fix:`, etc.) are always in English.
+
+Review reports output by `reviewing-on-issue` during self-review must also follow the `output-language` rule.
 
 ## Edge Cases
 

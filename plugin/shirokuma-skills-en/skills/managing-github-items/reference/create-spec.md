@@ -25,6 +25,8 @@ Ask user for: Title, Summary, Problem Statement, Proposed Solution, Alternatives
 
 ## Step 3: Generate Body
 
+> Template headings and content must be written in the language specified by the `output-language` rule. Follow `github-writing-style` rule guidelines.
+
 ```markdown
 ## Summary
 {summary}

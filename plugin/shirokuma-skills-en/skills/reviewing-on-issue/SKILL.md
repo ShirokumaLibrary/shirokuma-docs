@@ -406,6 +406,8 @@ If analysis is incomplete:
 
 When invoked from `working-on-issue` delegated chain or `creating-pr-on-issue` self-review chain, return structured output that the caller can parse for automated decisions.
 
+> **Important**: Step 6 (Save Report) is non-optional even in self-review mode. When a PR number is in context, the review report MUST be posted as a PR comment before returning the structured output below.
+
 ### Structured Output Format
 
 In addition to the normal report saving (Step 6), return a summary in this format:
@@ -448,6 +450,10 @@ shirokuma-docs discussions create \
 - **Occurrences**: {n}
 - **Proposal**: Consider adding to {rule-file}
 ```
+
+## Language
+
+Review reports (PR comments, Discussions) must follow the language specified in the `output-language` rule.
 
 ## Anti-Patterns
 

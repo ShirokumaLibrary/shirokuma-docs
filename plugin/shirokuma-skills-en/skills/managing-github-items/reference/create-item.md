@@ -16,7 +16,7 @@ Without arguments: Infer from conversation context:
 |--------|--------|--------|
 | Title | Recent user message | Summarize the problem/feature mentioned before "make this an issue" |
 | **Type classification** | Conversation context | See "Type Classification" below |
-| Type (Issue Types) | Derived from classification | feature → Feature, bug → Bug, chore → Chore, research → Task (specify via `--issue-type` option) |
+| Type (Issue Types) | Derived from classification | feature → Feature, bug → Bug, chore → Chore, docs → Docs, research → Research (specify via `--issue-type` option) |
 | Label (area) | Conversation context | Infer from impact scope: CLI-related → `area:cli`, plugin-related → `area:plugin`, etc. |
 | Priority | Conversation context | Urgency expressions ("urgent" → High, normal → Medium) |
 | Body | Type template | Structure using the type-specific template from Step 2 |
@@ -29,6 +29,7 @@ Without arguments: Infer from conversation context:
 | new feature, add, implement, create | feature |
 | bug, fix, error, broken | bug |
 | refactor, improve, config, chore, internal | chore |
+| documentation, docs, document, readme | docs |
 | research, evaluate, compare, investigate | research |
 
 ### Purpose Clarity Check
@@ -61,6 +62,8 @@ Label options (for impact scope classification — area labels):
 ## Step 2: Generate Body
 
 Use the type-specific template. All types require a `## Purpose` section.
+
+> Template headings and placeholder content must be written in the language specified by the `output-language` rule. Follow `github-writing-style` rule bullet-point guidelines.
 
 ### feature (New Feature)
 
@@ -162,6 +165,7 @@ For typo fixes, single-line changes, and other XS-sized issues:
 
 | Field | Options | Default |
 |-------|---------|---------|
+| Issue Type | Feature / Bug / Task / Chore / Docs / Research | (from type inference) |
 | Priority | Critical / High / Medium / Low | Medium |
 | Size | XS / S / M / L / XL | S |
 | Status | Backlog / Ready | Backlog |

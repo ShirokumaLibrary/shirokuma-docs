@@ -71,6 +71,10 @@ Item created: #{number}
 → Or keep in Backlog
 ```
 
+## GitHub Writing Rules
+
+Issue title and body must comply with the `output-language` rule and `github-writing-style` rule. This rule also applies to the delegated `managing-github-items` skill.
+
 ## Notes
 
 - After creation, inform the user and offer the opportunity to request modifications

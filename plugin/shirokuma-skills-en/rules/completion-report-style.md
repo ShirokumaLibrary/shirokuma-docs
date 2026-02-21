@@ -32,6 +32,8 @@ Use `**{Label}:** {value}` format.
 | 3+ column tabular data | Table |
 | Ordered list | Numbered list |
 
+For detailed bullets vs prose guidelines in GitHub content (Issues, PRs, Discussions), see the `github-writing-style` rule.
+
 ## GitHub References
 
 | Target | Format |

@@ -68,7 +68,16 @@ feat/101-102-batch-button-components
 PreToolUse フックが以下をブロック: `gh pr merge`, `git push --force`, `git reset --hard`, `git checkout .`, `git restore .`, `git clean -f`, `git branch -D`
 
 - ブロック時はユーザーに承認を求めること
-- プロジェクトオーバーライド: `.claude/shirokuma-hooks.json` で `{"disabled": ["rule-id"]}`
+- プロジェクトオーバーライド: `shirokuma-docs.config.yaml` の `hooks.enabled` で有効ルールを指定
+
+```yaml
+# shirokuma-docs.config.yaml
+hooks:
+  enabled:
+    - force-push
+    - hard-reset
+    # pr-merge  ← コメントアウト = 無効化
+```
 
 ## エッジケース
 

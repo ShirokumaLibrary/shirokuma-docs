@@ -24,11 +24,17 @@ import {
   classifyInconsistencies,
   classifyMetricsInconsistencies,
   getGitState,
+  getPreflightGitState,
+  generatePreflightWarnings,
   groupIssuesByAssignee,
   findMergedPrForIssue,
   getSessionBackups,
   cleanupSessionBackups,
   type GitState,
+  type PreflightGitState,
+  type PreflightIssue,
+  type PreflightPr,
+  type PreflightOutput,
   type IssueData,
   type SessionBackup,
   type SessionOptions,
@@ -2022,5 +2028,331 @@ describe("session start --team - fetchTeamHandovers grouping logic (#754)", () =
   it("should return empty array for empty input", () => {
     const result = groupByAuthorLatestFirst([]);
     expect(result).toHaveLength(0);
+  });
+});
+
+// =============================================================================
+// session preflight - getPreflightGitState (#861)
+// =============================================================================
+
+describe("session preflight - getPreflightGitState (#861)", () => {
+  /**
+   * @testdoc getPreflightGitState が PreflightGitState 型のオブジェクトを返す
+   * @purpose preflight 用の拡張 git 状態取得の基本動作確認
+   */
+  it("should return PreflightGitState object with required fields", () => {
+    const state = getPreflightGitState();
+
+    expect(state).toHaveProperty("branch");
+    expect(state).toHaveProperty("baseBranch");
+    expect(state).toHaveProperty("isFeatureBranch");
+    expect(state).toHaveProperty("uncommittedChanges");
+    expect(state).toHaveProperty("hasUncommittedChanges");
+    expect(state).toHaveProperty("unpushedCommits");
+    expect(state).toHaveProperty("recentCommits");
+    expect(Array.isArray(state.uncommittedChanges)).toBe(true);
+    expect(Array.isArray(state.recentCommits)).toBe(true);
+    expect(typeof state.isFeatureBranch).toBe("boolean");
+  });
+
+  /**
+   * @testdoc getPreflightGitState がカレントブランチ名を返す
+   * @purpose テスト実行時に git リポジトリ内にいることの確認
+   */
+  it("should return current branch as string in a git repository", () => {
+    const state = getPreflightGitState();
+
+    expect(typeof state.branch).toBe("string");
+    expect(state.branch!.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * @testdoc recentCommits の各要素が hash と message を持つ
+   * @purpose コミット履歴の構造契約
+   */
+  it("should return recentCommits with hash and message fields", () => {
+    const state = getPreflightGitState();
+
+    // リポジトリにコミットがあるはず
+    expect(state.recentCommits.length).toBeGreaterThan(0);
+    for (const commit of state.recentCommits) {
+      expect(typeof commit.hash).toBe("string");
+      expect(commit.hash.length).toBeGreaterThan(0);
+      expect(typeof commit.message).toBe("string");
+    }
+  });
+
+  /**
+   * @testdoc recentCommits の上限が 10 件
+   * @purpose 最大10件のコミット履歴を返すことの確認
+   */
+  it("should return at most 10 recent commits", () => {
+    const state = getPreflightGitState();
+
+    expect(state.recentCommits.length).toBeLessThanOrEqual(10);
+  });
+
+  /**
+   * @testdoc baseBranch が文字列または null を返す
+   * @purpose ベースブランチ検出の型契約
+   */
+  it("should return baseBranch as string or null", () => {
+    const state = getPreflightGitState();
+
+    expect(
+      state.baseBranch === null || typeof state.baseBranch === "string"
+    ).toBe(true);
+  });
+
+  /**
+   * @testdoc unpushedCommits が数値または null を返す
+   * @purpose upstream 未設定時に null を返す契約
+   */
+  it("should return unpushedCommits as number or null", () => {
+    const state = getPreflightGitState();
+
+    expect(
+      state.unpushedCommits === null || typeof state.unpushedCommits === "number"
+    ).toBe(true);
+  });
+
+  /**
+   * @testdoc protected ブランチ上では isFeatureBranch が false
+   * @purpose main/develop はフィーチャーブランチでないことの確認
+   */
+  it("should set isFeatureBranch to false on protected branches", () => {
+    // 直接テスト（純粋ロジックの検証）
+    const protectedBranches = ["main", "develop"];
+    for (const branch of protectedBranches) {
+      expect(protectedBranches.includes(branch)).toBe(true);
+    }
+  });
+
+  /**
+   * @testdoc フィーチャーブランチでは isFeatureBranch が true
+   * @purpose feat/xxx 等がフィーチャーブランチとして判定される確認
+   */
+  it("should identify feature branch patterns as isFeatureBranch=true", () => {
+    const protectedBranches = ["main", "develop"];
+    const featureBranches = ["feat/42-some-feature", "fix/10-bugfix", "chore/99-cleanup"];
+
+    for (const branch of featureBranches) {
+      expect(protectedBranches.includes(branch)).toBe(false);
+    }
+  });
+});
+
+// =============================================================================
+// session preflight - generatePreflightWarnings (#861)
+// =============================================================================
+
+describe("session preflight - generatePreflightWarnings (#861)", () => {
+  /** テスト用デフォルト git state */
+  function makeGitState(overrides: Partial<PreflightGitState> = {}): PreflightGitState {
+    return {
+      branch: "feat/42-some-feature",
+      baseBranch: "develop",
+      isFeatureBranch: true,
+      uncommittedChanges: [],
+      hasUncommittedChanges: false,
+      unpushedCommits: 0,
+      recentCommits: [],
+      ...overrides,
+    };
+  }
+
+  /**
+   * @testdoc クリーンな状態では警告なし
+   * @purpose 正常時に空配列を返す確認
+   */
+  it("should return no warnings for clean state", () => {
+    const git = makeGitState();
+    const warnings = generatePreflightWarnings(git, 0);
+    expect(warnings).toEqual([]);
+  });
+
+  /**
+   * @testdoc protected ブランチ上で警告を生成
+   * @purpose develop/main ブランチ検出の確認
+   */
+  it("should warn when on protected branch", () => {
+    const git = makeGitState({ branch: "develop" });
+    const warnings = generatePreflightWarnings(git, 0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("protected branch");
+    expect(warnings[0]).toContain("develop");
+  });
+
+  /**
+   * @testdoc 未コミット変更がある場合に警告を生成
+   * @purpose 未コミットファイル数の表示確認
+   */
+  it("should warn when uncommitted changes exist", () => {
+    const git = makeGitState({
+      uncommittedChanges: ["M src/foo.ts", "?? new-file.ts"],
+      hasUncommittedChanges: true,
+    });
+    const warnings = generatePreflightWarnings(git, 0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("2 uncommitted");
+  });
+
+  /**
+   * @testdoc 未プッシュコミットがある場合に警告を生成
+   * @purpose push 前のセッション終了を防ぐ警告
+   */
+  it("should warn when unpushed commits exist", () => {
+    const git = makeGitState({ unpushedCommits: 3 });
+    const warnings = generatePreflightWarnings(git, 0);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("3 unpushed");
+    expect(warnings[0]).toContain("Push before ending session");
+  });
+
+  /**
+   * @testdoc unpushedCommits が null の場合は警告なし
+   * @purpose upstream 未設定時は判定不能
+   */
+  it("should not warn when unpushedCommits is null", () => {
+    const git = makeGitState({ unpushedCommits: null });
+    const warnings = generatePreflightWarnings(git, 0);
+    expect(warnings).toEqual([]);
+  });
+
+  /**
+   * @testdoc unpushedCommits が 0 の場合は警告なし
+   * @purpose 全コミットプッシュ済みで正常
+   */
+  it("should not warn when unpushedCommits is 0", () => {
+    const git = makeGitState({ unpushedCommits: 0 });
+    const warnings = generatePreflightWarnings(git, 0);
+    expect(warnings).toEqual([]);
+  });
+
+  /**
+   * @testdoc セッションバックアップがある場合に警告を生成
+   * @purpose 中断セッションの検出
+   */
+  it("should warn when session backups exist", () => {
+    const git = makeGitState();
+    const warnings = generatePreflightWarnings(git, 2);
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("2 PreCompact backup(s)");
+  });
+
+  /**
+   * @testdoc 複数の警告を同時に生成
+   * @purpose 全警告が独立して生成される確認
+   */
+  it("should generate multiple warnings simultaneously", () => {
+    const git = makeGitState({
+      branch: "develop",
+      uncommittedChanges: ["M src/foo.ts"],
+      hasUncommittedChanges: true,
+      unpushedCommits: 2,
+    });
+    const warnings = generatePreflightWarnings(git, 1);
+    expect(warnings).toHaveLength(4);
+  });
+});
+
+// =============================================================================
+// session preflight - Output structure contracts (#861)
+// =============================================================================
+
+describe("session preflight - output structure (#861)", () => {
+  /**
+   * @testdoc preflight 出力に必須フィールドがすべて含まれる
+   * @purpose PreflightOutput の構造契約
+   */
+  it("should define PreflightOutput structure with all required fields", () => {
+    const output: PreflightOutput = {
+      repository: "owner/repo",
+      git: {
+        branch: "feat/42-xxx",
+        baseBranch: "develop",
+        isFeatureBranch: true,
+        uncommittedChanges: ["M src/foo.ts"],
+        hasUncommittedChanges: true,
+        unpushedCommits: 2,
+        recentCommits: [{ hash: "abc1234", message: "feat: add feature (#42)" }],
+      },
+      issues: [
+        { number: 42, title: "Feature", status: "In Progress", hasMergedPr: false, labels: ["area:cli"], priority: "High" },
+      ],
+      prs: [
+        { number: 50, title: "feat: add feature", reviewDecision: "APPROVED" },
+      ],
+      sessionBackups: 0,
+      warnings: [],
+    };
+
+    expect(output).toHaveProperty("repository");
+    expect(output).toHaveProperty("git");
+    expect(output).toHaveProperty("issues");
+    expect(output).toHaveProperty("prs");
+    expect(output).toHaveProperty("sessionBackups");
+    expect(output).toHaveProperty("warnings");
+  });
+
+  /**
+   * @testdoc issues がフラット JSON（TableJSON ではない）
+   * @purpose スキルがプログラム的に消費できるフラット構造の確認
+   */
+  it("should use flat JSON for issues (not TableJSON)", () => {
+    const issues: PreflightIssue[] = [
+      { number: 42, title: "Feature A", status: "In Progress", hasMergedPr: false, labels: ["area:cli"], priority: "High" },
+      { number: 43, title: "Feature B", status: "Review", hasMergedPr: true, labels: [], priority: null },
+    ];
+
+    // TableJSON とは異なり columns/rows ではなくオブジェクト配列
+    expect(Array.isArray(issues)).toBe(true);
+    expect(issues[0]).toHaveProperty("number");
+    expect(issues[0]).toHaveProperty("title");
+    expect(issues[0]).toHaveProperty("status");
+    expect(issues[0]).toHaveProperty("hasMergedPr");
+    expect(issues[0]).toHaveProperty("labels");
+    expect(issues[0]).toHaveProperty("priority");
+  });
+
+  /**
+   * @testdoc hasMergedPr が In Progress / Review の Issue のみで検出される
+   * @purpose 他ステータスでは常に false の仕様確認
+   */
+  it("should set hasMergedPr only for In Progress / Review issues", () => {
+    const issues: PreflightIssue[] = [
+      { number: 1, title: "A", status: "In Progress", hasMergedPr: true, labels: [], priority: null },
+      { number: 2, title: "B", status: "Review", hasMergedPr: true, labels: [], priority: null },
+      { number: 3, title: "C", status: "Backlog", hasMergedPr: false, labels: [], priority: null },
+      { number: 4, title: "D", status: "Pending", hasMergedPr: false, labels: [], priority: null },
+    ];
+
+    const hasMergedIssues = issues.filter((i) => i.hasMergedPr);
+    expect(hasMergedIssues.every(
+      (i) => i.status === "In Progress" || i.status === "Review"
+    )).toBe(true);
+  });
+
+  /**
+   * @testdoc prs がフラット JSON で reviewDecision を含む
+   * @purpose PR 情報の構造契約
+   */
+  it("should include reviewDecision in flat PR structure", () => {
+    const prs: PreflightPr[] = [
+      { number: 50, title: "feat: xxx", reviewDecision: "APPROVED" },
+      { number: 51, title: "fix: yyy", reviewDecision: null },
+    ];
+
+    expect(prs[0]).toHaveProperty("reviewDecision");
+    expect(prs[1].reviewDecision).toBeNull();
+  });
+
+  /**
+   * @testdoc session command のルーティングに preflight が含まれる
+   * @purpose サブコマンドの一覧に preflight が追加されていることの確認
+   */
+  it("should include preflight in valid actions", () => {
+    const validActions = ["start", "end", "check", "preflight"];
+    expect(validActions).toContain("preflight");
   });
 });

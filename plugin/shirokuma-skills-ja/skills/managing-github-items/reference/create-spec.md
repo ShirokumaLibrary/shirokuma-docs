@@ -25,6 +25,8 @@ CATEGORY_ID=$(gh api graphql -f query='{
 
 ## ステップ 3: 本文生成
 
+> テンプレートの見出し・内容は `output-language` ルールの指定言語で記述すること。`github-writing-style` ルールにも従う。
+
 ```markdown
 ## 概要
 {概要}
