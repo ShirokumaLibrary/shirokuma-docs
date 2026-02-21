@@ -27,7 +27,7 @@
  */
 
 import { resolve, join } from "node:path";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { createLogger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import {
@@ -37,7 +37,6 @@ import {
   PLUGIN_REGISTRY_ID,
   PLUGIN_REGISTRY_ID_JA,
   PLUGIN_REGISTRY_ID_HOOKS,
-  DEPLOYED_RULES_DIR_JA,
   getBundledPluginPath,
   getBundledPluginPathJa,
   getPackageVersion,
@@ -46,7 +45,6 @@ import {
   registerPluginCache,
   ensureMarketplace,
   getGlobalCachePath,
-  cleanupLegacyPluginDir,
   cleanupOldCacheVersions,
   cleanDeployedRules,
   isClaudeCliAvailable,
@@ -96,7 +94,6 @@ interface UpdateResult {
   version: string;
   pluginVersion: string;
   dryRun: boolean;
-  hooksStatus: "updated" | "skipped" | "error" | "not-applicable";
 }
 
 /**
@@ -227,17 +224,6 @@ async function updateExternalProject(
     deployedRuleResults.push(...deployResult.deployed);
   }
 
-  // レガシー .claude/plugins/ 削除（マイグレーション）
-  if (!options.dryRun) {
-    cleanupLegacyPluginDir(projectPath);
-
-    // レガシー shirokuma-ja/ 削除
-    const legacyJaDir = resolve(projectPath, DEPLOYED_RULES_DIR_JA);
-    if (existsSync(legacyJaDir)) {
-      rmSync(legacyJaDir, { recursive: true, force: true });
-    }
-  }
-
   // Summary
   const result: UpdateResult = {
     skills: [],
@@ -246,8 +232,6 @@ async function updateExternalProject(
     version: newVersion,
     pluginVersion: newPluginVersion,
     dryRun: options.dryRun ?? false,
-    // #636: 外部プロジェクトでは marketplace 経由で hooks を更新するため常に "updated"
-    hooksStatus: "updated",
   };
 
   printSummary(result, logger);
@@ -358,18 +342,6 @@ function printSummary(
       } else {
         logger.success(`✓ ${deployMsg}`);
       }
-    }
-  }
-
-  // 安全フック
-  if (result.hooksStatus !== "not-applicable") {
-    const hooksLabel = T(`hooks${result.hooksStatus.charAt(0).toUpperCase()}${result.hooksStatus.slice(1)}`);
-    const hooksMsg = T("hooksSummary", { status: hooksLabel });
-    if (result.hooksStatus === "error") {
-      logger.error(`✗ ${hooksMsg}`);
-      totalErrors++;
-    } else {
-      logger.success(`✓ ${hooksMsg}`);
     }
   }
 

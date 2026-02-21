@@ -637,6 +637,12 @@ export interface ShirokumaConfig {
     defaultBranch?: string;
   }>;
 
+  /** Hooks 設定（破壊的コマンド保護ルール） */
+  hooks?: {
+    /** 有効にするルール ID のリスト（ホワイトリスト方式） */
+    enabled?: string[];
+  };
+
   /** Cross-repository references (alias → owner/repo) */
   crossRepos?: Record<string, string>;
 
@@ -1181,6 +1187,11 @@ function mergeConfig(
           exclude: override.lintAnnotations.exclude ?? base.lintAnnotations?.exclude,
         }
       : base.lintAnnotations,
+    hooks: override.hooks
+      ? {
+          enabled: override.hooks.enabled ?? base.hooks?.enabled,
+        }
+      : base.hooks,
     repoPairs: override.repoPairs ?? base.repoPairs,
     crossRepos: override.crossRepos ?? base.crossRepos,
     lintWorkflow: override.lintWorkflow

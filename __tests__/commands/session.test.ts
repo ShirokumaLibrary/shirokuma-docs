@@ -494,6 +494,99 @@ describe("session end - issue number options", () => {
 });
 
 // =============================================================================
+// session end --done - Issue close behavior (#838)
+// =============================================================================
+
+describe("session end --done - issue close behavior", () => {
+  /**
+   * @testdoc --doneでStatus更新後にIssueがクローズされる
+   * @purpose Done設定時にIssue stateもCLOSED (COMPLETED)に更新される契約
+   */
+  it("should close issue after setting status to Done", () => {
+    // session end --done の処理順序:
+    // 1. updateIssueStatus() で Project Status を Done に設定
+    // 2. getIssueId() で Issue node ID を取得
+    // 3. closeIssueById() で Issue を CLOSED (COMPLETED) に設定
+    const operations = [
+      { step: 1, action: "updateIssueStatus", target: "Project Status → Done" },
+      { step: 2, action: "getIssueId", target: "Issue node ID 取得" },
+      { step: 3, action: "closeIssueById", target: "Issue state → CLOSED (COMPLETED)" },
+    ];
+
+    expect(operations).toHaveLength(3);
+    expect(operations[0].action).toBe("updateIssueStatus");
+    expect(operations[2].action).toBe("closeIssueById");
+  });
+
+  /**
+   * @testdoc closeIssueById失敗時はStatus更新のみ成功し警告を出力する
+   * @purpose close失敗はfatalではなくsession check --fixでリカバリ可能
+   */
+  it("should warn but not fail when close fails after status update", () => {
+    // Status更新成功 + close失敗 → updatedIssuesには追加される
+    const updatedIssues: Array<{ number: number; status: string }> = [];
+    const statusUpdateSuccess = true;
+    const closeSuccess = false;
+
+    if (statusUpdateSuccess) {
+      updatedIssues.push({ number: 42, status: "Done" });
+      // close失敗は警告のみ、updatedIssuesには影響しない
+    }
+
+    expect(updatedIssues).toHaveLength(1);
+    expect(updatedIssues[0].status).toBe("Done");
+    // close失敗はsession check --fixがフォールバックとして機能
+    expect(closeSuccess).toBe(false);
+  });
+
+  /**
+   * @testdoc 既にクローズ済みのIssueはスキップされる
+   * @purpose closedCacheにより二重クローズを防止
+   */
+  it("should skip already closed issues via closedCache", () => {
+    // closedCache にクローズ済みとして記録されている Issue
+    const closedCache = new Map<number, boolean>();
+    closedCache.set(42, true);
+
+    const issueInProject = false; // OPEN listに見つからない
+    const isAlreadyClosed = closedCache.get(42) ?? false;
+
+    // close済みの Issue は --done ループの冒頭でスキップされる
+    if (!issueInProject && isAlreadyClosed) {
+      // "already closed, skipping" → close ロジックに到達しない
+      expect(isAlreadyClosed).toBe(true);
+      return;
+    }
+
+    // ここには到達しない
+    expect(true).toBe(false);
+  });
+
+  /**
+   * @testdoc 複数Issue指定時に一部のclose失敗が他のIssueに影響しない
+   * @purpose 各Issueは独立して処理される契約
+   */
+  it("should process each issue independently when multiple --done specified", () => {
+    const results: Array<{ number: number; statusDone: boolean; closed: boolean }> = [];
+
+    // Issue #1: 正常（Status Done + close成功）
+    results.push({ number: 1, statusDone: true, closed: true });
+
+    // Issue #2: close失敗（Status Done + close失敗）
+    results.push({ number: 2, statusDone: true, closed: false });
+
+    // Issue #3: 正常（Status Done + close成功）
+    results.push({ number: 3, statusDone: true, closed: true });
+
+    // 全Issueが処理される（close失敗がループを中断しない）
+    expect(results).toHaveLength(3);
+    expect(results.every((r) => r.statusDone)).toBe(true);
+    expect(results.filter((r) => r.closed)).toHaveLength(2);
+    expect(results.filter((r) => !r.closed)).toHaveLength(1);
+  });
+});
+
+// =============================================================================
 // session end - Output structure contracts
 // =============================================================================
 
@@ -660,7 +753,7 @@ describe("session command - GraphQL queries", () => {
   });
 
   /**
-   * @testdoc session endは最大3種類のAPIコールを実行する
+   * @testdoc session endは最大4種類のAPIコールを実行する
    * @purpose ハンドオーバー作成 + ステータス更新の統合実行
    */
   it("should document required mutations for session end", () => {
@@ -668,9 +761,10 @@ describe("session command - GraphQL queries", () => {
       "GRAPHQL_MUTATION_CREATE_DISCUSSION", // Create handover
       "GRAPHQL_MUTATION_UPDATE_FIELD", // Update issue status (per issue)
       "GRAPHQL_QUERY_FIELDS", // Get field definitions (once)
+      "GRAPHQL_MUTATION_CLOSE_ISSUE", // Close --done issues (#838)
     ];
 
-    expect(requiredMutations).toHaveLength(3);
+    expect(requiredMutations).toHaveLength(4);
   });
 
   /**

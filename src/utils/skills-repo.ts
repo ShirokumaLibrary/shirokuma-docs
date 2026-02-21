@@ -57,7 +57,6 @@ export const AVAILABLE_SKILLS = [
   "creating-pr-on-issue",
   "creating-item",
   // GitHub integration skills
-  "github-project-setup",
   "setting-up-project",
   "starting-session",
   "ending-session",
@@ -90,11 +89,6 @@ export const AVAILABLE_RULES = [
  * Deploy target directory for rules (relative to project root)
  */
 export const DEPLOYED_RULES_DIR = ".claude/rules/shirokuma";
-
-/**
- * Deploy target directory for Japanese rules (relative to project root)
- */
-export const DEPLOYED_RULES_DIR_JA = ".claude/rules/shirokuma-ja";
 
 /**
  * Gitignore entries managed by shirokuma-docs init
@@ -346,37 +340,6 @@ export function getEffectivePluginDir(_projectPath: string): string {
 }
 
 // ========================================
-// Plugin Installation
-// ========================================
-
-/**
- * Install the bundled plugin to a project
- *
- * ローカルコピーは不要（marketplace + cache 方式）。
- * この関数は後方互換性のために残している。
- *
- * @param projectPath - Target project root path
- * @param verbose - Enable verbose logging
- * @returns true on success, false on failure
- */
-export async function installPlugin(
-  _projectPath: string,
-  verbose: boolean,
-  pluginName: string = PLUGIN_NAME,
-): Promise<boolean> {
-  const logger = createLogger(verbose);
-  const srcPath = getBundledPluginPathFor(pluginName);
-
-  if (!existsSync(srcPath)) {
-    logger.error(`Bundled plugin not found: ${srcPath}`);
-    return false;
-  }
-
-  logger.info("Skipping local copy (using marketplace + cache)");
-  return true;
-}
-
-// ========================================
 // Installed Skills/Rules Discovery
 // ========================================
 
@@ -507,41 +470,6 @@ export function updateGitignore(
   return { added, alreadyPresent };
 }
 
-/**
- * .gitignore から特定のエントリを削除する
- *
- * @param projectPath - プロジェクトルートパス
- * @param entry - 削除するエントリ（例: ".claude/plugins/"）
- * @returns true: 削除成功、false: エントリが見つからないまたはファイルなし
- */
-export function removeGitignoreEntry(projectPath: string, entry: string): boolean {
-  const gitignorePath = join(projectPath, ".gitignore");
-  if (!existsSync(gitignorePath)) return false;
-
-  const content = readFileSync(gitignorePath, "utf-8");
-  const lines = content.split("\n");
-  const filtered = lines.filter(line => line.trim() !== entry);
-  if (filtered.length === lines.length) return false;
-
-  writeFileSync(gitignorePath, filtered.join("\n"), "utf-8");
-  return true;
-}
-
-/**
- * レガシー .claude/plugins/ ディレクトリを削除する（マイグレーション用）
- *
- * 旧バージョンの init で作成された .claude/plugins/ ディレクトリと
- * 対応する .gitignore エントリを削除する。
- *
- * @param projectPath - プロジェクトルートパス
- */
-export function cleanupLegacyPluginDir(projectPath: string): void {
-  const legacyDir = join(projectPath, ".claude", "plugins");
-  if (existsSync(legacyDir)) {
-    rmSync(legacyDir, { recursive: true, force: true });
-  }
-  removeGitignoreEntry(projectPath, ".claude/plugins/");
-}
 
 // ========================================
 // Rule Deployment
@@ -1176,3 +1104,4 @@ export function ensureSingleLanguagePlugin(
     cacheRemoved,
   };
 }
+

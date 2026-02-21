@@ -46,7 +46,7 @@ shirokuma-docs issues list --status "In Progress"   # ステータスフィル�
 shirokuma-docs issues show {number}                  # 詳細
 shirokuma-docs issues create \
   --title "Title" --body /tmp/body.md \
-  --labels "area:cli" \
+  --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
 shirokuma-docs issues update {number} --add-label "area:cli"       # ラベル追加

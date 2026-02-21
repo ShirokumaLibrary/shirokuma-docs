@@ -159,6 +159,7 @@ After work completes, execute the chain **automatically**. No user confirmation 
   - FAIL + Auto-fixable → auto-fix → commit → push → re-review
   - Maximum 3 iterations
   - Stop if issue count increases between iterations
+- After self-review, review-based Issue body updates follow comment-first principle (handled by `creating-pr-on-issue` Step 6c)
 - On failure: stop chain, report status, return control to user
 
 ## Batch Mode

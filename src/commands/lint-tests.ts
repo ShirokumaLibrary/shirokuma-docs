@@ -8,7 +8,8 @@ import { resolve, relative } from "node:path";
 import { loadConfig, resolvePath } from "../utils/config.js";
 import { readFile, writeFile, fileExists } from "../utils/file.js";
 import { createLogger } from "../utils/logger.js";
-import { collectJestFiles, collectPlaywrightFiles, extractTestCases } from "./test-cases.js";
+import { collectJestFiles, collectPlaywrightFiles } from "./test-cases.js";
+import { extractTestCases } from "../parsers/test-annotations.js";
 import { runLint, format, defaultEnabledRules } from "../lint/index.js";
 import type { TestCaseForLint, OutputFormat, LintOptions } from "../lint/types.js";
 

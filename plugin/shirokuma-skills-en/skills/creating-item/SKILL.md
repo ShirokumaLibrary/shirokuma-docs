@@ -41,7 +41,7 @@ After context analysis, invoke via Skill tool immediately (no pre-creation confi
 
 ```
 Skill: managing-github-items
-Args: create-item {inferred metadata}
+Args: create-item --title "{Title}" --issue-type "{Type}" --labels "{area:label}" --priority "{Priority}" --size "{Size}"
 ```
 
 ### Step 3: Chain Decision
@@ -50,7 +50,7 @@ After creation, confirm next action via AskUserQuestion:
 
 | Option | Action |
 |--------|--------|
-| Start working now | Delegate to `working-on-issue` with `#{number}` |
+| Start planning | Delegate to `working-on-issue` with `#{number}` (starts with planning) |
 | Keep in Backlog | End (status remains Backlog) |
 
 See [reference/chain-rules.md](reference/chain-rules.md) for chain decision details.
@@ -67,7 +67,7 @@ When invoked directly (not via `working-on-issue` chain):
 
 ```
 Item created: #{number}
-→ `/working-on-issue #{number}` to start working
+→ `/working-on-issue #{number}` to start planning
 → Or keep in Backlog
 ```
 

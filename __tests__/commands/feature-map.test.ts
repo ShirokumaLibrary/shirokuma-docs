@@ -5,16 +5,16 @@
  * Parses TypeScript files for custom JSDoc tags and generates a hierarchical feature map.
  */
 
-import {
-  parseFeatureMapTags,
-  buildFeatureMap,
+import { parseFeatureMapTags } from "../../src/parsers/feature-map-tags.js";
+import { buildFeatureMap } from "../../src/analyzers/feature-map-builder.js";
+import type {
   FeatureMapItem,
   FeatureMap,
   ScreenItem,
   ComponentItem,
   ActionItem,
   TableItem,
-} from "../../src/commands/feature-map.js";
+} from "../../src/commands/feature-map-types.js";
 
 describe("Feature Map Command", () => {
   describe("parseFeatureMapTags", () => {

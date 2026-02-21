@@ -45,9 +45,6 @@ import {
 } from "../generators/details-entity-pages.js";
 import { generateModuleDetailPage } from "../generators/details-module-page.js";
 
-// Re-export for backward compatibility
-export type { DetailsOptions } from "./details-types.js";
-
 /**
  * details コマンドのメインハンドラ
  */

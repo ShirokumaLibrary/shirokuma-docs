@@ -230,25 +230,15 @@ export async function buildNextjsPortal(options: NextjsPortalOptions): Promise<v
 
     // マルチアプリ形式 (index.json) をチェック
     const indexJsonSrc = resolve(screenshotsSrcDir, "index.json");
-    // 旧形式 (screenshots.json) をチェック
-    const legacyJsonSrc = resolve(screenshotsSrcDir, "screenshots.json");
 
-    if (existsSync(indexJsonSrc) || existsSync(legacyJsonSrc)) {
+    if (existsSync(indexJsonSrc)) {
       if (!existsSync(screenshotsDataDir)) {
         mkdirSync(screenshotsDataDir, { recursive: true });
       }
 
       // index.json (マルチアプリ形式) をコピー
-      if (existsSync(indexJsonSrc)) {
-        copyFileSync(indexJsonSrc, resolve(screenshotsDataDir, "index.json"));
-        logger.success(`  データ: screenshots/index.json`);
-      }
-
-      // screenshots.json (レガシー形式) をコピー
-      if (existsSync(legacyJsonSrc)) {
-        copyFileSync(legacyJsonSrc, resolve(screenshotsDataDir, "screenshots.json"));
-        logger.success(`  データ: screenshots/screenshots.json`);
-      }
+      copyFileSync(indexJsonSrc, resolve(screenshotsDataDir, "index.json"));
+      logger.success(`  データ: screenshots/index.json`);
 
       // アプリ別ディレクトリをコピー (admin/, public/ など)
       const appDirs = ["admin", "public"];

@@ -22,8 +22,8 @@ Whether to chain to `working-on-issue` after creation:
 
 | Condition | Chain | Reason |
 |-----------|-------|--------|
-| User explicitly says "work on it now" | Yes | Explicit intent |
-| Issue created from in-conversation problem | Confirm | Context is warm, can start immediately |
+| User explicitly says "work on it now", "plan this" | Yes | Explicit intent |
+| Issue created from in-conversation problem | Confirm | Context is warm, can start planning immediately |
 | Batch creation (multiple issues in sequence) | No | Individual work is inefficient |
 | Priority: Low | No (recommended) | Not urgent |
 | Priority: Critical/High | Yes (recommended) | High urgency |

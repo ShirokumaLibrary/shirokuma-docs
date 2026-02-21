@@ -22,11 +22,11 @@ import {
   defaultExcludes,
 } from "../lint/coverage-types.js";
 import {
-  extractTestCases,
   collectJestFiles,
   collectPlaywrightFiles,
-  type TestCase,
 } from "./test-cases.js";
+import { extractTestCases } from "../parsers/test-annotations.js";
+import type { TestCase } from "./test-cases-types.js";
 
 /**
  * コマンドオプション

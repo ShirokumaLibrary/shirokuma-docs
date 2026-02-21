@@ -19,7 +19,8 @@ import {
   MAX_TITLE_LENGTH,
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
-import { generateTimestamp, getPullRequestId, getOrganizationIssueTypes } from "../../src/commands/issues.js";
+import { getPullRequestId, getOrganizationIssueTypes } from "../../src/commands/issues.js";
+import { generateTimestamp } from "../../src/utils/project-fields.js";
 import { GH_ISSUES_SEARCH_COLUMNS } from "../../src/utils/formatters.js";
 
 describe("issues command validation", () => {

@@ -41,7 +41,7 @@ allowed-tools: Bash, AskUserQuestion, Read, Write, TodoWrite
 
 ```
 Skill: managing-github-items
-Args: create-item {推定メタデータ}
+Args: create-item --title "{タイトル}" --issue-type "{Type}" --labels "{area:ラベル}" --priority "{Priority}" --size "{Size}"
 ```
 
 ### ステップ 3: チェーン判定
@@ -50,7 +50,7 @@ Args: create-item {推定メタデータ}
 
 | 選択肢 | アクション |
 |--------|----------|
-| すぐに着手 | `working-on-issue` に `#{number}` で委任 |
+| 計画を立てる | `working-on-issue` に `#{number}` で委任（計画から開始） |
 | Backlog に置く | 終了（ステータスは Backlog のまま） |
 
 チェーン判定の詳細は [reference/chain-rules.md](reference/chain-rules.md) 参照。
@@ -67,7 +67,7 @@ Args: create-item {推定メタデータ}
 
 ```
 アイテム作成完了: #{number}
-→ `/working-on-issue #{number}` で着手
+→ `/working-on-issue #{number}` で計画から開始
 → またはそのまま Backlog に配置
 ```
 

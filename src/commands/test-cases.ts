@@ -21,29 +21,6 @@ import { generateCategoryListPage, generateHierarchicalPages } from "../generato
 import type { TestCasesOptions, TestCase, FileStats } from "./test-cases-types.js";
 
 // ============================================================
-// Backward-compatible re-exports
-// ============================================================
-
-// Types (used by link-docs.ts, lint-tests.ts, and tests)
-export type {
-  BddAnnotation,
-  TestCategory,
-  TestDocComment,
-  FileDocComment,
-  DescribeDoc,
-  TestCase,
-  ModuleInfo,
-  FileStats,
-  TestSummary,
-} from "./test-cases-types.js";
-
-// Parsing functions (used by link-docs.ts, lint-tests.ts)
-export { extractTestCases, extractTestDocComment, extractFileDocComment, extractDescribeDocComment } from "../parsers/test-annotations.js";
-
-// Categorization functions (used by tests)
-export { inferModuleFromPath, getTestCategory, inferCategoryFromTestName } from "../parsers/test-categorization.js";
-
-// ============================================================
 // Command Handler
 // ============================================================
 

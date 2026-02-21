@@ -181,7 +181,7 @@ Issue numbers are assigned by GitHub at creation time — they are unknown befor
 # Issue (recommended - supports #number)
 shirokuma-docs issues create \
   --title "Title" --body /tmp/add-format-option-body.md \
-  --labels "area:cli" \
+  --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
 # DraftIssue (lightweight)

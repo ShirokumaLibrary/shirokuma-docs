@@ -59,7 +59,6 @@ import {
   getRepoId,
 } from "../utils/graphql-queries.js";
 import {
-  FIELD_FALLBACKS,
   resolveFieldName,
   getProjectFields,
   updateTextField,
@@ -77,24 +76,6 @@ import {
   updateProjectStatus,
   resolveAndUpdateStatus,
 } from "../utils/issue-detail.js";
-
-// Re-exports for backward compatibility (issues-pr.ts, session.ts)
-export {
-  FIELD_FALLBACKS,
-  resolveFieldName,
-  getProjectFields,
-  updateTextField,
-  setItemFields,
-  generateTimestamp,
-  autoSetTimestamps,
-  addItemToProject,
-  getProjectId,
-  type ProjectField,
-  type ProjectFieldType,
-};
-
-// Re-export issue-detail helpers
-export { getIssueDetail, resolveAndUpdateStatus };
 
 // =============================================================================
 // Types
@@ -882,9 +863,7 @@ async function cmdCreate(
   logger.success(`Created issue #${issue.number}`);
 
   // Always add to project and set default Status if not explicitly provided.
-  // --status is array (for list filtering), --field-status is string (for setting)
-  // Accept --status as fallback when --field-status is not provided
-  const createStatusValue = options.fieldStatus ?? options.status?.[0] ?? getDefaultStatus();
+  const createStatusValue = options.fieldStatus ?? getDefaultStatus();
 
   let projectItemId: string | null = null;
 
@@ -1094,9 +1073,7 @@ async function cmdUpdate(
   }
 
   // Update project fields
-  // --status is array (for list filtering), --field-status is string (for setting)
-  // Accept --status as fallback when --field-status is not provided
-  const statusValue = options.fieldStatus ?? options.status?.[0];
+  const statusValue = options.fieldStatus;
   const fields: Record<string, string> = {};
   if (statusValue) fields["Status"] = statusValue;
   if (options.priority) fields["Priority"] = options.priority;

@@ -48,6 +48,7 @@ import { repoPairsCommand } from "./commands/repo-pairs.js";
 import { updateSkillsCommand } from "./commands/update-skills.js";
 import { sessionCommand } from "./commands/session.js";
 import { searchCommand } from "./commands/search.js";
+import { hooksEvaluateCommand } from "./commands/hooks.js";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
@@ -633,6 +634,19 @@ program
   .option("--dry-run", "変更せずにプレビュー (release用)")
   .option("-v, --verbose", "詳細ログ出力")
   .action(repoPairsCommand);
+
+// Hooks 評価 CLI
+program
+  .command("hooks <action>")
+  .description("Hooks 管理 (evaluate)")
+  .action(async (action) => {
+    if (action === "evaluate") {
+      await hooksEvaluateCommand();
+    } else {
+      console.error(`Unknown hooks action: ${action}`);
+      process.exitCode = 1;
+    }
+  });
 
 // LLM 最適化 Markdown 管理（shirokuma-md 統合済み）
 import { createMdCommand } from "./md/cli/program.js";

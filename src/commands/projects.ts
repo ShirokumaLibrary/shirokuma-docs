@@ -1540,19 +1540,6 @@ export async function projectsCommand(
 ): Promise<void> {
   const logger = createLogger(options.verbose);
 
-  // Deprecation warning (workflows/setup-metrics/setup/create-project subcommands are NOT deprecated)
-  if (action !== "workflows" && action !== "setup-metrics" && action !== "setup" && action !== "create-project") {
-    console.error(
-      "[DEPRECATED] projects item commands are deprecated. Use issues instead:\n" +
-        "  issues fields     (was: projects fields)\n" +
-        "  issues remove     (was: projects delete)\n" +
-        "  issues update     (was: projects update)\n" +
-        "  issues create     (was: projects create)\n" +
-        "  session start        (was: projects list)\n" +
-        "  projects workflows  (project-level: NOT deprecated)\n"
-    );
-  }
-
   logger.debug(`Action: ${action}`);
   logger.debug(`Target: ${target ?? "(none)"}`);
   logger.debug(`Owner: ${options.owner ?? "(auto)"}`);

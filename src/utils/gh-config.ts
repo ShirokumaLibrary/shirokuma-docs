@@ -2,7 +2,6 @@
  * GitHub CLI Configuration
  *
  * Reads GitHub settings from `shirokuma-docs.config.yaml` (github section).
- * Falls back to `.shirokuma-gh.json` for backward compatibility.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -13,7 +12,6 @@ import { parse as parseYaml } from "yaml";
 const CONFIG_FILES = [
   "shirokuma-docs.config.yaml",
   "shirokuma-docs.config.yml",
-  ".shirokuma-gh.json", // Legacy fallback
 ];
 
 /** Repo pair configuration */
@@ -131,8 +129,8 @@ let cachedConfigPath: string | null = null;
  * This enables config inheritance: workspace-level settings (e.g., repoPairs,
  * crossRepos) are inherited by project-specific configs in subdirectories.
  */
-function findAllConfigFiles(startDir: string = process.cwd()): Array<{ path: string; type: "yaml" | "json" }> {
-  const found: Array<{ path: string; type: "yaml" | "json" }> = [];
+function findAllConfigFiles(startDir: string = process.cwd()): string[] {
+  const found: string[] = [];
   let dir = startDir;
   const root = "/";
 
@@ -140,8 +138,7 @@ function findAllConfigFiles(startDir: string = process.cwd()): Array<{ path: str
     for (const filename of CONFIG_FILES) {
       const configPath = join(dir, filename);
       if (existsSync(configPath)) {
-        const type = filename.endsWith(".json") ? "json" : "yaml";
-        found.push({ path: configPath, type });
+        found.push(configPath);
         break; // Only one config per directory level
       }
     }
@@ -204,17 +201,6 @@ function parseYamlConfig(content: string): Partial<GhConfig> {
 }
 
 /**
- * Parse JSON config (legacy format)
- */
-function parseJsonConfig(content: string): Partial<GhConfig> {
-  try {
-    return JSON.parse(content) as Partial<GhConfig>;
-  } catch {
-    return {};
-  }
-}
-
-/**
  * Load configuration from file(s) or return defaults.
  *
  * Supports config inheritance: finds all config files from CWD up to root,
@@ -244,11 +230,9 @@ export function loadGhConfig(projectPath?: string): GhConfig {
 
     // Merge from farthest (workspace root) to nearest (project-specific).
     // Workspace-level settings are set first, then project-level overrides.
-    for (const configFile of [...configFiles].reverse()) {
-      const content = readFileSync(configFile.path, "utf-8");
-      const parsed = configFile.type === "yaml"
-        ? parseYamlConfig(content)
-        : parseJsonConfig(content);
+    for (const configPath of [...configFiles].reverse()) {
+      const content = readFileSync(configPath, "utf-8");
+      const parsed = parseYamlConfig(content);
 
       mergedConfig = {
         ...mergedConfig,

@@ -35,19 +35,6 @@ git add {file1} {file2} ...
 
 不明な場合は AskUserQuestion でファイルリストをオプションとして提示。
 
-### ステップ 2.5: plugin/ 変更時のバージョンバンプ確認
-
-ステージされたファイルに `plugin/` 配下が含まれるか確認（`.gitkeep` は除外）:
-
-```bash
-git diff --cached --name-only | grep '^plugin/' | grep -v '\.gitkeep$'
-```
-
-該当する場合:
-1. `package.json` のバージョンが適切にバンプされているか確認
-2. 未バンプの場合: `plugin-version-bump` ルールに従いバンプ + `node scripts/sync-versions.mjs` を実行
-3. バンプ済みの場合: 全 `plugin.json` が `package.json` と一致するか確認
-
 ### ステップ 3: コミットメッセージ作成
 
 Conventional Commits 形式:
@@ -206,11 +193,9 @@ git checkout develop && git pull origin develop
    git commit -m "{type}: {description} (#{issue-number})"
    ```
 
-2. **ステップ 2.5（Plugin Version Bump）**: バッチの**最後のコミット時のみ**実行。全コミットでは実行しない。
+2. **ステップ 5（プッシュ）**: 全コミット完了後に1回のみ実行。
 
-3. **ステップ 5（プッシュ）**: 全コミット完了後に1回のみ実行。
-
-4. **ステップ 7（PR チェーン）**: プッシュ後にバッチコンテキスト（全 Issue 番号）付きで `creating-pr-on-issue` を自動起動。
+3. **ステップ 7（PR チェーン）**: プッシュ後にバッチコンテキスト（全 Issue 番号）付きで `creating-pr-on-issue` を自動起動。
 
 ### バッチブランチ検出
 

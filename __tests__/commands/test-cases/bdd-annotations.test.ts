@@ -4,7 +4,7 @@
  * @testdoc BDD アノテーション (@given/@when/@then/@and) のパース機能テスト
  */
 
-import { extractTestDocComment } from "../../../src/commands/test-cases.js";
+import { extractTestDocComment } from "../../../src/parsers/test-annotations.js";
 
 describe("BDD Annotations Parser", () => {
   /**

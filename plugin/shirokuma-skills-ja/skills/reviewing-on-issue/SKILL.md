@@ -400,6 +400,7 @@ knowledge-manager が Web 検索で以下を最新化する：
 - **サブエージェントモード**: `context: fork` で隔離実行
 - **fork 制約**: `context: fork` のため TodoWrite / AskUserQuestion は使用不可。結果はレポートとして返す
 - **セルフレビュー**: 委任チェーンから起動時は構造化出力（Self-Review Result）を返す
+- **呼び出し元のコメントファースト遵守**: このスキルは `context: fork` のため本文更新を行わないが、呼び出し元スキル（`creating-pr-on-issue`, `working-on-issue`）がレビュー結果に基づいて Issue/PR 本文を更新する場合は、`item-maintenance.md` のコメントファースト原則に従うこと。具体的な手順パターンは `item-maintenance.md` の「レビュー結果からの本文更新」セクションを参照
 
 ## セルフレビューモード
 

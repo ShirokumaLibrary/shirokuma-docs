@@ -33,38 +33,6 @@ import { resolveFeatureMapConfig, collectFiles } from "../generators/feature-map
 import type { FeatureMapOptions, FeatureMapItem, TypeItem, UtilityItem } from "./feature-map-types.js";
 
 // ============================================================
-// Backward-compatible re-exports
-// ============================================================
-
-// Types (used by tests and other modules)
-export type {
-  ScreenItem,
-  ComponentItem,
-  ActionItem,
-  TableItem,
-  ModuleItem,
-  TypeItem,
-  UtilityItem,
-  FeatureMap,
-  FeatureMapItem,
-  FeatureGroup,
-  ParseResult,
-  ResolvedFeatureMapConfig,
-  ExternalDocConfig,
-  StorybookConfig,
-  FileMetadata,
-} from "./feature-map-types.js";
-
-// Parsing functions
-export { parseFeatureMapTags, parseFeatureMapTagsWithMetadata } from "../parsers/feature-map-tags.js";
-
-// Builder
-export { buildFeatureMap } from "../analyzers/feature-map-builder.js";
-
-// Utils
-export { extractModuleName } from "../parsers/feature-map-utils.js";
-
-// ============================================================
 // Command Handler
 // ============================================================
 

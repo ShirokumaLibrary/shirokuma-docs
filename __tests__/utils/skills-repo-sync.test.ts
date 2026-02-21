@@ -2,7 +2,7 @@
  * skills-repo bundled plugin utility tests
  *
  * Tests for getBundledPluginPath(),
- * installPlugin(), getPackageVersion(), and validation functions.
+ * getPackageVersion(), and validation functions.
  *
  * @testdoc バンドルプラグインユーティリティのテスト
  */
@@ -13,7 +13,6 @@ import { fileURLToPath } from "node:url";
 import {
   getBundledPluginPath,
   getPackageVersion,
-  installPlugin,
   isValidSkillName,
   isValidSkill,
   getEffectivePluginDir,
@@ -89,10 +88,10 @@ describe("PLUGIN_NAME", () => {
 
 describe("AVAILABLE_SKILLS", () => {
   /**
-   * @testdoc 24個のスキルが定義されている
+   * @testdoc 23個のスキルが定義されている
    */
-  it("should contain 24 skills", () => {
-    expect(AVAILABLE_SKILLS).toHaveLength(24);
+  it("should contain 23 skills", () => {
+    expect(AVAILABLE_SKILLS).toHaveLength(23);
   });
 
   /**
@@ -112,7 +111,6 @@ describe("AVAILABLE_SKILLS", () => {
       "working-on-issue",
       "committing-on-issue",
       "creating-pr-on-issue",
-      "github-project-setup",
       "starting-session",
       "ending-session",
       "showing-github",
@@ -314,43 +312,6 @@ describe("getPackageVersion", () => {
   it("should not return 'unknown'", () => {
     expect(getPackageVersion()).not.toBe("unknown");
   });
-});
-
-// ========================================
-// Install Plugin
-// ========================================
-
-describe("installPlugin", () => {
-  /**
-   * @testdoc 外部プロジェクトではローカルコピーをスキップする（marketplace + cache 方式）
-   * @purpose #486: プラグインは marketplace 経由でグローバルキャッシュに配置される
-   */
-  it("should skip local copy for external projects (marketplace + cache)", async () => {
-    const projectPath = join(TEST_DIR, "test-project");
-    mkdirSync(projectPath, { recursive: true });
-
-    const result = await installPlugin(projectPath, false);
-
-    expect(result).toBe(true);
-    // .claude/plugins/ にはコピーされない（marketplace + cache 方式）
-    const installDir = join(projectPath, ".claude", "plugins", "shirokuma-skills-en");
-    expect(existsSync(installDir)).toBe(false);
-  });
-
-  /**
-   * @testdoc 標準パスにはコピーしない
-   */
-  it("should not copy to standard .claude/ paths", async () => {
-    const projectPath = join(TEST_DIR, "test-project-no-std");
-    mkdirSync(projectPath, { recursive: true });
-
-    await installPlugin(projectPath, false);
-
-    expect(existsSync(join(projectPath, ".claude", "skills"))).toBe(false);
-    expect(existsSync(join(projectPath, ".claude", "rules"))).toBe(false);
-    expect(existsSync(join(projectPath, ".claude", "agents"))).toBe(false);
-  });
-
 });
 
 describe("getEffectivePluginDir", () => {

@@ -173,6 +173,15 @@ Self-review [2/3]: Re-reviewing...
   → No issues. Self-review complete.
 ```
 
+#### 6c. Reflect Review Results in Issue Body
+
+After the self-review loop completes (PASS or loop stopped), if review findings require Issue body updates (e.g., task list additions, security fix notes):
+
+1. **No additional comment needed**: The `reviewing-on-issue` review comment itself serves as the comment-first "comment". A new comment is not required — the review comment functions as the primary record (per `item-maintenance.md`).
+2. **Update Issue body**: Integrate review findings into the relevant section of the Issue body (task list, deliverables, etc.). Follow the patterns described in the "Review Results to Body Update" section of `item-maintenance.md`.
+
+**Conditional execution**: If the review is PASS with no findings, skip this step — no body update is needed.
+
 ### Step 7: Update Status
 
 After the self-review chain completes (PASS or loop stopped), update Status to Review if invoked with an issue number:

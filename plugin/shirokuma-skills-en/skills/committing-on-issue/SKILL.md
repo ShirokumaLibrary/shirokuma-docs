@@ -35,19 +35,6 @@ git add {file1} {file2} ...
 
 If unsure which files to stage, use AskUserQuestion to present the file list as options.
 
-### Step 2.5: Plugin Version Bump Check
-
-Check if staged files include `plugin/` changes (excluding `.gitkeep`):
-
-```bash
-git diff --cached --name-only | grep '^plugin/' | grep -v '\.gitkeep$'
-```
-
-If plugin files are staged:
-1. Check if `package.json` version has been appropriately bumped
-2. If not bumped: follow `plugin-version-bump` rule to bump + run `node scripts/sync-versions.mjs`
-3. If already bumped: verify all `plugin.json` files match `package.json` version
-
 ### Step 3: Write Commit Message
 
 Follow Conventional Commits format:
@@ -206,11 +193,9 @@ Instead of a single commit, create **per-issue commits** using the `filesByIssue
    git commit -m "{type}: {description} (#{issue-number})"
    ```
 
-2. **Step 2.5 (Plugin Version Bump)**: Execute only on the **last commit** in the batch, not on every commit.
+2. **Step 5 (Push)**: Execute once after all commits are complete.
 
-3. **Step 5 (Push)**: Execute once after all commits are complete.
-
-4. **Step 7 (PR Chain)**: Auto-invoke `creating-pr-on-issue` after push with batch context (all issue numbers).
+3. **Step 7 (PR Chain)**: Auto-invoke `creating-pr-on-issue` after push with batch context (all issue numbers).
 
 ### Batch Branch Detection
 

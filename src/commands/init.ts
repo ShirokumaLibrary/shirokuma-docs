@@ -18,19 +18,18 @@
  */
 
 import { resolve, dirname } from "node:path";
-import { existsSync, writeFileSync, readFileSync, mkdirSync, rmSync } from "node:fs";
+import { existsSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { Document as YamlDocument, type YAMLMap, type Scalar } from "yaml";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import { validateGitHubSetup, printSetupCheckResults, type SetupCheckResult } from "../utils/setup-check.js";
-import type { ShirokumaConfig } from "../utils/config.js";
+import { type ShirokumaConfig } from "../utils/config.js";
 import {
   deployRules,
   registerPluginCache,
   ensureMarketplace,
   getGlobalCachePath,
-  cleanupLegacyPluginDir,
   getInstalledSkills,
   getInstalledRules,
   updateGitignore,
@@ -39,7 +38,6 @@ import {
   getBundledPluginPath,
   getBundledPluginPathJa,
   DEPLOYED_RULES_DIR,
-  DEPLOYED_RULES_DIR_JA,
   PLUGIN_NAME,
   PLUGIN_NAME_JA,
   PLUGIN_REGISTRY_ID_JA,
@@ -173,6 +171,16 @@ const defaultConfigTemplate: ShirokumaConfig = {
     template: "madr",
     language: "ja",
   },
+  hooks: {
+    enabled: [
+      "pr-merge",
+      "force-push",
+      "hard-reset",
+      "discard-worktree",
+      "clean-untracked",
+      "force-delete-branch",
+    ],
+  },
 };
 
 /**
@@ -244,6 +252,16 @@ const nextjsMonorepoTemplate: ShirokumaConfig = {
     directory: "docs/adr",
     template: "madr",
     language: "ja",
+  },
+  hooks: {
+    enabled: [
+      "pr-merge",
+      "force-push",
+      "hard-reset",
+      "discard-worktree",
+      "clean-untracked",
+      "force-delete-branch",
+    ],
   },
 };
 
@@ -415,6 +433,7 @@ const sectionComments: Record<string, string> = {
   lintStructure: "プロジェクト構造検証。有効にするには enabled: true に変更してください。",
   lintAnnotations: "アノテーション整合性検証。有効にするには enabled: true に変更してください。",
   adr: "ADR (Architecture Decision Records) 設定。GitHub Discussions 連携。",
+  hooks: "破壊的コマンド保護設定。不要なルールはコメントアウトまたは削除してください。",
 };
 
 /**
@@ -589,15 +608,6 @@ export async function initCommand(options: InitOptions): Promise<void> {
           .map(r => r.name);
         result.rules_deployed = deployedNames.length;
       }
-
-      // レガシー shirokuma-ja/ ディレクトリを削除 (#254)
-      const legacyJaDir = resolve(projectPath, DEPLOYED_RULES_DIR_JA);
-      if (existsSync(legacyJaDir)) {
-        rmSync(legacyJaDir, { recursive: true, force: true });
-      }
-
-      // レガシー .claude/plugins/ ディレクトリを削除（#486: マイグレーション）
-      cleanupLegacyPluginDir(projectPath);
 
     } catch (error) {
       if (error instanceof InitError) {

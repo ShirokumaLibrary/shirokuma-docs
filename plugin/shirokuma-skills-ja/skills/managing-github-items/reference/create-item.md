@@ -181,7 +181,7 @@ Issue 番号は GitHub が作成時に採番するため、作成前には不明
 # Issue（推奨 — #番号をサポート）
 shirokuma-docs issues create \
   --title "Title" --body /tmp/add-format-option-body.md \
-  --labels "area:cli" \
+  --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
 # DraftIssue（軽量）

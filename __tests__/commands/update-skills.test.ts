@@ -37,7 +37,6 @@ interface UpdateResult {
   version: string;
   pluginVersion: string;
   dryRun: boolean;
-  hooksStatus: "updated" | "skipped" | "error" | "not-applicable";
 }
 
 // =============================================================================
@@ -273,78 +272,4 @@ describe("update-skills command", () => {
     });
   });
 
-  describe("legacy cleanup", () => {
-    /**
-     * @testdoc レガシー .claude/plugins/ ディレクトリが削除される
-     * @purpose #486: マイグレーション時のレガシーディレクトリ削除
-     */
-    it("should clean up legacy .claude/plugins/ directory", () => {
-      setupWithInit();
-
-      // レガシーディレクトリを手動作成
-      const legacyDir = join(TEST_OUTPUT_DIR, ".claude", "plugins", "shirokuma-skills-en");
-      mkdirSync(legacyDir, { recursive: true });
-      writeFileSync(join(legacyDir, "marker.txt"), "legacy", "utf-8");
-
-      const result = runCli([
-        "update-skills",
-        "--project", TEST_OUTPUT_DIR,
-        "--verbose",
-      ]);
-
-      expect(result.status).toBe(0);
-      // レガシーディレクトリが削除されている
-      expect(existsSync(join(TEST_OUTPUT_DIR, ".claude", "plugins"))).toBe(false);
-    });
-
-    /**
-     * @testdoc .gitignore から .claude/plugins/ エントリが削除される
-     * @purpose レガシー gitignore エントリのクリーンアップ
-     */
-    it("should remove .claude/plugins/ from .gitignore", () => {
-      setupWithInit();
-
-      // レガシーエントリを含む .gitignore を作成
-      writeFileSync(
-        join(TEST_OUTPUT_DIR, ".gitignore"),
-        ".claude/rules/shirokuma/\n.claude/plugins/\n.claude/plans/\n",
-        "utf-8",
-      );
-
-      // レガシーディレクトリも作成（cleanupLegacyPluginDir のトリガー）
-      mkdirSync(join(TEST_OUTPUT_DIR, ".claude", "plugins"), { recursive: true });
-
-      const result = runCli([
-        "update-skills",
-        "--project", TEST_OUTPUT_DIR,
-        "--verbose",
-      ]);
-
-      expect(result.status).toBe(0);
-
-      const gitignoreContent = readFileSync(join(TEST_OUTPUT_DIR, ".gitignore"), "utf-8");
-      expect(gitignoreContent).not.toContain(".claude/plugins/");
-      expect(gitignoreContent).toContain(".claude/rules/shirokuma/");
-    });
-  });
-
-  describe("hooks handling", () => {
-    /**
-     * @testdoc 安全フック状態が結果に含まれる
-     * @purpose hooks プラグインの存在に応じた状態報告
-     */
-    it("should include hooks status in result", () => {
-      setupWithInit();
-
-      const result = runCli([
-        "update-skills",
-        "--project", TEST_OUTPUT_DIR,
-        "--verbose",
-      ]);
-
-      expect(result.status).toBe(0);
-      const output = extractJson<UpdateResult>(result.stdout);
-      expect(["updated", "skipped", "not-applicable"]).toContain(output.hooksStatus);
-    });
-  });
 });

@@ -46,7 +46,7 @@ shirokuma-docs issues list --status "In Progress"   # Filter by status
 shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
   --title "Title" --body /tmp/body.md \
-  --labels "area:cli" \
+  --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
 shirokuma-docs issues update {number} --add-label "area:cli"       # Add label

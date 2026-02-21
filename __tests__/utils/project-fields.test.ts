@@ -8,21 +8,10 @@
  */
 
 import {
-  FIELD_FALLBACKS,
   resolveFieldName,
   generateTimestamp,
   type ProjectField,
 } from "../../src/utils/project-fields.js";
-
-describe("FIELD_FALLBACKS", () => {
-  /**
-   * @testdoc FIELD_FALLBACKS がオブジェクトとして定義されている
-   * @purpose フォールバック定義の型確認
-   */
-  it("should be defined as an object", () => {
-    expect(typeof FIELD_FALLBACKS).toBe("object");
-  });
-});
 
 describe("resolveFieldName", () => {
   const projectFields: Record<string, ProjectField> = {

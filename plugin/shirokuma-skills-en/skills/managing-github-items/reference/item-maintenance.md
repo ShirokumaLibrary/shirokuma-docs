@@ -53,6 +53,29 @@ Merely following the comment→body order is not enough. Comments must have **in
 
 **When consolidating into body**: Structure and merge comment content into relevant sections. Comments remain as historical record.
 
+## Updating Body from Review Results
+
+When `reviewing-on-issue` posts review results as PR comments or Issue comments, and a caller skill needs to update the body accordingly.
+
+### Procedure
+
+1. **Confirm review comment is already posted** — `reviewing-on-issue` Step 6 has completed comment posting
+2. **Consolidate into relevant body sections** — Update task lists or add new sections based on review results
+
+### Examples
+
+| Scenario | Comment (already posted) | Body consolidation |
+|----------|------------------------|-------------------|
+| Missing task found in review | "Review detected X processing is not implemented. Adding to tasks." | Add `- [ ] Add X processing` to tasks section |
+| Security finding | "Security review found 2 auth check gaps: {specific locations}" | Add fix tasks to tasks section |
+| Plan review improvement | "Plan review noted impact on module A is missing from the plan." | Add to changed files in plan section |
+
+### Notes
+
+- `reviewing-on-issue` runs with `context: fork`, so it only posts comments and does not update bodies
+- Body updates are the responsibility of caller skills (`creating-pr-on-issue`, `working-on-issue`)
+- The review comment itself serves as the primary record, so no additional comment is needed (the review comment = the "comment" in comment-first)
+
 ## Guidelines
 
 1. **Preserve structure** — Keep the original body template sections

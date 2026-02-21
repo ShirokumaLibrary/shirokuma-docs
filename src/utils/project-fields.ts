@@ -29,32 +29,15 @@ export interface ProjectField {
   options: Record<string, string>;
 }
 
-// =============================================================================
-// Field Name Fallbacks
-// =============================================================================
-// GitHub Projects V2 reserves certain field names.
-// Users must create them with alternative names.
-// This mapping provides fallback names for field resolution.
-
-export const FIELD_FALLBACKS: Record<string, string[]> = {};
-
 /**
- * Resolve a field name against project fields, trying fallbacks if needed.
- * Returns the actual field name found in the project, or null.
+ * Resolve a field name against project fields.
+ * Returns the field name if found, or null.
  */
 export function resolveFieldName(
   fieldName: string,
   projectFields: Record<string, ProjectField>
 ): string | null {
-  if (projectFields[fieldName]) return fieldName;
-
-  const fallbacks = FIELD_FALLBACKS[fieldName];
-  if (fallbacks) {
-    for (const alt of fallbacks) {
-      if (projectFields[alt]) return alt;
-    }
-  }
-  return null;
+  return projectFields[fieldName] ? fieldName : null;
 }
 
 // =============================================================================
@@ -317,9 +300,7 @@ export function setItemFields(
   for (const [fieldName, value] of Object.entries(fields)) {
     const resolvedName = resolveFieldName(fieldName, projectFields);
     if (!resolvedName) {
-      const fallbacks = FIELD_FALLBACKS[fieldName];
-      const hint = fallbacks ? ` (also tried: ${fallbacks.join(", ")})` : "";
-      logger?.warn(`Field '${fieldName}' not found in project${hint}`);
+      logger?.warn(`Field '${fieldName}' not found in project`);
       failedFields.push(fieldName);
       continue;
     }

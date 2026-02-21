@@ -1193,6 +1193,18 @@ async function cmdEnd(
       if (updateIssueStatus(issue.projectId, issue.projectItemId, "Done", fields, logger)) {
         updatedIssues.push({ number: num, status: "Done" });
         logger.success(`Issue #${num} → Done`);
+
+        // Close the issue (COMPLETED) to keep Issue state consistent with Project Status (#838)
+        const issueId = getIssueId(owner, repo, num);
+        if (issueId) {
+          if (closeIssueById(issueId)) {
+            logger.success(`Issue #${num}: closed (COMPLETED)`);
+          } else {
+            logger.warn(`Issue #${num}: failed to close (session check --fix can recover)`);
+          }
+        } else {
+          logger.warn(`Issue #${num}: could not resolve issue ID for close`);
+        }
       }
     }
 
