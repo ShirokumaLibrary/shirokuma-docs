@@ -133,49 +133,122 @@ Get changed files via `git diff --name-only develop..HEAD` and classify:
 
 **Result merging rules (mixed case):**
 - Status: either FAIL → FAIL
-- Critical/Warning: sum of both
+- Critical: sum of both
+- Fixable-warning: sum of both
+- Out-of-scope: sum of both
 - Files with issues: merge
 - Auto-fixable: either no → no
+- Out-of-scope items: merge
 
 #### 6b. Self-Review Loop
 
 ```mermaid
 graph LR
   A[PR created] --> B[Category detection] --> C[Routing] --> D[Review] --> E{Issues found?}
-  E -->|FAIL + Auto-fixable| F[Auto-fix] --> G[Commit] --> H[Push] --> D
-  E -->|FAIL + Not auto-fixable| I[Stop loop, report to user]
-  E -->|PASS| J[Done]
+  E -->|FAIL + Auto-fixable| F[Auto-fix] --> G[Commit] --> H[Push] --> I{Convergence check}
+  I -->|Progress| D
+  I -->|Not converging or safety limit| K[Ask user]
+  E -->|FAIL + Not auto-fixable| J[Stop loop, report to user]
+  E -->|PASS| L[Done] --> M{Out-of-scope?}
+  M -->|Yes| N[Create follow-up Issues]
+  M -->|No| O[Finish]
+  J --> M
+  K --> M
 ```
 
-**Loop limit**: Maximum 3 iterations (initial review + up to 2 fix-and-review cycles)
+**PASS/FAIL criteria:**
+- **PASS**: critical = 0 and fixable-warning = 0 (out-of-scope only is still PASS)
+- **FAIL**: critical > 0 or fixable-warning > 0
+
+**Convergence check (numeric):** Compare the total count of `critical + fixable-warning` against the previous iteration.
+
+| State | Logic | Action |
+|-------|-------|--------|
+| Total decreased from previous | Progress | Continue |
+| Total same as previous | Grace period | Continue once (fix may have introduced different issues) |
+| Total not decreased for 2 consecutive iterations | Not converging | Ask user |
+| Total increased from previous | Worsening | Ask user immediately |
+| Total = 0 | Complete | PASS |
+| Safety limit (5) reached | Failsafe | Ask user |
+
+**Safety limit rationale (5 iterations)**: Up to 2 for critical fixes + up to 2 for fixable-warning fixes + 1 buffer.
+
+**Safety limit fallback**: Convert remaining fixable-warnings to follow-up Issues and treat as PASS after user confirmation.
 
 **Steps:**
 
 1. Detect category and invoke appropriate skill(s) (pass PR number as context)
 2. Check the Self-Review Result and verify that the review report was posted as a PR comment. If not posted, manually post via `shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md`:
-   - **PASS**: End loop, report completion
-   - **FAIL + Auto-fixable: yes**: Auto-fix based on findings → `git add` → `git commit` → `git push` → re-review
-   - **FAIL + Auto-fixable: no**: Stop loop, report issues requiring manual intervention
-3. After 3 iterations still FAIL: stop loop, report remaining issues
+   - **PASS**: End loop, proceed to out-of-scope processing (6c)
+   - **FAIL + Auto-fixable: yes**: Auto-fix (critical + fixable-warning) based on findings → `git add` → `git commit` → `git push` → convergence check → re-review
+   - **FAIL + Auto-fixable: no**: Stop loop, report issues requiring manual intervention, proceed to out-of-scope processing (6c)
+3. Not converging or safety limit reached: ask user, proceed to out-of-scope processing (6c)
 
 **Safety measures:**
-- If issue count increases between iterations (fixes introduced new problems), stop loop and report
+- Triple guard: convergence check (numeric, 2 consecutive non-decrease → stop) + safety limit of 5
+- Safety limit fallback: convert remaining fixable-warnings to follow-up Issues for guaranteed termination
 - Accumulate feedback from each iteration (via `reviewing-on-issue` feedback accumulation)
 
 **Progress reporting:**
 
 ```text
-Self-review [1/3]: Category detection → config + code (mixed)
+Self-review [1/5]: Category detection → config + code (mixed)
   Running reviewing-on-issue...
   Running reviewing-claude-config...
-  → Merged result: 2 critical issues detected, auto-fixing...
+  → Merged result: 1 critical, 2 fixable-warning detected, auto-fixing...
   → Fix complete, commit & push
 
-Self-review [2/3]: Re-reviewing...
-  → No issues. Self-review complete.
+Self-review [2/5]: Re-reviewing...
+  → 0 critical, 1 fixable-warning detected (decreased), auto-fixing...
+
+Self-review [3/5]: Re-reviewing...
+  → PASS (0 critical, 0 fixable-warning, 1 out-of-scope)
+  → Creating follow-up Issues...
 ```
 
-#### 6c. Reflect Review Results in Issue Body
+#### 6c. Out-of-Scope Follow-up Issue Creation
+
+After the self-review loop completes (PASS, loop stopped, or safety limit reached), if the final iteration's Self-Review Result contains `Out-of-scope items`, create follow-up Issues.
+
+**Deduplication**: Only use the out-of-scope list from the final iteration. Results from each iteration are preserved in PR comments so no information is lost.
+
+**Steps:**
+
+1. Extract the `Out-of-scope items` list from the Self-Review Result
+2. Create an Issue for each out-of-scope item via `shirokuma-docs issues create`
+3. Include `Refs #{N}` referencing the main Issue in the body
+4. Fields (Status: Backlog, Priority/Size/Type) are determined by the AI based on the nature of each finding
+
+```bash
+shirokuma-docs issues create \
+  --title "{finding title}" \
+  --body "$(cat <<'EOF'
+## Purpose
+{purpose of the finding}
+
+## Summary
+{detailed description of the finding}
+
+## Background
+Out-of-scope finding detected during self-review (PR #{PR-number}).
+
+Refs #{main-issue-number}
+
+## Tasks
+- [ ] {fix task}
+
+## Deliverable
+{definition of done}
+EOF
+)" \
+  --field-status "Backlog" \
+  --field-priority "{AI-determined}" \
+  --field-size "{AI-determined}"
+```
+
+**Conditional execution**: Skip this step if out-of-scope count is 0.
+
+#### 6d. Reflect Review Results in Issue Body
 
 After the self-review loop completes (PASS or loop stopped), if review findings require Issue body updates (e.g., task list additions, security fix notes):
 

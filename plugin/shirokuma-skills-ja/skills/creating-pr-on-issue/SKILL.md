@@ -88,49 +88,122 @@ PR 作成後、セルフレビューを**常に自動実行**する。
 
 **混在時の結果統合ルール:**
 - Status: いずれかが FAIL → FAIL
-- Critical/Warning: 両方の合計
+- Critical: 両方の合計
+- Fixable-warning: 両方の合計
+- Out-of-scope: 両方の合計
 - Files with issues: マージ
 - Auto-fixable: いずれかが no → no
+- Out-of-scope items: マージ
 
 #### 6b. セルフレビューループ
 
 ```mermaid
 graph LR
   A[PR作成] --> B[カテゴリ検出] --> C[ルーティング] --> D[レビュー実行] --> E{指摘あり?}
-  E -->|FAIL + Auto-fixable| F[自動修正] --> G[コミット] --> H[プッシュ] --> D
-  E -->|FAIL + Not auto-fixable| I[ループ停止、ユーザーに報告]
-  E -->|PASS| J[完了]
+  E -->|FAIL + Auto-fixable| F[自動修正] --> G[コミット] --> H[プッシュ] --> I{収束判定}
+  I -->|進捗あり| D
+  I -->|収束不能 or 安全上限| K[ユーザーに確認]
+  E -->|FAIL + Not auto-fixable| J[ループ停止、ユーザーに報告]
+  E -->|PASS| L[完了] --> M{out-of-scope あり?}
+  M -->|あり| N[フォローアップ Issue 作成]
+  M -->|なし| O[終了]
+  J --> M
+  K --> M
 ```
 
-**ループ上限**: 最大3イテレーション（初回レビュー + 最大2回の修正・再レビュー）
+**PASS/FAIL 判定:**
+- **PASS**: critical = 0 かつ fixable-warning = 0（out-of-scope のみでも PASS）
+- **FAIL**: critical > 0 または fixable-warning > 0
+
+**収束判定（数値ベース）:** `critical + fixable-warning` の合計数を前回イテレーションと比較する。
+
+| 状態 | 判定ロジック | アクション |
+|------|-------------|----------|
+| 合計数が前回未満 | 進捗あり | 継続 |
+| 合計数が前回と同数 | 猶予 | 1 回のみ継続（修正で別の指摘が出た可能性） |
+| 合計数が 2 回連続で減少しない | 収束不能 | ユーザーに確認 |
+| 合計数が前回より増加 | 悪化 | 即座にユーザーに確認 |
+| 合計数 = 0 | 完了 | PASS |
+| 安全上限（5 回）到達 | フェイルセーフ | ユーザーに確認 |
+
+**安全上限 5 回の根拠**: critical 修正に最大 2 回 + fixable-warning 修正に最大 2 回 + バッファ 1 回。
+
+**安全上限到達時のフォールバック**: 残りの fixable-warning をフォローアップ Issue 化し、ユーザー確認後に PASS として扱う。
 
 **手順:**
 
 1. カテゴリ検出して適切なスキルを起動（PR 番号をコンテキストとして渡す）
 2. レビュー結果の Self-Review Result を確認し、PR コメントとしてレビューレポートが投稿済みであることも確認する。未投稿の場合は `shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md` で手動投稿する：
-   - **PASS**: ループ終了、完了報告
-   - **FAIL + Auto-fixable: yes**: 指摘に基づき自動修正 → `git add` → `git commit` → `git push` → 再レビュー
-   - **FAIL + Auto-fixable: no**: ループ停止、手動対応が必要な指摘を報告
-3. 3イテレーションでも FAIL の場合はループ停止、残りの指摘を報告
+   - **PASS**: ループ終了、out-of-scope 処理（6c）へ
+   - **FAIL + Auto-fixable: yes**: 指摘（critical + fixable-warning）に基づき自動修正 → `git add` → `git commit` → `git push` → 収束判定 → 再レビュー
+   - **FAIL + Auto-fixable: no**: ループ停止、手動対応が必要な指摘を報告、out-of-scope 処理（6c）へ
+3. 収束不能または安全上限到達時はユーザーに確認、out-of-scope 処理（6c）へ
 
 **安全策:**
-- イテレーション間で issue 数が増加した場合（修正が新たな問題を生んだ場合）、ループを停止して報告
+- 収束判定（数値ベース、2 回連続非減少で停止）+ 安全上限 5 回で三重にガード
+- 安全上限到達時は残りの fixable-warning をフォローアップ Issue 化するフォールバックで確実に終了
 - 各イテレーションのフィードバックを蓄積（`reviewing-on-issue` のフィードバック蓄積機能）
 
 **進捗報告:**
 
 ```text
-セルフレビュー [1/3]: カテゴリ検出 → config + code（混在）
+セルフレビュー [1/5]: カテゴリ検出 → config + code（混在）
   reviewing-on-issue 実行中...
   reviewing-claude-config 実行中...
-  → 統合結果: 2 件の critical issue 検出、自動修正中...
+  → 統合結果: 1 critical, 2 fixable-warning 検出、自動修正中...
   → 修正完了、コミット・プッシュ
 
-セルフレビュー [2/3]: 再レビュー実行中...
-  → 問題なし。セルフレビュー完了。
+セルフレビュー [2/5]: 再レビュー実行中...
+  → 0 critical, 1 fixable-warning 検出（前回より減少）、自動修正中...
+
+セルフレビュー [3/5]: 再レビュー実行中...
+  → PASS（0 critical, 0 fixable-warning, 1 out-of-scope）
+  → フォローアップ Issue 作成中...
 ```
 
-#### 6c. レビュー結果の本文反映
+#### 6c. out-of-scope フォローアップ Issue 作成
+
+セルフレビューループ完了後（PASS、ループ停止、安全上限到達のいずれか）、最終イテレーションの Self-Review Result に `Out-of-scope items` がある場合、フォローアップ Issue を作成する。
+
+**重複排除**: 最終イテレーションの out-of-scope リストのみを使用する。各イテレーションの結果は PR コメントに残るため情報は失われない。
+
+**手順:**
+
+1. Self-Review Result の `Out-of-scope items` リストを取得
+2. 各 out-of-scope 項目について `shirokuma-docs issues create` で Issue を作成
+3. メイン Issue への参照を本文に `Refs #{N}` として記載
+4. フィールド（Status: Backlog、Priority/Size/Type）は指摘内容に応じて AI が個別に判断
+
+```bash
+shirokuma-docs issues create \
+  --title "{指摘のタイトル}" \
+  --body "$(cat <<'EOF'
+## 目的
+{指摘の目的}
+
+## 概要
+{指摘内容の詳細}
+
+## 背景
+セルフレビュー（PR #{PR番号}）で検出された out-of-scope 指摘。
+
+Refs #{メインIssue番号}
+
+## タスク
+- [ ] {修正タスク}
+
+## 成果物
+{完了の定義}
+EOF
+)" \
+  --field-status "Backlog" \
+  --field-priority "{AI判断}" \
+  --field-size "{AI判断}"
+```
+
+**条件付き実行**: out-of-scope が 0 件の場合はこのステップをスキップ。
+
+#### 6d. レビュー結果の本文反映
 
 セルフレビューループ完了後（PASS またはループ停止）、レビュー指摘により Issue 本文の更新が必要な場合（タスクリストの追加、セキュリティ修正メモ等）:
 

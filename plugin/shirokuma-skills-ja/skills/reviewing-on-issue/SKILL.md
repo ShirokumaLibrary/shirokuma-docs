@@ -416,16 +416,44 @@ knowledge-manager が Web 検索で以下を最新化する：
 ## Self-Review Result
 **Status:** {PASS | FAIL}
 **Critical:** {n} issues
-**Warning:** {n} issues
+**Fixable-warning:** {n} issues
+**Out-of-scope:** {n} issues
 **Files with issues:**
-- {file1}: {summary}
-- {file2}: {summary}
+- {file1}: {summary} [critical | fixable-warning]
+- {file2}: {summary} [critical | fixable-warning]
 **Auto-fixable:** {yes | no}
+**Out-of-scope items:**
+- {description1}
+- {description2}
 ```
 
-- **PASS**: critical issues = 0（warning のみ or 問題なし）
-- **FAIL**: critical issues > 0（自動修正が必要）
-- **Auto-fixable**: コード修正で解決可能な問題か（設計変更が必要な場合は no）
+- **PASS**: critical = 0 かつ fixable-warning = 0（out-of-scope のみでも PASS）
+- **FAIL**: critical > 0 または fixable-warning > 0
+- **Auto-fixable**: critical/fixable-warning がコード修正で解決可能か（設計変更が必要な場合は no）
+- **Out-of-scope items**: フォローアップ Issue 作成の入力となる概要リスト
+
+### セルフレビュー 3 分類マッピング
+
+レポートテンプレートの表示用 4 段階（Critical/High/Medium/Low）は人間向けレビューレポートとして維持し、セルフレビューの構造化出力にのみ 3 分類を導入する**二層構造**。
+
+#### レポート深刻度 → セルフレビュー分類
+
+| レポート深刻度 | スコープ判定 | マッピング先 |
+|--------------|------------|-------------|
+| Critical / High | 不問（常に修正対象） | → critical |
+| Medium / Low | PR 変更ファイル内 | → fixable-warning |
+| Medium / Low | PR スコープ外 | → out-of-scope |
+
+Critical/High はスコープ外であっても `critical` に分類する。重大な問題は発見した時点で修正すべきであり、スコープ外への先送りは品質リスクが高いため。
+
+#### fixable-warning vs out-of-scope の判定基準
+
+| 条件 | 分類 |
+|------|------|
+| 当該 PR で変更したファイル内の修正 | fixable-warning |
+| 当該 PR で変更したファイルに依存する未変更ファイルの修正 | out-of-scope |
+| 新規ファイルの追加が必要 | out-of-scope |
+| 設計パターンの変更が必要 | out-of-scope |
 
 ### フィードバック蓄積
 

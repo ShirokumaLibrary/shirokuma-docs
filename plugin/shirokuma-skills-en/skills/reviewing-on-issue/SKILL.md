@@ -416,16 +416,44 @@ In addition to the normal report saving (Step 6), return a summary in this forma
 ## Self-Review Result
 **Status:** {PASS | FAIL}
 **Critical:** {n} issues
-**Warning:** {n} issues
+**Fixable-warning:** {n} issues
+**Out-of-scope:** {n} issues
 **Files with issues:**
-- {file1}: {summary}
-- {file2}: {summary}
+- {file1}: {summary} [critical | fixable-warning]
+- {file2}: {summary} [critical | fixable-warning]
 **Auto-fixable:** {yes | no}
+**Out-of-scope items:**
+- {description1}
+- {description2}
 ```
 
-- **PASS**: critical issues = 0 (warnings only or no issues)
-- **FAIL**: critical issues > 0 (auto-fix needed)
-- **Auto-fixable**: Whether issues can be resolved by code changes (no if design changes required)
+- **PASS**: critical = 0 and fixable-warning = 0 (out-of-scope only is still PASS)
+- **FAIL**: critical > 0 or fixable-warning > 0
+- **Auto-fixable**: Whether critical/fixable-warning issues can be resolved by code changes (no if design changes required)
+- **Out-of-scope items**: Summary list used as input for follow-up Issue creation
+
+### Self-Review 3-Classification Mapping
+
+The report template's 4-level display severity (Critical/High/Medium/Low) is maintained for human-readable review reports, while the 3-classification is introduced only in the self-review structured output — a **two-layer structure**.
+
+#### Report Severity → Self-Review Classification
+
+| Report Severity | Scope Check | Maps To |
+|----------------|-------------|---------|
+| Critical / High | Regardless (always fix) | → critical |
+| Medium / Low | Within PR changed files | → fixable-warning |
+| Medium / Low | Outside PR scope | → out-of-scope |
+
+Critical/High are classified as `critical` even if out of scope. Serious issues must be fixed when discovered — deferring them to out-of-scope poses quality risk.
+
+#### fixable-warning vs out-of-scope Criteria
+
+| Condition | Classification |
+|-----------|---------------|
+| Fix within files changed by the PR | fixable-warning |
+| Fix in unchanged files that depend on PR-changed files | out-of-scope |
+| Requires adding new files | out-of-scope |
+| Requires design pattern changes | out-of-scope |
 
 ### Feedback Accumulation
 
