@@ -171,16 +171,7 @@ const defaultConfigTemplate: ShirokumaConfig = {
     template: "madr",
     language: "ja",
   },
-  hooks: {
-    enabled: [
-      "pr-merge",
-      "force-push",
-      "hard-reset",
-      "discard-worktree",
-      "clean-untracked",
-      "force-delete-branch",
-    ],
-  },
+  hooks: {},
 };
 
 /**
@@ -253,16 +244,7 @@ const nextjsMonorepoTemplate: ShirokumaConfig = {
     template: "madr",
     language: "ja",
   },
-  hooks: {
-    enabled: [
-      "pr-merge",
-      "force-push",
-      "hard-reset",
-      "discard-worktree",
-      "clean-untracked",
-      "force-delete-branch",
-    ],
-  },
+  hooks: {},
 };
 
 /** Next.js monorepo scaffold result */
@@ -433,7 +415,7 @@ const sectionComments: Record<string, string> = {
   lintStructure: "プロジェクト構造検証。有効にするには enabled: true に変更してください。",
   lintAnnotations: "アノテーション整合性検証。有効にするには enabled: true に変更してください。",
   adr: "ADR (Architecture Decision Records) 設定。GitHub Discussions 連携。",
-  hooks: "破壊的コマンド保護設定。不要なルールはコメントアウトまたは削除してください。",
+  hooks: "破壊的コマンド保護設定。許可するコマンドのコメントを外してください。",
 };
 
 /**
@@ -456,7 +438,24 @@ function buildConfigYaml(config: ShirokumaConfig): string {
     }
   }
 
-  return doc.toString({ indent: 2, lineWidth: 0 }) + "\n";
+  let yaml = doc.toString({ indent: 2, lineWidth: 0 }) + "\n";
+
+  // hooks セクション: 全ルール ID をコメント付きで列挙
+  yaml = yaml.replace(
+    /^( *# 破壊的コマンド保護設定。.*\n)hooks: \{\}/m,
+    [
+      "$1hooks:",
+      "  allow:",
+      "    # - pr-merge              # gh pr merge / issues merge",
+      "    # - force-push          # git push --force",
+      "    # - hard-reset          # git reset --hard",
+      "    # - discard-worktree    # git checkout/restore .",
+      "    # - clean-untracked     # git clean -f",
+      "    # - force-delete-branch # git branch -D",
+    ].join("\n"),
+  );
+
+  return yaml;
 }
 
 /**

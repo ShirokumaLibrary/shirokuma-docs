@@ -3,7 +3,7 @@
  *
  * stdin から PreToolUse JSON を受け取り、破壊的コマンドを評価するコマンドのテスト。
  *
- * @testdoc hooks evaluate コマンドのテスト（ブロックルール評価・hooks.enabled フィルタ）
+ * @testdoc hooks evaluate コマンドのテスト（ブロックルール評価・hooks.allow フィルタ）
  */
 
 import { join, dirname } from "path";
@@ -93,32 +93,33 @@ describe("hooks evaluate - unit tests", () => {
       { id: "rule-c", pattern: "cmd-c", reason: "C", enabled: false },
     ];
 
-    it("enabledIds が undefined なら enabled: true のルールを全て返す", () => {
+    it("allowIds が undefined なら enabled: true のルールを全て返す（全ブロック）", () => {
       const result = filterActiveRules(sampleRules, undefined);
       expect(result).toHaveLength(2);
       expect(result.map(r => r.id)).toEqual(["rule-a", "rule-b"]);
     });
 
-    it("enabledIds が空配列なら全ルール無効", () => {
+    it("allowIds が空配列なら enabled: true のルールを全て返す（全ブロック）", () => {
       const result = filterActiveRules(sampleRules, []);
-      expect(result).toHaveLength(0);
+      expect(result).toHaveLength(2);
+      expect(result.map(r => r.id)).toEqual(["rule-a", "rule-b"]);
     });
 
-    it("enabledIds で指定されたルールのみ返す", () => {
+    it("allowIds で指定されたルールを除外する（コマンドを許可）", () => {
       const result = filterActiveRules(sampleRules, ["rule-b"]);
       expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("rule-b");
+      expect(result[0].id).toBe("rule-a");
     });
 
-    it("enabled: false のルールは enabledIds に含めても返さない", () => {
-      const result = filterActiveRules(sampleRules, ["rule-c"]);
-      expect(result).toHaveLength(0);
+    it("enabled: false のルールは allowIds に関係なく返さない", () => {
+      const result = filterActiveRules(sampleRules, []);
+      expect(result.map(r => r.id)).not.toContain("rule-c");
     });
 
     it("不明なルール ID は無視する", () => {
-      const result = filterActiveRules(sampleRules, ["rule-a", "unknown-rule"]);
-      expect(result).toHaveLength(1);
-      expect(result[0].id).toBe("rule-a");
+      const result = filterActiveRules(sampleRules, ["unknown-rule"]);
+      expect(result).toHaveLength(2);
+      expect(result.map(r => r.id)).toEqual(["rule-a", "rule-b"]);
     });
   });
 

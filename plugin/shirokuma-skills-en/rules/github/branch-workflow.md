@@ -296,18 +296,21 @@ When blocked, the AI receives a denial reason and must ask the user for approval
 
 ### Project Override
 
-Projects can configure which rules are active via `shirokuma-docs.config.yaml`:
+Projects can allow specific commands via `shirokuma-docs.config.yaml`:
 
 ```yaml
 # shirokuma-docs.config.yaml
 hooks:
-  enabled:
-    - force-push
-    - hard-reset
-    # pr-merge  ← commented out = disabled
+  allow:
+    - pr-merge              # Allow gh pr merge / issues merge
+    # - force-push          # Allow git push --force
+    # - hard-reset          # Allow git reset --hard
+    # - discard-worktree    # Allow git checkout/restore .
+    # - clean-untracked     # Allow git clean -f
+    # - force-delete-branch # Allow git branch -D
 ```
 
-When `hooks.enabled` is unset, all rules are active (default). When set, only listed rule IDs are active.
+When `hooks.allow` is unset, all rules are active (all blocked). Uncomment to allow specific commands.
 
 ### False-Positive Prevention
 

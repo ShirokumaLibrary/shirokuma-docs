@@ -1,5 +1,5 @@
 {
-  "description": "Default blocked command patterns for PreToolUse hook. Configure via hooks.enabled in shirokuma-docs.config.yaml",
+  "description": "Default blocked command patterns for PreToolUse hook. Configure via hooks.allow in shirokuma-docs.config.yaml",
   "rules": [
     {
       "id": "pr-merge",

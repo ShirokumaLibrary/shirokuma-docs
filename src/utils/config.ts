@@ -639,8 +639,8 @@ export interface ShirokumaConfig {
 
   /** Hooks 設定（破壊的コマンド保護ルール） */
   hooks?: {
-    /** 有効にするルール ID のリスト（ホワイトリスト方式） */
-    enabled?: string[];
+    /** 許可するルール ID のリスト（デフォルト全ブロック、指定 ID のみ許可） */
+    allow?: string[];
   };
 
   /** Cross-repository references (alias → owner/repo) */
@@ -1189,7 +1189,7 @@ function mergeConfig(
       : base.lintAnnotations,
     hooks: override.hooks
       ? {
-          enabled: override.hooks.enabled ?? base.hooks?.enabled,
+          allow: override.hooks.allow ?? base.hooks?.allow,
         }
       : base.hooks,
     repoPairs: override.repoPairs ?? base.repoPairs,

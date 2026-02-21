@@ -2,7 +2,7 @@
  * hooks command - Evaluate destructive command rules
  *
  * @description Evaluates a command against blocked-commands.json rules,
- * filtered by hooks.enabled in shirokuma-docs.config.yaml.
+ * filtered by hooks.allow in shirokuma-docs.config.yaml.
  * Used by hooks scripts to replace jq/yq dependency with CLI invocation.
  *
  * @example
@@ -88,31 +88,26 @@ export function loadBlockedCommands(): BlockedCommandRule[] {
 }
 
 /**
- * hooks.enabled に基づきアクティブルールをフィルタする
+ * hooks.allow に基づきアクティブルールをフィルタする
  *
  * | 状態 | 動作 |
  * |------|------|
- * | enabledIds が undefined | 全ルール有効 |
- * | enabledIds が空配列 | 全ルール無効 |
- * | enabledIds に ID リスト | 指定されたルールのみ有効 |
+ * | allowIds が undefined | 全ルール有効（全ブロック） |
+ * | allowIds が空配列 | 全ルール有効（全ブロック） |
+ * | allowIds に ID リスト | 指定されたコマンドを許可（ルールを除外） |
  */
 export function filterActiveRules(
   rules: BlockedCommandRule[],
-  enabledIds: string[] | undefined,
+  allowIds: string[] | undefined,
 ): BlockedCommandRule[] {
-  // enabled 未定義 → 全ルール有効
-  if (enabledIds === undefined) {
+  // allow 未定義 → 全ルール有効（全ブロック）
+  if (allowIds === undefined || allowIds.length === 0) {
     return rules.filter(r => r.enabled);
   }
 
-  // enabled が空配列 → 全ルール無効
-  if (enabledIds.length === 0) {
-    return [];
-  }
-
-  // 指定されたルールのみ有効
-  const enabledSet = new Set(enabledIds);
-  return rules.filter(r => r.enabled && enabledSet.has(r.id));
+  // 指定されたコマンドを許可（対応ルールを除外）
+  const allowSet = new Set(allowIds);
+  return rules.filter(r => r.enabled && !allowSet.has(r.id));
 }
 
 /**
@@ -193,18 +188,18 @@ export async function hooksEvaluateCommand(configPath?: string): Promise<void> {
       return;
     }
 
-    // hooks.enabled を config から取得
-    let enabledIds: string[] | undefined;
+    // hooks.allow を config から取得
+    let allowIds: string[] | undefined;
     try {
       const config = loadConfig(process.cwd(), configPath ?? "shirokuma-docs.config.yaml");
-      enabledIds = config.hooks?.enabled;
+      allowIds = config.hooks?.allow;
     } catch {
       // config が存在しない/読み取り不可 → 全ルール有効
-      enabledIds = undefined;
+      allowIds = undefined;
     }
 
     // アクティブルールをフィルタ
-    const activeRules = filterActiveRules(allRules, enabledIds);
+    const activeRules = filterActiveRules(allRules, allowIds);
     if (activeRules.length === 0) {
       // 有効なルールなし → 許可
       return;
