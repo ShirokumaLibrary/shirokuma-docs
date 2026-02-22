@@ -188,6 +188,12 @@ shirokuma-docs issues create \
   --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
+# Sub-Issue (--parent links to parent issue)
+shirokuma-docs issues create \
+  --title "Child task" --body /tmp/shirokuma-docs/body.md \
+  --parent 958 --issue-type "Feature" \
+  --field-status "Backlog" --priority "Medium" --size "S"
+
 # DraftIssue (lightweight)
 shirokuma-docs projects create \
   --title "Title" --body /tmp/shirokuma-docs/add-format-option-body.md \

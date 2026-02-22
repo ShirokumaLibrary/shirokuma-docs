@@ -41,6 +41,11 @@ import {
   cmdPrReply,
   cmdResolve,
 } from "./issues-pr.js";
+import {
+  cmdSubList,
+  cmdSubAdd,
+  cmdSubRemove,
+} from "./issues-sub.js";
 import { loadGhConfig, getDefaultLimit, getDefaultStatus } from "../utils/gh-config.js";
 import {
   formatOutput,
@@ -116,6 +121,9 @@ export interface IssuesOptions {
   // Reply/resolve options
   replyTo?: string;
   threadId?: string;
+  // Sub-Issue options
+  parent?: number;
+  replaceParent?: boolean;
   // Repo pair flags
   public?: boolean;
   repo?: string;
@@ -734,6 +742,11 @@ async function cmdGet(
     createdAt?: string;
     updatedAt?: string;
     labels?: { nodes?: Array<{ name?: string }> };
+    subIssuesSummary?: {
+      total?: number;
+      completed?: number;
+      percentCompleted?: number;
+    };
     projectItems?: {
       nodes?: Array<{
         id?: string;
@@ -787,6 +800,12 @@ async function cmdGet(
     size: matchingItem?.size?.name,
     size_option_id: matchingItem?.size?.optionId,
   };
+
+  // Sub-Issues summary（子 Issue がある場合のみ表示）
+  const subSummary = node.subIssuesSummary;
+  if (subSummary && (subSummary.total ?? 0) > 0) {
+    output.sub_issues = `${subSummary.total} 件 (${subSummary.completed ?? 0}/${subSummary.total} 完了, ${subSummary.percentCompleted ?? 0}%)`;
+  }
 
   const outputFormat = options.format ?? "frontmatter";
   console.log(formatOutput(output, outputFormat));
@@ -927,12 +946,40 @@ async function cmdCreate(
     );
   }
 
+  // Link as sub-issue if --parent is specified
+  let parentNumber: number | undefined;
+  if (options.parent) {
+    parentNumber = options.parent;
+    const { getIssueInternalId } = await import("./issues-sub.js");
+    const childInternalId = getIssueInternalId(owner, repo, issue.number!);
+    if (childInternalId) {
+      const subAddResult = runGhCommand(
+        [
+          "api", "-X", "POST",
+          `repos/${owner}/${repo}/issues/${parentNumber}/sub_issues`,
+          "-F", `sub_issue_id=${childInternalId}`,
+        ],
+        { silent: true }
+      );
+      if (subAddResult.success) {
+        logger.success(`Linked as sub-issue of #${parentNumber}`);
+      } else {
+        logger.warn(`Failed to link as sub-issue of #${parentNumber}`);
+      }
+    } else {
+      logger.warn(`Could not resolve internal ID for issue #${issue.number}`);
+    }
+  }
+
   // Output created issue info
-  const output = {
+  const output: Record<string, unknown> = {
     number: issue.number,
     title: issue.title,
     project_item_id: projectItemId,
   };
+  if (parentNumber) {
+    output.parent = parentNumber;
+  }
 
   console.log(JSON.stringify(output, null, 2));
   return 0;
@@ -2093,10 +2140,41 @@ export async function issuesCommand(
       }
       break;
 
+    case "sub-list":
+      if (!target) {
+        logger.error("Parent issue number required");
+        logger.info("Usage: shirokuma-docs issues sub-list <parent-number>");
+        exitCode = 1;
+      } else {
+        exitCode = await cmdSubList(target, options, logger);
+      }
+      break;
+
+    case "sub-add":
+      if (!target) {
+        logger.error("Parent issue number required");
+        logger.info("Usage: shirokuma-docs issues sub-add <parent> <child> [--replace-parent]");
+        exitCode = 1;
+      } else {
+        // target = parent, options._subTarget = child (set in index.ts action)
+        exitCode = await cmdSubAdd(target, (options as IssuesOptions & { _subTarget?: string })._subTarget, options, logger);
+      }
+      break;
+
+    case "sub-remove":
+      if (!target) {
+        logger.error("Parent issue number required");
+        logger.info("Usage: shirokuma-docs issues sub-remove <parent> <child>");
+        exitCode = 1;
+      } else {
+        exitCode = await cmdSubRemove(target, (options as IssuesOptions & { _subTarget?: string })._subTarget, options, logger);
+      }
+      break;
+
     default:
       logger.error(`Unknown action: ${action}`);
       logger.info(
-        "Available actions: list, show, create, update, comment, comments, comment-edit, close, cancel, reopen, import, fields, remove, search, pr-list, pr-show, pr-comments, merge, pr-reply, resolve"
+        "Available actions: list, show, create, update, comment, comments, comment-edit, close, cancel, reopen, import, fields, remove, search, pr-list, pr-show, pr-comments, merge, pr-reply, resolve, sub-list, sub-add, sub-remove"
       );
       exitCode = 1;
   }

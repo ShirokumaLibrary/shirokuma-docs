@@ -173,6 +173,7 @@ program
   .option("--with-skills [skills]", "スキルをインストール（カンマ区切りで指定、または全スキル）")
   .option("--with-rules", "ルールをインストール")
   .option("--lang <lang>", "言語設定 (en|ja) - .claude/settings.json に書き込み")
+  .option("--channel <channel>", "プラグインリリースチャンネル (stable|rc|beta|alpha)")
   .option("--nextjs", "Next.js モノレポ構造をスキャフォールド")
   .option("--no-gitignore", ".gitignore の自動更新をスキップ")
   .option("-v, --verbose", "詳細ログを出力")
@@ -198,6 +199,7 @@ program
   .option("--dry-run", "プレビュー（実際には更新しない）")
   .option("-f, --force", "ローカル変更を無視して強制更新")
   .option("--install-cache", "グローバルキャッシュを強制更新（claude plugin uninstall + install）")
+  .option("--channel <channel>", "プラグインリリースチャンネル (stable|rc|beta|alpha)")
   .option("-v, --verbose", "詳細ログを出力")
   .action(async (options) => {
     await updateSkillsCommand(options);
@@ -212,6 +214,7 @@ program
   .option("-f, --force", "ローカル変更を無視して強制更新")
   .option("--yes", "削除操作を確認なしで実行")
   .option("--install-cache", "グローバルキャッシュを強制更新（claude plugin uninstall + install）")
+  .option("--channel <channel>", "プラグインリリースチャンネル (stable|rc|beta|alpha)")
   .option("-v, --verbose", "詳細ログを出力")
   .action(async (options) => {
     await updateSkillsCommand({ ...options, sync: true });
@@ -479,9 +482,10 @@ program
 program
   .command("issues <action>")
   .description(
-    "GitHub Issues 管理 with Projects (list, show, create, update, comment, comment-edit, close, reopen, import, fields, remove, search, pr-comments, merge, pr-reply, resolve)"
+    "GitHub Issues 管理 with Projects (list, show, create, update, comment, comment-edit, close, reopen, import, fields, remove, search, pr-comments, merge, pr-reply, resolve, sub-list, sub-add, sub-remove)"
   )
-  .argument("[target]", "Issue/PR number, comment ID, or search query (for show/update/comment/comment-edit/close/reopen/search/pr-comments/merge/pr-reply/resolve)")
+  .argument("[target]", "Issue/PR number, comment ID, or search query")
+  .argument("[subTarget]", "Second argument (child issue number for sub-add/sub-remove)")
   .option("--owner <owner>", "Repository owner (default: current repo)")
   .option("--all", "Include all issues (open + closed)")
   .option("--state <state>", "Issue state: open, closed (filter for list / set for update)")
@@ -517,8 +521,10 @@ program
   .option("--head <branch>", "Resolve PR from branch name (for merge)")
   .option("--reply-to <commentId>", "Reply to a review comment database ID (for pr-reply)")
   .option("--thread-id <threadId>", "Thread ID to resolve (for resolve)")
+  .option("--parent <number>", "Link as sub-issue of parent (for create)", parseInt)
+  .option("--replace-parent", "Replace existing parent when adding sub-issue (for sub-add)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action((action, target, options) => {
+  .action((action, target, subTarget, options) => {
     if (!resolveBodyOption(options)) return;
     // エイリアスオプションのマージ (#587)
     options.priority ??= options.fieldPriority;
@@ -527,6 +533,10 @@ program
     // search アクション: target を query にマッピング
     if (action === "search" && target) {
       options.query = target;
+    }
+    // sub-add/sub-remove: subTarget を内部プロパティとして渡す
+    if ((action === "sub-add" || action === "sub-remove") && subTarget) {
+      options._subTarget = subTarget;
     }
     issuesCommand(action, target, options);
   });

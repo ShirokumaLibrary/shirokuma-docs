@@ -711,6 +711,12 @@ export function refreshMarketplaceClone(): boolean {
   }
 
   try {
+    // タグを確実に取得（チャンネル解決に必要 #961）
+    execFileSync(
+      "git",
+      ["-C", installLocation, "fetch", "--tags"],
+      { encoding: "utf-8", timeout: 15000, stdio: "pipe" },
+    );
     execFileSync(
       "git",
       ["-C", installLocation, "pull", "--ff-only"],
@@ -820,6 +826,158 @@ export function getGlobalCachePath(pluginName: string, version?: string): string
     return versions.length > 0 ? join(cacheBase, versions[0]) : null;
   } catch {
     return null;
+  }
+}
+
+// ========================================
+// Channel-Based Version Resolution (#961)
+// ========================================
+
+/**
+ * プレリリースチャンネルの優先順位
+ *
+ * alpha < beta < rc < stable の順。
+ * 各チャンネルはそのレベル以上のバージョンを受け入れる。
+ */
+type PluginChannel = "stable" | "rc" | "beta" | "alpha";
+
+/**
+ * プレリリース識別子からチャンネルレベルを返す
+ *
+ * @param prerelease - プレリリース識別子（例: "alpha.16", "beta.1", null）
+ * @returns チャンネルレベル（数値が高いほど安定）
+ */
+function getPrereleaseLevel(prerelease: string | null): number {
+  if (!prerelease) return 4; // stable
+  if (prerelease.startsWith("rc")) return 3;
+  if (prerelease.startsWith("beta")) return 2;
+  if (prerelease.startsWith("alpha")) return 1;
+  return 0; // unknown prerelease
+}
+
+/**
+ * チャンネルの最小レベルを返す
+ */
+function getChannelMinLevel(channel: PluginChannel): number {
+  switch (channel) {
+    case "stable": return 4;
+    case "rc": return 3;
+    case "beta": return 2;
+    case "alpha": return 1;
+  }
+}
+
+/**
+ * marketplace クローンのローカルパスを取得する
+ *
+ * known_marketplaces.json から installLocation を読み取る。
+ *
+ * @returns クローンパス、見つからない場合は null
+ */
+export function getMarketplaceClonePath(): string | null {
+  const knownPath = join(homedir(), ".claude", "plugins", "known_marketplaces.json");
+  if (!existsSync(knownPath)) return null;
+
+  try {
+    const content = readFileSync(knownPath, "utf-8");
+    const known = JSON.parse(content) as Record<string, { installLocation?: string }>;
+    const entry = known[MARKETPLACE_NAME];
+    if (!entry?.installLocation) return null;
+    if (!existsSync(entry.installLocation)) return null;
+    return entry.installLocation;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * marketplace クローンの git タグからチャンネルに合致する最新バージョンを解決する
+ *
+ * @param channel - リリースチャンネル
+ * @param clonePath - marketplace クローンのローカルパス
+ * @returns 合致する最新バージョンタグ（"v" プレフィックス付き）、見つからない場合は null
+ */
+export function resolveVersionByChannel(channel: PluginChannel, clonePath: string): string | null {
+  let tagsOutput: string;
+  try {
+    tagsOutput = execFileSync(
+      "git",
+      ["-C", clonePath, "tag", "-l"],
+      { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
+    );
+  } catch {
+    return null;
+  }
+
+  const tags = tagsOutput.split("\n").map(t => t.trim()).filter(t => t.length > 0);
+  if (tags.length === 0) return null;
+
+  // "v" プレフィックス付きタグのみ対象（例: v0.2.0-alpha.16）
+  const versionTags = tags.filter(tag => /^v?\d+\.\d+\.\d+/.test(tag));
+  if (versionTags.length === 0) return null;
+
+  const minLevel = getChannelMinLevel(channel);
+
+  // チャンネルフィルタ: バージョンのプレリリースレベルが minLevel 以上
+  const eligible = versionTags.filter(tag => {
+    const version = tag.startsWith("v") ? tag.slice(1) : tag;
+    const [, ...preParts] = version.split("-");
+    const pre = preParts.length > 0 ? preParts.join("-") : null;
+    return getPrereleaseLevel(pre) >= minLevel;
+  });
+
+  if (eligible.length === 0) return null;
+
+  // semver ソートで最新を返す
+  eligible.sort((a, b) => {
+    const va = a.startsWith("v") ? a.slice(1) : a;
+    const vb = b.startsWith("v") ? b.slice(1) : b;
+    return compareSemver(vb, va); // 降順
+  });
+
+  return eligible[0];
+}
+
+/**
+ * marketplace クローンを指定タグに一時チェックアウトして関数を実行する
+ *
+ * try/finally パターンで main ブランチへの復帰を保証する。
+ * checkout 失敗時は fn() を実行せずエラーをスローする。
+ *
+ * @param clonePath - marketplace クローンのローカルパス
+ * @param tag - チェックアウトするタグ
+ * @param fn - タグチェックアウト中に実行する関数
+ */
+export function withMarketplaceVersion<T>(clonePath: string, tag: string, fn: () => T): T {
+  // 指定タグにチェックアウト
+  execFileSync(
+    "git",
+    ["-C", clonePath, "checkout", tag],
+    { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
+  );
+
+  try {
+    return fn();
+  } finally {
+    // main ブランチに復帰
+    try {
+      execFileSync(
+        "git",
+        ["-C", clonePath, "checkout", "main"],
+        { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
+      );
+    } catch {
+      // main 復帰失敗時は強制復帰を試行
+      try {
+        execFileSync(
+          "git",
+          ["-C", clonePath, "checkout", "-f", "main"],
+          { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
+        );
+      } catch {
+        // 強制復帰も失敗 — ログのみ（呼び出し元のエラーを優先）
+      }
+    }
   }
 }
 

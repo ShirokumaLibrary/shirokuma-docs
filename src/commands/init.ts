@@ -25,6 +25,7 @@ import { createLogger, type Logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import { validateGitHubSetup, printSetupCheckResults, type SetupCheckResult } from "../utils/setup-check.js";
 import { type ShirokumaConfig } from "../utils/config.js";
+import { loadConfig } from "../utils/config.js";
 import {
   deployRules,
   registerPluginCache,
@@ -44,6 +45,9 @@ import {
   PLUGIN_REGISTRY_ID_HOOKS,
   cleanDeployedRules,
   ensureSingleLanguagePlugin,
+  getMarketplaceClonePath,
+  resolveVersionByChannel,
+  withMarketplaceVersion,
 } from "../utils/skills-repo.js";
 
 /**
@@ -62,6 +66,8 @@ interface InitOptions {
   verbose?: boolean;
   /** Language setting (en|ja) */
   lang?: string;
+  /** Plugin release channel (overrides config) */
+  channel?: "stable" | "rc" | "beta" | "alpha";
   /** Manage .gitignore (default: true, set false by --no-gitignore) */
   gitignore?: boolean;
   /** Scaffold Next.js monorepo structure */
@@ -525,34 +531,67 @@ export async function initCommand(options: InitOptions): Promise<void> {
       // 言語設定を確認（--lang オプション優先、なければ既存 settings.json）
       const effectiveLang = options.lang ? LANG_MAP[options.lang] : getLanguageSetting(projectPath);
 
+      // チャンネル設定を解決（CLI オプション > config > 未指定）
+      const config = existsSync(resolve(projectPath, "shirokuma-docs.config.yaml"))
+        ? loadConfig(projectPath, "shirokuma-docs.config.yaml")
+        : null;
+      const effectiveChannel = options.channel ?? config?.plugins?.channel ?? undefined;
+
+      if (effectiveChannel) {
+        logger.info(`Plugin channel: ${effectiveChannel}`);
+      }
+
       // marketplace 登録 + キャッシュインストール (#801: 常に external フロー)
       if (isClaudeCliAvailable()) {
         logger.info("\n" + t("commands.init.registeringCache"));
         const marketplaceOk = ensureMarketplace();
         if (marketplaceOk) {
-          // 言語に応じたスキルプラグインを登録（#495, #636: marketplace パスでは hasJaPlugin() 不要）
-          if (effectiveLang === "japanese") {
-            const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
-            if (jaCacheResult.success) {
-              logger.success(t("commands.init.jaCacheRegistered"));
-              result.cache_registered = true;
+          // プラグインインストール処理を関数化（チャンネルラップ対応 #961）
+          const installPlugins = () => {
+            // 言語に応じたスキルプラグインを登録（#495, #636: marketplace パスでは hasJaPlugin() 不要）
+            if (effectiveLang === "japanese") {
+              const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
+              if (jaCacheResult.success) {
+                logger.success(t("commands.init.jaCacheRegistered"));
+                result.cache_registered = true;
+              } else {
+                logger.warn(t("commands.init.cacheFailed", { message: jaCacheResult.message ?? "" }));
+              }
             } else {
-              logger.warn(t("commands.init.cacheFailed", { message: jaCacheResult.message ?? "" }));
+              const cacheResult = registerPluginCache(projectPath);
+              if (cacheResult.success) {
+                logger.success(t("commands.init.cacheRegistered"));
+                result.cache_registered = true;
+              } else {
+                logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
+              }
+            }
+
+            // Hooks プラグイン: 言語に関わらず常に登録（#636: marketplace パスでは hasHooksPlugin() 不要）
+            const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
+            if (hooksCacheResult.success) {
+              logger.success(t("commands.init.hooksCacheRegistered"));
+            }
+          };
+
+          // チャンネル指定時はタグベースのバージョン解決を使用 (#961)
+          if (effectiveChannel) {
+            const clonePath = getMarketplaceClonePath();
+            if (clonePath) {
+              const tag = resolveVersionByChannel(effectiveChannel, clonePath);
+              if (tag) {
+                logger.info(`Resolved version: ${tag} (channel: ${effectiveChannel})`);
+                withMarketplaceVersion(clonePath, tag, installPlugins);
+              } else {
+                logger.warn(`No matching tag found for channel "${effectiveChannel}", using HEAD`);
+                installPlugins();
+              }
+            } else {
+              logger.warn("Marketplace clone not found, using HEAD");
+              installPlugins();
             }
           } else {
-            const cacheResult = registerPluginCache(projectPath);
-            if (cacheResult.success) {
-              logger.success(t("commands.init.cacheRegistered"));
-              result.cache_registered = true;
-            } else {
-              logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
-            }
-          }
-
-          // Hooks プラグイン: 言語に関わらず常に登録（#636: marketplace パスでは hasHooksPlugin() 不要）
-          const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
-          if (hooksCacheResult.success) {
-            logger.success(t("commands.init.hooksCacheRegistered"));
+            installPlugins();
           }
 
           // 逆言語プラグインを削除 (#812)

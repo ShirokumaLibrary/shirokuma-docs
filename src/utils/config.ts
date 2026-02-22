@@ -641,6 +641,12 @@ export interface ShirokumaConfig {
     defaultBranch?: string;
   }>;
 
+  /** プラグイン設定 */
+  plugins?: {
+    /** リリースチャンネル（未指定時は現行動作: HEAD からインストール） */
+    channel?: "stable" | "rc" | "beta" | "alpha";
+  };
+
   /** Hooks 設定（破壊的コマンド保護ルール） */
   hooks?: {
     /** 許可するルール ID のリスト（デフォルト全ブロック、指定 ID のみ許可） */
@@ -1191,6 +1197,11 @@ function mergeConfig(
           exclude: override.lintAnnotations.exclude ?? base.lintAnnotations?.exclude,
         }
       : base.lintAnnotations,
+    plugins: override.plugins
+      ? {
+          channel: override.plugins.channel ?? base.plugins?.channel,
+        }
+      : base.plugins,
     hooks: override.hooks
       ? {
           allow: override.hooks.allow ?? base.hooks?.allow,

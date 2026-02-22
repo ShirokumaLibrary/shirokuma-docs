@@ -149,7 +149,7 @@ function hasComplexVariables(
 export function runGraphQL<T = unknown>(
   query: string,
   variables: Record<string, GhVariableValue>,
-  options: { silent?: boolean } = {}
+  options: { silent?: boolean; headers?: Record<string, string> } = {}
 ): GhResult<T> {
   // Guard: "query" is reserved by gh CLI for the GraphQL query body (#585)
   if ("query" in variables) {
@@ -164,7 +164,16 @@ export function runGraphQL<T = unknown>(
     return runGraphQLWithInput<T>(query, variables, options);
   }
 
-  const args = ["api", "graphql", "-f", `query=${query}`];
+  const args = ["api", "graphql"];
+
+  // カスタムヘッダーの追加（例: GraphQL-Features: sub_issues）
+  if (options.headers) {
+    for (const [headerKey, headerValue] of Object.entries(options.headers)) {
+      args.push("-H", `${headerKey}: ${headerValue}`);
+    }
+  }
+
+  args.push("-f", `query=${query}`);
 
   for (const [key, value] of Object.entries(variables)) {
     if (value === null) {
@@ -188,7 +197,7 @@ export function runGraphQL<T = unknown>(
 function runGraphQLWithInput<T = unknown>(
   query: string,
   variables: Record<string, GhVariableValue>,
-  options: { silent?: boolean; timeout?: number } = {}
+  options: { silent?: boolean; timeout?: number; headers?: Record<string, string> } = {}
 ): GhResult<T> {
   const { silent = false, timeout = SUBPROCESS_TIMEOUT } = options;
 
@@ -205,7 +214,16 @@ function runGraphQLWithInput<T = unknown>(
     variables: cleanVars,
   });
 
-  const args = ["api", "graphql", "--input", "-"];
+  const args = ["api", "graphql"];
+
+  // カスタムヘッダーの追加
+  if (options.headers) {
+    for (const [headerKey, headerValue] of Object.entries(options.headers)) {
+      args.push("-H", `${headerKey}: ${headerValue}`);
+    }
+  }
+
+  args.push("--input", "-");
 
   try {
     const result = spawnSync("gh", args, {

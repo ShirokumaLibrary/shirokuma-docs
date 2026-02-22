@@ -30,6 +30,7 @@ import { resolve, join } from "node:path";
 import { existsSync } from "node:fs";
 import { createLogger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
+import { loadConfig } from "../utils/config.js";
 import {
   PLUGIN_NAME,
   PLUGIN_NAME_JA,
@@ -53,6 +54,9 @@ import {
   ensureSingleLanguagePlugin,
   getCliInstallDir,
   updateCliPackage,
+  getMarketplaceClonePath,
+  resolveVersionByChannel,
+  withMarketplaceVersion,
   type DeployedRuleItem,
   type CliUpdateResult,
 } from "../utils/skills-repo.js";
@@ -75,6 +79,8 @@ interface UpdateSkillsOptions {
   force?: boolean;
   /** Force global cache sync (claude plugin uninstall + install) */
   installCache?: boolean;
+  /** Plugin release channel (overrides config) */
+  channel?: "stable" | "rc" | "beta" | "alpha";
   /** Verbose logging */
   verbose?: boolean;
 }
@@ -175,6 +181,14 @@ async function updateExternalProject(
   // 言語設定を確認（#495: キャッシュ登録とルール展開の両方で使用）
   const languageSetting = getLanguageSetting(projectPath);
 
+  // チャンネル設定を解決（CLI オプション > config > 未指定）
+  const config = loadConfig(projectPath, "shirokuma-docs.config.yaml");
+  const effectiveChannel = options.channel ?? config.plugins?.channel ?? undefined;
+
+  if (effectiveChannel) {
+    logger.info(`Plugin channel: ${effectiveChannel}`);
+  }
+
   // claude CLI が利用可能な場合のみキャッシュ更新を実行 (#632: graceful degradation)
   if (isClaudeCliAvailable()) {
     // Marketplace 登録確認
@@ -187,21 +201,43 @@ async function updateExternalProject(
     if (!options.dryRun && marketplaceOk) {
       logger.info(T("updatingGlobalCache"));
 
-      // #636: 外部プロジェクトでは marketplace からインストールするため hasJaPlugin()/hasHooksPlugin() 不要
-      const registryIds = [
-        ...(languageSetting === "japanese"
-          ? [PLUGIN_REGISTRY_ID_JA]
-          : [PLUGIN_REGISTRY_ID]),
-        PLUGIN_REGISTRY_ID_HOOKS,
-      ];
+      // チャンネル指定時はタグベースのバージョン解決を使用 (#961)
+      const installPlugins = () => {
+        // #636: 外部プロジェクトでは marketplace からインストールするため hasJaPlugin()/hasHooksPlugin() 不要
+        const registryIds = [
+          ...(languageSetting === "japanese"
+            ? [PLUGIN_REGISTRY_ID_JA]
+            : [PLUGIN_REGISTRY_ID]),
+          PLUGIN_REGISTRY_ID_HOOKS,
+        ];
 
-      for (const registryId of registryIds) {
-        const cacheResult = registerPluginCache(projectPath, { reinstall: true, registryId });
-        if (cacheResult.success) {
-          logger.success(`${registryId}: ${T("globalCacheUpdated")}`);
-        } else {
-          logger.warn(`${registryId}: ${cacheResult.message ?? "update failed"}`);
+        for (const registryId of registryIds) {
+          const cacheResult = registerPluginCache(projectPath, { reinstall: true, registryId });
+          if (cacheResult.success) {
+            logger.success(`${registryId}: ${T("globalCacheUpdated")}`);
+          } else {
+            logger.warn(`${registryId}: ${cacheResult.message ?? "update failed"}`);
+          }
         }
+      };
+
+      if (effectiveChannel) {
+        const clonePath = getMarketplaceClonePath();
+        if (clonePath) {
+          const tag = resolveVersionByChannel(effectiveChannel, clonePath);
+          if (tag) {
+            logger.info(`Resolved version: ${tag} (channel: ${effectiveChannel})`);
+            withMarketplaceVersion(clonePath, tag, installPlugins);
+          } else {
+            logger.warn(`No matching tag found for channel "${effectiveChannel}", using HEAD`);
+            installPlugins();
+          }
+        } else {
+          logger.warn("Marketplace clone not found, using HEAD");
+          installPlugins();
+        }
+      } else {
+        installPlugins();
       }
 
       cacheUpdated = true;

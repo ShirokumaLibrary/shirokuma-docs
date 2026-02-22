@@ -39,6 +39,11 @@ query($owner: String!, $name: String!, $number: Int!) {
       labels(first: 20) {
         nodes { name }
       }
+      subIssuesSummary {
+        total
+        completed
+        percentCompleted
+      }
       projectItems(first: 5) {
         nodes {
           id
