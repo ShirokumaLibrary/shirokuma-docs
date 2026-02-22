@@ -8,12 +8,6 @@ allowed-tools: Bash, AskUserQuestion, Read, Write, TodoWrite
 
 Auto-infer Issue metadata from conversation context, delegate to `managing-github-items` for creation, and provide auto-chaining to `working-on-issue`.
 
-## When to Use
-
-- When delegated from `working-on-issue` Step 1a (text description only)
-- When user says "create issue", "make this an issue", "follow-up issue"
-- When user says "create spec", "write spec"
-
 ## Responsibility Split
 
 | Layer | Responsibility |

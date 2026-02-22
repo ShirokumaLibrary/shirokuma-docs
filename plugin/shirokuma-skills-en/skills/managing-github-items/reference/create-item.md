@@ -178,19 +178,19 @@ Issue numbers are assigned by GitHub at creation time — they are unknown befor
 
 | Timing | Pattern | Example |
 |--------|---------|---------|
-| Before creation | `/tmp/{slug}-body.md` | `/tmp/add-format-option-body.md` |
-| After creation | `/tmp/issue-{number}-body.md` allowed | `/tmp/issue-42-body.md` |
+| Before creation | `/tmp/shirokuma-docs/{slug}-body.md` | `/tmp/shirokuma-docs/add-format-option-body.md` |
+| After creation | `/tmp/shirokuma-docs/{number}-body.md` allowed | `/tmp/shirokuma-docs/42-body.md` |
 
 ```bash
 # Issue (recommended - supports #number)
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/add-format-option-body.md \
+  --title "Title" --body /tmp/shirokuma-docs/add-format-option-body.md \
   --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
 # DraftIssue (lightweight)
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/add-format-option-body.md \
+  --title "Title" --body /tmp/shirokuma-docs/add-format-option-body.md \
   --field-status "Backlog" --priority "Medium"
 ```
 

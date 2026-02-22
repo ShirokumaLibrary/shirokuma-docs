@@ -41,6 +41,7 @@ import {
   getBundledPluginPathJa,
   getPackageVersion,
   getPluginVersion,
+  getPluginVersionFromGlobalCache,
   deployRules,
   registerPluginCache,
   ensureMarketplace,
@@ -148,6 +149,7 @@ async function updateExternalProject(
 ): Promise<void> {
   const deployedRuleResults: DeployedRuleItem[] = [];
   let cliUpdateResult: CliUpdateResult | undefined;
+  let cacheUpdated = false;
 
   // CLI 本体の自動更新 (#867)
   const installDir = getCliInstallDir();
@@ -202,6 +204,8 @@ async function updateExternalProject(
         }
       }
 
+      cacheUpdated = true;
+
       // 古いキャッシュバージョンをクリーンアップ (#679)
       const pluginNames = languageSetting === "japanese"
         ? [PLUGIN_NAME_JA, PLUGIN_NAME_HOOKS]
@@ -250,13 +254,25 @@ async function updateExternalProject(
     deployedRuleResults.push(...deployResult.deployed);
   }
 
+  // 更新後のバージョンを再計算 (#934)
+  // CLI: updateCliPackage() が返す newVersion を優先（実行中プロセスの ESM キャッシュをバイパス）
+  const finalVersion = cliUpdateResult?.status === "updated" && cliUpdateResult.newVersion
+    ? cliUpdateResult.newVersion
+    : newVersion;
+  // プラグイン: キャッシュ更新後はグローバルキャッシュから直接読み取り（バンドルフォールバックをバイパス）
+  let finalPluginVersion = newPluginVersion;
+  if (cacheUpdated) {
+    const activePluginName = languageSetting === "japanese" ? PLUGIN_NAME_JA : PLUGIN_NAME;
+    finalPluginVersion = getPluginVersionFromGlobalCache(activePluginName) ?? newPluginVersion;
+  }
+
   // Summary
   const result: UpdateResult = {
     skills: [],
     rules: [],
     deployedRules: deployedRuleResults,
-    version: newVersion,
-    pluginVersion: newPluginVersion,
+    version: finalVersion,
+    pluginVersion: finalPluginVersion,
     dryRun: options.dryRun ?? false,
     cliUpdate: cliUpdateResult,
   };

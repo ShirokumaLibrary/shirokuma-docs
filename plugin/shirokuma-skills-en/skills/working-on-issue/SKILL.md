@@ -10,24 +10,7 @@ Orchestrate the full workflow from planning to implementation, commit, PR, and s
 
 **Note**: For session setup, use `starting-session`. This skill is for starting work on a specific task.
 
-## Core Concept
-
-This skill is the **orchestrator for all work**. It analyzes, delegates, and manages the chain execution.
-
-```
-/working-on-issue #42 → Analyze → Select Skill → [TDD] → Execute → Commit → PR → Review
-```
-
-### Dual Mode
-
-| Mode | Trigger | Behavior |
-|------|---------|----------|
-| Auto-chain | `/working-on-issue #42` (normal) | Work → Commit → PR → Review executed automatically |
-| Individual | Direct skill invocation | Single step only |
-
-**Merge is NOT part of the auto-chain** (destructive operation). Only via explicit "merge" keyword through `committing-on-issue`.
-
-### TodoWrite Registration (Required)
+## TodoWrite Registration (Required)
 
 Register **all chain steps** in TodoWrite **before starting work**.
 
@@ -39,6 +22,7 @@ Register **all chain steps** in TodoWrite **before starting work**.
 | 2 | Commit and push changes | Committing and pushing | `committing-on-issue` |
 | 3 | Create pull request | Creating pull request | `creating-pr-on-issue` |
 | 4 | Run self-review and post results to PR | Running self-review | `creating-pr-on-issue` Step 6 |
+| 5 | Update Status to Review | Updating Status to Review | `creating-pr-on-issue` Step 7 |
 
 **Refactoring / Chore:**
 
@@ -48,6 +32,7 @@ Register **all chain steps** in TodoWrite **before starting work**.
 | 2 | Commit and push changes | Committing and pushing | `committing-on-issue` |
 | 3 | Create pull request | Creating pull request | `creating-pr-on-issue` |
 | 4 | Run self-review and post results to PR | Running self-review | `creating-pr-on-issue` Step 6 |
+| 5 | Update Status to Review | Updating Status to Review | `creating-pr-on-issue` Step 7 |
 
 **Research:**
 
@@ -152,6 +137,8 @@ After work completes, execute the chain **automatically**. No user confirmation 
 | Implementation / Design / Bug Fix | Work → Commit → PR → Review |
 | Refactoring / Chore | Work → Commit → PR → Review |
 | Research | Research → Discussion |
+
+> **Definition of "Review"**: The "Review" at the end of the chain includes both self-review execution (`creating-pr-on-issue` Step 6) **and** Status → Review update (Step 7).
 
 - **Merge is NOT part of the chain**
 - No confirmation between steps, one-line progress reports

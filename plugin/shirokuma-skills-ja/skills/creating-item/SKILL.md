@@ -8,12 +8,6 @@ allowed-tools: Bash, AskUserQuestion, Read, Write, TodoWrite
 
 会話コンテキストから Issue メタデータを自動推定し、`managing-github-items` に委任して作成。作成後は `working-on-issue` への自動チェーンを提供する。
 
-## いつ使うか
-
-- `working-on-issue` の Step 1a（テキスト説明のみ）から委任された場合
-- ユーザーが直接「Issue にして」「Issue 作って」「フォローアップ Issue」と言った場合
-- 「仕様作成して」「Spec 作成」の場合
-
 ## 責務分担
 
 | レイヤー | 責務 |

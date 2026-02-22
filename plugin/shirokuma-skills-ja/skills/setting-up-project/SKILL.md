@@ -8,12 +8,6 @@ allowed-tools: Bash, AskUserQuestion, Read, Write, Glob, TodoWrite
 
 初期セットアップを対話式で一気通貫実行。既存の `github-project-setup` と `project-config-generator` の機能を統合。
 
-## いつ使うか
-
-- `working-on-issue` のディスパッチ条件テーブルから委任された場合
-- 新規プロジェクトの初期設定
-- 「初期設定」「セットアップ」「setup project」「新規プロジェクト」
-
 ## ワークフロー
 
 TodoWrite で進捗管理（5ステップ）。

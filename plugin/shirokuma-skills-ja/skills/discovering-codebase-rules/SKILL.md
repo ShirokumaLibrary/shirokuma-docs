@@ -10,14 +10,6 @@ TypeScript アプリケーションを分析して以下の2つの目的で使�
 1. **パターン発見**: アプリ横断で既存パターンを抽出
 2. **規約提案**: 機械的チェックを可能にする新規約を提案
 
-## 使用タイミング
-
-- 「ルール発見」「rule discovery」を要求された場合
-- 「パターン分析」「pattern analysis」を要求された場合
-- 「規約提案」「convention proposal」を要求された場合
-- 「もっとチェックできるようにしたい」と言われた場合
-- 「統一感を上げたい」「機械的チェックを増やしたい」と言われた場合
-
 ## 2つのモード
 
 ### モード 1: パターン発見
@@ -109,10 +101,10 @@ find apps/ -name "*.tsx" | xargs basename -a | sort | uniq -c | sort -rn
 
 ```bash
 # 確認済みパターン → Knowledge カテゴリ
-shirokuma-docs discussions create --category Knowledge --title "{パターン名}" --body /tmp/body.md
+shirokuma-docs discussions create --category Knowledge --title "{パターン名}" --body /tmp/shirokuma-docs/body.md
 
 # 調査中 → Research カテゴリ
-shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body /tmp/body.md
+shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body /tmp/shirokuma-docs/body.md
 ```
 
 **確信度に基づきカテゴリを選択：**

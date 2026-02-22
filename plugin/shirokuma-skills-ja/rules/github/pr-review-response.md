@@ -17,6 +17,14 @@
    ```
 4. 解決: `shirokuma-docs issues resolve <PR#> --thread-id <PRRT_id>`
 
+### コメント内容の修正が必要
+
+以前投稿したコメントの内容に誤りがある場合:
+
+1. `shirokuma-docs issues comment-edit <comment-id> --body /tmp/shirokuma-docs/{number}-updated.md`
+2. 修正した旨をスレッドに返信
+3. スレッドを解決
+
 ### 質問またはディスカッション
 
 1. 説明を返信

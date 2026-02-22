@@ -8,24 +8,6 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch
 
 Create memorable, production-grade interfaces that avoid generic "AI slop" aesthetics.
 
-## When to Use
-
-- When delegated from `working-on-issue` dispatch condition table
-- "memorable UI", "distinctive design", "unique design"
-- "landing page"
-- Custom styling, unique aesthetics needed
-
-## Core Philosophy
-
-> "Bold maximalism and refined minimalism both work - the key is intentionality, not intensity."
-
-Every interface should be **memorable** and **purposeful**.
-
-## Architecture
-
-- `SKILL.md` - Core workflow
-- `reference/` - Technical patterns, font setup, animation
-
 ## Workflow
 
 ### 0. Tech Stack Check

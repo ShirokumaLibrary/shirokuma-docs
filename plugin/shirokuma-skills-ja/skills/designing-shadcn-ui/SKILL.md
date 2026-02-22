@@ -8,24 +8,6 @@ allowed-tools: Read, Write, Edit, Bash, Glob, Grep, WebFetch, WebSearch
 
 ジェネリックな「AI スロップ」美学を避けた、印象的でプロダクション品質のインターフェースを作成。
 
-## いつ使うか
-
-- `working-on-issue` のディスパッチ条件テーブルから委任された場合
-- 「印象的なUI」「memorable UI」「個性的なデザイン」
-- 「ランディングページ」「landing page」
-- カスタムスタイリング、独自の美学が必要な場合
-
-## コアフィロソフィー
-
-> "Bold maximalism and refined minimalism both work - the key is intentionality, not intensity."
-
-すべてのインターフェースは**記憶に残る**ものであり、**目的を持つ**べき。
-
-## アーキテクチャ
-
-- `SKILL.md` - コアワークフロー
-- `reference/` - 技術パターン、フォントセットアップ、アニメーション
-
 ## ワークフロー
 
 ### 0. 技術スタック確認

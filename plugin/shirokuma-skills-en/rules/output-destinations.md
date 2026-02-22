@@ -27,7 +27,7 @@ Claude Code skills produce two types of output. Route each to the appropriate de
 shirokuma-docs discussions create \
   --category Reports \
   --title "Review: {target}" \
-  --body /tmp/report.md
+  --body /tmp/shirokuma-docs/report.md
 ```
 
 **Characteristics**:

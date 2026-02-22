@@ -10,14 +10,6 @@ Analyzes TypeScript applications in the monorepo for two purposes:
 1. **Pattern Discovery**: Extract existing patterns across apps
 2. **Convention Proposal**: Propose new conventions that enable mechanical checks
 
-## When to Use
-
-- User requests "ルール発見", "rule discovery"
-- User says "パターン分析", "pattern analysis"
-- User mentions "規約提案", "convention proposal"
-- User asks "もっとチェックできるようにしたい"
-- User wants to "統一感を上げたい", "機械的チェックを増やしたい"
-
 ## Two Modes
 
 ### Mode 1: Pattern Discovery
@@ -100,10 +92,10 @@ Before proposing a rule, save findings as a Knowledge Discussion to preserve con
 
 ```bash
 # For confirmed patterns → Knowledge category
-shirokuma-docs discussions create --category Knowledge --title "{Pattern Name}" --body /tmp/body.md
+shirokuma-docs discussions create --category Knowledge --title "{Pattern Name}" --body /tmp/shirokuma-docs/body.md
 
 # For investigations still in progress → Research category
-shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body /tmp/body.md
+shirokuma-docs discussions create --category Research --title "[Research] convention-{category}" --body /tmp/shirokuma-docs/body.md
 ```
 
 **Choose the category based on confidence level:**

@@ -1,12 +1,12 @@
-import { encoding_for_model } from 'tiktoken';
+import { encoding_for_model, type TiktokenModel } from 'tiktoken';
 
 /**
  * Estimate token count for text using tiktoken
  */
-export function estimateTokens(text: string, model: string = 'gpt-4'): number {
+export function estimateTokens(text: string, model: TiktokenModel = 'gpt-4'): number {
   try {
     // Get encoding for model
-    const encoding = encoding_for_model(model as any);
+    const encoding = encoding_for_model(model);
     const tokens = encoding.encode(text);
     encoding.free();
     return tokens.length;

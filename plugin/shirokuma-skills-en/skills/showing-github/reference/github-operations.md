@@ -45,7 +45,7 @@ shirokuma-docs issues list --all                    # Include closed
 shirokuma-docs issues list --status "In Progress"   # Filter by status
 shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/shirokuma-docs/body.md \
   --labels "area:cli" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
@@ -80,7 +80,7 @@ shirokuma-docs projects list                        # Project items
 shirokuma-docs projects fields                      # Show field options
 shirokuma-docs projects add-issue {number}          # Add issue to project
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/shirokuma-docs/body.md \
   --field-status "Backlog" --priority "Medium"               # DraftIssue
 shirokuma-docs projects get PVTI_xxx                # By item ID
 shirokuma-docs projects update {number} --field-status "Done"
@@ -94,7 +94,7 @@ shirokuma-docs discussions show {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
-  --body /tmp/body.md
+  --body /tmp/shirokuma-docs/body.md
 ```
 
 ### Repository
@@ -108,7 +108,7 @@ shirokuma-docs repo labels
 
 ```bash
 shirokuma-docs issues list --repo docs
-shirokuma-docs issues create --repo docs --title "Title" --body /tmp/body.md
+shirokuma-docs issues create --repo docs --title "Title" --body /tmp/shirokuma-docs/body.md
 ```
 
 ### gh Fallback (CLI unsupported only)
@@ -131,7 +131,7 @@ gh auth status
 | Tier | Pattern | Usage |
 |------|---------|-------|
 | Tier 1 (stdin) | `--body - <<'EOF'...EOF` | Comments, replies, short reasons |
-| Tier 2 (file) | Write → `--body /tmp/xxx.md` | Issue/Discussion body, handovers |
+| Tier 2 (file) | Write → `--body /tmp/shirokuma-docs/xxx.md` | Issue/Discussion body, handovers |
 
 Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion).
 

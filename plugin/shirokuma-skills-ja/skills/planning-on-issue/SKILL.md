@@ -8,22 +8,6 @@ allowed-tools: Bash, Read, Grep, Glob, Task, AskUserQuestion, TodoWrite
 
 Issue の要件を分析し、実装計画を策定して Issue 本文に永続化する。計画完了後はステータスを Spec Review に変更し、ユーザー承認を待つ。**実装には進まない。**
 
-## いつ使うか
-
-- **全 Issue で実施** — 計画の深さを Issue の内容に応じて調整する
-- `working-on-issue` が計画未済の Issue を検出した場合
-- ユーザーが明示的に計画を求めた場合
-
-```mermaid
-graph LR
-  subgraph planning-on-issue
-    A[Planning 設定] --> B[深さ判定] --> C[計画策定] --> D[Issue 本文更新] --> E[Spec Review]
-  end
-  E --> F[ユーザーに返す]
-  F -.-> G[working-on-issue]
-  G --> H[計画済み確認] --> I["実装へ（別セッションでも可）"]
-```
-
 ## 計画レベル
 
 Issue の内容に応じて計画の深さを調整する。サイズではなく、**内容の複雑度・不確実性**で判定。
@@ -225,7 +209,7 @@ EOF
 既存の Issue 本文の末尾に `## 計画` セクションを追加する。ステップ 3 で判定したレベルに応じたテンプレートを使用。
 
 ```bash
-shirokuma-docs issues update {number} --body /tmp/body.md
+shirokuma-docs issues update {number} --body /tmp/shirokuma-docs/{number}-body.md
 ```
 
 **重要**: 既存の本文（概要、タスク、成果物等）は保持し、`## 計画` セクションを**追加**する。既存の `## タスク` セクションがある場合、計画の `### タスク分解` はより具体的な実装ステップとして共存する。

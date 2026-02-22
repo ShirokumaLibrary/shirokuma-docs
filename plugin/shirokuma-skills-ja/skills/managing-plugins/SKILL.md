@@ -8,24 +8,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 プラグインを作成・設定・配布する。
 
-## いつ使うか
-
-- 「プラグイン作成」「create a plugin」「make a plugin」
-- 「plugin.json」「marketplace.json」に関する質問
-- 「プラグイン配布」「publish plugin」「distribute plugin」
-- 「スキル/エージェントをパッケージ化して共有したい」
-- 「marketplace セットアップ」「install plugins」
-- プラグインの構造や仕組みについての質問
-
-## プラグインとは
-
-プラグインは Claude Code の機能をプロジェクトやチーム間で共有可能な形で拡張する。含められるもの:
-- **Skills**: モデル起動型ケイパビリティ（自動）
-- **Agents**: 複雑なワークフロー用の特化サブエージェント
-- **Commands**: スラッシュコマンド（ユーザーが `/` で手動起動）
-- **Hooks**: 自動化用イベントハンドラ
-- **MCP Servers**: 外部ツール連携
-
 ## ワークフロー
 
 ### ステップ 1: スコープ決定

@@ -252,6 +252,50 @@ describe("update-skills command", () => {
     });
   });
 
+  describe("version reporting (#934)", () => {
+    /**
+     * @testdoc verbose 出力の JSON に version / pluginVersion フィールドが含まれる
+     * @purpose #934: 更新後のバージョンが結果に反映されることを確認
+     */
+    it("should include version and pluginVersion in verbose JSON output", () => {
+      setupWithInit();
+
+      const result = runCli([
+        "update-skills",
+        "--project", TEST_OUTPUT_DIR,
+        "--verbose",
+      ]);
+
+      expect(result.status).toBe(0);
+      const output = extractJson<UpdateResult>(result.stdout);
+      // SHIROKUMA_NO_CLAUDE_CLI=1 ではキャッシュ更新がスキップされるため
+      // バンドル版のバージョンがフォールバックとして使用される
+      expect(output.version).toBeTruthy();
+      expect(output.version).not.toBe("unknown");
+      expect(output.pluginVersion).toBeTruthy();
+      expect(output.pluginVersion).not.toBe("unknown");
+    });
+
+    /**
+     * @testdoc version と pluginVersion が一致する（統一バージョンポリシー）
+     * @purpose #934: CLI とプラグインのバージョンが同期していることを確認
+     */
+    it("should have matching CLI and plugin versions (unified version policy)", () => {
+      setupWithInit();
+
+      const result = runCli([
+        "update-skills",
+        "--project", TEST_OUTPUT_DIR,
+        "--verbose",
+      ]);
+
+      expect(result.status).toBe(0);
+      const output = extractJson<UpdateResult>(result.stdout);
+      // 統一バージョンポリシー: CLI と全バンドルプラグインは同一バージョン
+      expect(output.version).toBe(output.pluginVersion);
+    });
+  });
+
   describe("update shortcut command", () => {
     /**
      * @testdoc `update` コマンドが正常に動作する

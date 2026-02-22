@@ -8,62 +8,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 Create, update, and improve Claude Code skills following best practices.
 
-## When to Use
-
-Automatically invoke when the user:
-- Asks to "create a skill" or "make a skill"
-- Wants to "update a skill" or "improve a skill"
-- Requests "skill template" or "SKILL.md help"
-- Needs to "review a skill" or "check skill quality"
-
-## What Are Skills?
-
-**Skills** are modular capabilities that extend Claude's functionality. Key characteristics:
-- **Model-invoked**: Claude autonomously decides when to use them
-- **Progressive disclosure**: Core instructions + on-demand resources
-- Required `SKILL.md` file with YAML frontmatter
-- Optional supporting files (reference.md, examples.md, etc.)
-
-## Quick Reference
-
-### File Structure
-
-| File | Required | Purpose |
-|------|----------|---------|
-| `SKILL.md` | ✓ | Core instructions (<500 lines) |
-| `scripts/` | | Executable automation (Python/Bash) |
-| `references/` | | Documentation loaded on-demand |
-| `assets/` | | Output files (templates, images) |
-| `templates/` | | Reusable boilerplate |
-
-### Minimal Template
-
-```markdown
----
-name: skill-name
-description: [What it does]. Use when [triggers].
----
-
-# Skill Title
-
-Brief overview.
-
-## When to Use
-- [Trigger scenario 1]
-- [Trigger scenario 2]
-
-## Workflow
-
-### Step 1: [Action]
-Instructions with checklists if needed.
-
-### Step 2: [Action]
-Include validation: run → check → fix → repeat.
-
-## Notes
-- Constraints and prerequisites
-```
-
 ## Storage Locations
 
 | Location | Use Case |

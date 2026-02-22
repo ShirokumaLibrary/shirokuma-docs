@@ -10,18 +10,6 @@ Next.js 固有のテンプレート・パターンを使用してフレームワ
 
 > **TDD 管理**: テスト設計・作成・実行は `working-on-issue` がオーケストレートする。このスキルは**実装のみ**に集中する。
 
-## いつ使うか
-
-- `working-on-issue` のディスパッチ条件テーブルから委任された場合
-- Next.js 固有の実装（Server Actions, ページ, コンポーネント）
-
-## アーキテクチャ
-
-- `SKILL.md` - コアワークフロー（実装のみ）
-- `patterns/` - Next.js 固有パターン（drizzle-orm, better-auth, csrf 等）
-- `reference/` - チェックリスト、大規模ルール
-- `templates/` - Server Actions、コンポーネント、ページのコードテンプレート
-
 ## 開始前に
 
 1. `.claude/rules/` のルールはファイルパスに基づき自動読み込み

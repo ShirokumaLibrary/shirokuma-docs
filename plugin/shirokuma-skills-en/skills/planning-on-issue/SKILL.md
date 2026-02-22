@@ -8,22 +8,6 @@ allowed-tools: Bash, Read, Grep, Glob, Task, AskUserQuestion, TodoWrite
 
 Analyze issue requirements, create an implementation plan, and persist it to the issue body. After planning, set status to Spec Review and return control to the user. **Does not proceed to implementation.**
 
-## When to Use
-
-- **All issues** — plan depth scales with issue content complexity
-- When `working-on-issue` detects an issue without a plan
-- When the user explicitly requests a plan
-
-```mermaid
-graph LR
-  subgraph planning-on-issue
-    A[Set Planning] --> B[Depth assessment] --> C[Plan] --> D[Issue body update] --> E[Spec Review]
-  end
-  E --> F[Return to user]
-  F -.-> G[working-on-issue]
-  G --> H[Check for plan] --> I["Implement (can be a different session)"]
-```
-
 ## Plan Depth Levels
 
 Plan depth is determined by **issue content complexity**, not by Size.
@@ -225,7 +209,7 @@ EOF
 Append a `## Plan` section to the existing issue body. Use the template from the depth level determined in Step 3.
 
 ```bash
-shirokuma-docs issues update {number} --body /tmp/body.md
+shirokuma-docs issues update {number} --body /tmp/shirokuma-docs/{number}-body.md
 ```
 
 **Important**: Preserve the existing body (overview, tasks, deliverables). **Append** the `## Plan` section. If an existing `## Tasks` section exists, the plan's `### Task Breakdown` coexists as more specific implementation steps.

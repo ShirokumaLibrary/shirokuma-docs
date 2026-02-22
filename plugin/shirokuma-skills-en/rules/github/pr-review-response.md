@@ -17,6 +17,14 @@
    ```
 4. Resolve: `shirokuma-docs issues resolve <PR#> --thread-id <PRRT_id>`
 
+### Comment Content Fix Required
+
+When a previously posted comment contains errors:
+
+1. `shirokuma-docs issues comment-edit <comment-id> --body /tmp/shirokuma-docs/{number}-updated.md`
+2. Reply to the thread noting the correction
+3. Resolve the thread
+
 ### Question or Discussion
 
 1. Reply with explanation

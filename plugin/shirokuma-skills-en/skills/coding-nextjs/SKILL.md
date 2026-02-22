@@ -10,18 +10,6 @@ Framework-compliant implementation using Next.js-specific templates and patterns
 
 > **TDD Management**: Test design, creation, and execution are orchestrated by `working-on-issue`. This skill focuses on **implementation only**.
 
-## When to Use
-
-- When delegated from `working-on-issue` dispatch condition table
-- Next.js-specific implementation (Server Actions, pages, components)
-
-## Architecture
-
-- `SKILL.md` - Core workflow (implementation only)
-- `patterns/` - Next.js-specific patterns (drizzle-orm, better-auth, csrf, etc.)
-- `reference/` - Checklists, large-scale rules
-- `templates/` - Server Actions, component, and page code templates
-
 ## Before Starting
 
 1. Rules in `.claude/rules/` are auto-loaded based on file paths

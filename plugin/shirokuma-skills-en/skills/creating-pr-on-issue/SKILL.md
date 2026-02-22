@@ -151,7 +151,7 @@ graph LR
   E -->|FAIL + Not auto-fixable| J[Stop loop, report to user]
   E -->|PASS| L[Done] --> M{Out-of-scope?}
   M -->|Yes| N[Create follow-up Issues]
-  M -->|No| O[Finish]
+  M -->|No| O[To 6c]
   J --> M
   K --> M
 ```
@@ -178,7 +178,7 @@ graph LR
 **Steps:**
 
 1. Detect category and invoke appropriate skill(s) (pass PR number as context)
-2. Check the Self-Review Result and verify that the review report was posted as a PR comment. If not posted, manually post via `shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md`:
+2. Check the Self-Review Result and verify that the review report was posted as a PR comment. If not posted, manually post via `shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md`:
    - **PASS**: End loop, proceed to out-of-scope processing (6c)
    - **FAIL + Auto-fixable: yes**: Auto-fix (critical + fixable-warning) based on findings → `git add` → `git commit` → `git push` → convergence check → re-review
    - **FAIL + Auto-fixable: no**: Stop loop, report issues requiring manual intervention, proceed to out-of-scope processing (6c)
@@ -256,6 +256,8 @@ After the self-review loop completes (PASS or loop stopped), if review findings 
 2. **Update Issue body**: Integrate review findings into the relevant section of the Issue body (task list, deliverables, etc.). Follow the patterns described in the "Review Results to Body Update" section of `item-maintenance.md`.
 
 **Conditional execution**: If the review is PASS with no findings, skip this step — no body update is needed.
+
+After 6d completes, proceed to Step 7 (Update Status).
 
 ### Step 7: Update Status
 

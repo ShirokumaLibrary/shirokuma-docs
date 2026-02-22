@@ -11,31 +11,6 @@ allowed-tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 
 Comprehensive review workflow with specialized roles for different review types.
 
-## When to Use
-
-Automatically invoke when the user:
-- Requests "review", "レビューして", "コードレビュー"
-- Says "security review", "セキュリティ", "audit"
-- Mentions "test review", "テストレビュー", "test quality"
-- Asks for "Next.js review", "プロジェクトレビュー"
-- Asks for "plan review", "計画レビュー", "計画チェック"
-
-## Design Philosophy
-
-**Check and report both "Do" and "Don't" rules**
-
-- **Do**: Verify via Review Checklist in each role
-- **Don't**: Detect via Anti-patterns to Detect in each role
-
-## Architecture
-
-- `SKILL.md` - This file (core workflow)
-- `patterns/` - Generic patterns (drizzle-orm, better-auth, server-actions, etc.)
-- `criteria/` - Quality criteria (code-quality, security, testing)
-- `roles/` - Review role definitions (code, security, testing, nextjs, docs, plan)
-- `templates/` - Report templates
-- `.claude/rules/` - Project-specific conventions (auto-loaded)
-
 ## Available Roles
 
 | Role | Focus | Trigger |
@@ -185,7 +160,7 @@ Post review summary as a PR comment:
 
 ```bash
 # Write tool でファイル作成後
-shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md
+shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md
 ```
 
 Only save a detailed report to Discussions when there are many critical issues (severity: error, 5 or more), and link the Discussion URL in the PR comment.
@@ -212,63 +187,6 @@ Report the Discussion URL to the user.
 | Issue number specified (plan role) | Issue comment | — |
 
 > See `rules/output-destinations.md` for the full output destination policy.
-
-## Role Details
-
-### Code Review (`roles/code.md`)
-
-Focus areas:
-- TypeScript best practices
-- Error handling
-- Async patterns
-- Coding conventions (naming, imports, structure)
-- Code smells detection
-- Documentation quality (JSDoc)
-
-### Security Review (`roles/security.md`)
-
-Focus areas:
-- OWASP Top 10 2025
-- Authentication/Authorization
-- Input validation
-- Injection prevention
-- CVE awareness
-
-### Test Review (`roles/testing.md`)
-
-Focus areas:
-- TDD compliance
-- Test coverage
-- Mock patterns
-- E2E quality
-- Anti-patterns
-
-### Next.js Review (`roles/nextjs.md`)
-
-Focus areas:
-- App Router patterns
-- Server/Client components
-- Tailwind CSS v4
-- shadcn/ui integration
-- next-intl configuration
-
-### Documentation Review (`roles/docs.md`)
-
-Focus areas:
-- Markdown structure (heading levels, section ordering)
-- Link integrity (internal links, file path references)
-- Terminology consistency (project term unification)
-- Table consistency (column counts, formatting)
-- Code blocks (language specification, syntax validity)
-
-### Plan Review (`roles/plan.md`)
-
-Focus areas:
-- Requirements coverage (all requirements from overview/tasks reflected in plan)
-- Changed files validity (no missing or extraneous files)
-- Task granularity (1 task ≈ 1 commit principle)
-- Risk analysis (breaking changes, performance impact oversight)
-- Issue description sufficiency (understandable and evaluable from Issue body alone)
 
 ## Knowledge Update
 
@@ -467,7 +385,7 @@ Accumulate review finding patterns from self-review to improve skills and rules.
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Self-Review Feedback] {branch}: iteration {n}" \
-  --body /tmp/feedback.md
+  --body /tmp/shirokuma-docs/{number}-feedback.md
 ```
 
 **Rule proposals**: When frequent patterns (3+ occurrences) are detected, append to report:
@@ -490,39 +408,13 @@ Review reports (PR comments, Discussions) must follow the language specified in 
 
 ## Reference Documents
 
-### Skill Documents
+| Directory | Files |
+|-----------|-------|
+| `criteria/` | [code-quality](criteria/code-quality.md), [coding-conventions](criteria/coding-conventions.md), [security](criteria/security.md), [testing](criteria/testing.md) |
+| `patterns/` | [server-actions](patterns/server-actions.md), [server-actions-structure](patterns/server-actions-structure.md), [drizzle-orm](patterns/drizzle-orm.md), [better-auth](patterns/better-auth.md), [e2e-testing](patterns/e2e-testing.md), [tailwind-v4](patterns/tailwind-v4.md), [radix-ui-hydration](patterns/radix-ui-hydration.md), [jsdoc](patterns/jsdoc.md), [nextjs-patterns](patterns/nextjs-patterns.md), [i18n](patterns/i18n.md), [code-quality](patterns/code-quality.md), [account-lockout](patterns/account-lockout.md), [audit-logging](patterns/audit-logging.md), [docs-management](patterns/docs-management.md) |
+| `roles/` | [code](roles/code.md), [security](roles/security.md), [testing](roles/testing.md), [nextjs](roles/nextjs.md), [docs](roles/docs.md), [plan](roles/plan.md) |
+| `templates/` | [report](templates/report.md) |
+| `docs/setup/` | [auth-setup](docs/setup/auth-setup.md), [database-setup](docs/setup/database-setup.md), [infra-setup](docs/setup/infra-setup.md), [project-init](docs/setup/project-init.md), [styling-setup](docs/setup/styling-setup.md) |
+| `docs/workflows/` | [annotation-consistency](docs/workflows/annotation-consistency.md), [shirokuma-docs-verification](docs/workflows/shirokuma-docs-verification.md) |
 
-| Document | Content | When to Read |
-|----------|---------|--------------|
-| [criteria/code-quality.md](criteria/code-quality.md) | Code quality standards | code role |
-| [criteria/coding-conventions.md](criteria/coding-conventions.md) | Coding conventions | code role |
-| [criteria/security.md](criteria/security.md) | Security standards | security role |
-| [criteria/testing.md](criteria/testing.md) | Test quality standards | testing role |
-| [patterns/server-actions.md](patterns/server-actions.md) | Server Action patterns | code role |
-| [patterns/server-actions-structure.md](patterns/server-actions-structure.md) | Server Action structure | code role |
-| [patterns/drizzle-orm.md](patterns/drizzle-orm.md) | Drizzle ORM patterns | code/nextjs role |
-| [patterns/better-auth.md](patterns/better-auth.md) | Better Auth patterns | security role |
-| [patterns/e2e-testing.md](patterns/e2e-testing.md) | E2E test patterns | testing role |
-| [patterns/tailwind-v4.md](patterns/tailwind-v4.md) | Tailwind v4 CSS variable issues | nextjs role |
-| [patterns/radix-ui-hydration.md](patterns/radix-ui-hydration.md) | Hydration error fixes | nextjs role |
-| [patterns/jsdoc.md](patterns/jsdoc.md) | JSDoc patterns | code role |
-| [patterns/nextjs-patterns.md](patterns/nextjs-patterns.md) | Next.js patterns | nextjs role |
-| [patterns/i18n.md](patterns/i18n.md) | i18n patterns | nextjs role |
-| [patterns/code-quality.md](patterns/code-quality.md) | Code quality patterns | code role |
-| [patterns/account-lockout.md](patterns/account-lockout.md) | Account lockout | security role |
-| [patterns/audit-logging.md](patterns/audit-logging.md) | Audit logging | security role |
-| [patterns/docs-management.md](patterns/docs-management.md) | Documentation management | docs role |
-| [roles/code.md](roles/code.md) | Code review definition | code role |
-| [roles/security.md](roles/security.md) | Security review definition | security role |
-| [roles/testing.md](roles/testing.md) | Test review definition | testing role |
-| [roles/nextjs.md](roles/nextjs.md) | Next.js review definition | nextjs role |
-| [roles/docs.md](roles/docs.md) | Docs review definition | docs role |
-| [roles/plan.md](roles/plan.md) | Plan review definition | plan role |
-| [templates/report.md](templates/report.md) | Report template | Report generation |
-| [docs/setup/auth-setup.md](docs/setup/auth-setup.md) | Auth setup guide | security role |
-| [docs/setup/database-setup.md](docs/setup/database-setup.md) | Database setup guide | code/nextjs role |
-| [docs/setup/infra-setup.md](docs/setup/infra-setup.md) | Infrastructure setup guide | nextjs role |
-| [docs/setup/project-init.md](docs/setup/project-init.md) | Project initialization guide | nextjs role |
-| [docs/setup/styling-setup.md](docs/setup/styling-setup.md) | Styling setup guide | nextjs role |
-| [docs/workflows/annotation-consistency.md](docs/workflows/annotation-consistency.md) | Annotation consistency verification | code role |
-| [docs/workflows/shirokuma-docs-verification.md](docs/workflows/shirokuma-docs-verification.md) | shirokuma-docs verification workflow | code/nextjs role |
+See the role selection table in Step 1 for per-role file loading.

@@ -10,47 +10,6 @@ Create, update, and improve Claude Code agent files following Anthropic's offici
 
 > **Core Principle**: Start simple. "Success isn't about building the most sophisticated system—it's about building the right system for your needs." — [Anthropic](https://www.anthropic.com/engineering/building-effective-agents)
 
-## When to Use
-
-Automatically invoke when the user:
-- Asks to "create an agent" or "make a new agent"
-- Wants to "update an agent" or "improve an agent"
-- Requests "agent template" or "agent example"
-- Wants to "review an agent" or "check agent quality"
-
-## Migration: Agents → Skills with `context: fork`
-
-Claude Code skills now support `context: fork`, which runs the skill as an isolated sub-agent. This eliminates most use cases for standalone agents. Consider using skills with `context: fork` instead of agents for:
-- Research tasks (see `researching-best-practices` skill)
-- Review tasks (see `reviewing-on-issue` skill)
-- Config validation (see `reviewing-claude-config` skill)
-
-**When agents are still appropriate:**
-- Truly open-ended, multi-step tasks requiring full autonomy
-- Tasks that need the Task tool to spawn further sub-agents
-
-## Agentic Systems: Workflows vs Agents
-
-Understanding this distinction is **critical** for designing effective systems.
-
-| Type | Control | Use When |
-|------|---------|----------|
-| **Workflows** | Predefined code paths orchestrate LLM calls | Subtasks are predictable, need consistency |
-| **Agents** | LLM dynamically decides process & tool usage | Open-ended problems, unpredictable steps |
-
-### Decision Guide
-
-**Can you predict all steps?**
-
-| Answer | Use | Characteristics |
-|--------|-----|-----------------|
-| YES | WORKFLOW | Deterministic, reliable (Prompt Chaining, Routing, Parallelization) |
-| NO | AGENT | Flexible, autonomous (Higher latency/cost, handles unknowns) |
-
-**Start with workflows** — they provide more control. Add agent autonomy only when results justify the added complexity.
-
-See [design-patterns.md](design-patterns.md) for 5 workflow patterns + agent roles.
-
 ## Quick Reference
 
 ### Agent File Locations

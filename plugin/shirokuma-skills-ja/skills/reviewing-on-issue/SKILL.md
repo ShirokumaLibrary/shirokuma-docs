@@ -11,31 +11,6 @@ allowed-tools: Read, Grep, Glob, Bash, WebSearch, WebFetch
 
 専門ロール別の包括的レビューワークフロー。
 
-## 使用タイミング
-
-以下の場合に自動起動：
-- 「review」「レビューして」「コードレビュー」
-- 「security review」「セキュリティ」「audit」
-- 「test review」「テストレビュー」「test quality」
-- 「Next.js review」「プロジェクトレビュー」
-- 「plan review」「計画レビュー」「計画チェック」
-
-## 設計思想
-
-**「やるべきこと」と「やってはいけないこと」の両方をチェック・報告する**
-
-- **やるべきこと**: 各ロールのレビューチェックリストで検証
-- **やってはいけないこと**: 各ロールのアンチパターン検出で検出
-
-## アーキテクチャ
-
-- `SKILL.md` - このファイル（コアワークフロー）
-- `patterns/` - 汎用パターン（drizzle-orm, better-auth, server-actions 等）
-- `criteria/` - 品質基準（code-quality, security, testing）
-- `roles/` - レビューロール定義（code, security, testing, nextjs, docs, plan）
-- `templates/` - レポートテンプレート
-- `.claude/rules/` - プロジェクト固有の規約（自動読み込み）
-
 ## 利用可能なロール
 
 | ロール | 焦点 | トリガー |
@@ -185,7 +160,7 @@ PR にレビューサマリーをコメントとして投稿：
 
 ```bash
 # Write ツールでファイル作成後
-shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md
+shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md
 ```
 
 重大な問題（severity: error）が多数（5件以上）ある場合のみ、詳細レポートを Discussion にも保存し、PR コメントに Discussion URL をリンクする。
@@ -212,63 +187,6 @@ Discussion URL をユーザーに報告。
 | Issue 番号指定（plan ロール） | Issue コメント | — |
 
 > 出力先ポリシーの全体像は `rules/output-destinations.md` を参照。
-
-## ロール詳細
-
-### コードレビュー（`roles/code.md`）
-
-焦点領域：
-- TypeScript ベストプラクティス
-- エラーハンドリング
-- 非同期パターン
-- コーディング規約（命名、インポート、構造）
-- コードスメル検出
-- ドキュメント品質（JSDoc）
-
-### セキュリティレビュー（`roles/security.md`）
-
-焦点領域：
-- OWASP Top 10 2025
-- 認証/認可
-- 入力バリデーション
-- インジェクション防止
-- CVE 認識
-
-### テストレビュー（`roles/testing.md`）
-
-焦点領域：
-- TDD 準拠
-- テストカバレッジ
-- モックパターン
-- E2E 品質
-- アンチパターン
-
-### Next.js レビュー（`roles/nextjs.md`）
-
-焦点領域：
-- App Router パターン
-- Server/Client コンポーネント
-- Tailwind CSS v4
-- shadcn/ui 統合
-- next-intl 設定
-
-### ドキュメントレビュー（`roles/docs.md`）
-
-焦点領域：
-- Markdown 構造（見出しレベル、セクション順序）
-- リンク整合性（内部リンク、ファイルパス参照）
-- 用語一貫性（プロジェクト用語の統一）
-- テーブル整合性（カラム数、整形）
-- コードブロック（言語指定、構文の妥当性）
-
-### 計画レビュー（`roles/plan.md`）
-
-焦点領域：
-- 要件カバレッジ（概要・タスクの全要件が計画に反映されているか）
-- 変更ファイルの妥当性（漏れや余分なファイルがないか）
-- タスク粒度（1タスク ≈ 1コミットの原則）
-- リスク分析（破壊的変更、パフォーマンス影響の見落とし）
-- Issue 記述の十分性（Issue 本文だけで理解・評価できるか）
 
 ## ナレッジ更新
 
@@ -467,7 +385,7 @@ Critical/High はスコープ外であっても `critical` に分類する。重
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Self-Review Feedback] {branch}: iteration {n}" \
-  --body /tmp/feedback.md
+  --body /tmp/shirokuma-docs/{number}-feedback.md
 ```
 
 **ルール化提案**: 頻出パターン（3回以上）が検出された場合、レポート末尾に追記：
@@ -490,39 +408,13 @@ shirokuma-docs discussions create \
 
 ## リファレンスドキュメント
 
-### スキル内ドキュメント
+| ディレクトリ | ファイル |
+|-------------|---------|
+| `criteria/` | [code-quality](criteria/code-quality.md), [coding-conventions](criteria/coding-conventions.md), [security](criteria/security.md), [testing](criteria/testing.md) |
+| `patterns/` | [server-actions](patterns/server-actions.md), [server-actions-structure](patterns/server-actions-structure.md), [drizzle-orm](patterns/drizzle-orm.md), [better-auth](patterns/better-auth.md), [e2e-testing](patterns/e2e-testing.md), [tailwind-v4](patterns/tailwind-v4.md), [radix-ui-hydration](patterns/radix-ui-hydration.md), [jsdoc](patterns/jsdoc.md), [nextjs-patterns](patterns/nextjs-patterns.md), [i18n](patterns/i18n.md), [code-quality](patterns/code-quality.md), [account-lockout](patterns/account-lockout.md), [audit-logging](patterns/audit-logging.md), [docs-management](patterns/docs-management.md) |
+| `roles/` | [code](roles/code.md), [security](roles/security.md), [testing](roles/testing.md), [nextjs](roles/nextjs.md), [docs](roles/docs.md), [plan](roles/plan.md) |
+| `templates/` | [report](templates/report.md) |
+| `docs/setup/` | [auth-setup](docs/setup/auth-setup.md), [database-setup](docs/setup/database-setup.md), [infra-setup](docs/setup/infra-setup.md), [project-init](docs/setup/project-init.md), [styling-setup](docs/setup/styling-setup.md) |
+| `docs/workflows/` | [annotation-consistency](docs/workflows/annotation-consistency.md), [shirokuma-docs-verification](docs/workflows/shirokuma-docs-verification.md) |
 
-| ドキュメント | 内容 | 読み込みタイミング |
-|-------------|------|-------------------|
-| [criteria/code-quality.md](criteria/code-quality.md) | コード品質基準 | code ロール |
-| [criteria/coding-conventions.md](criteria/coding-conventions.md) | コーディング規約 | code ロール |
-| [criteria/security.md](criteria/security.md) | セキュリティ基準 | security ロール |
-| [criteria/testing.md](criteria/testing.md) | テスト品質基準 | testing ロール |
-| [patterns/server-actions.md](patterns/server-actions.md) | Server Action パターン | code ロール |
-| [patterns/server-actions-structure.md](patterns/server-actions-structure.md) | Server Action 構造規約 | code ロール |
-| [patterns/drizzle-orm.md](patterns/drizzle-orm.md) | Drizzle ORM パターン | code/nextjs ロール |
-| [patterns/better-auth.md](patterns/better-auth.md) | Better Auth 認証パターン | security ロール |
-| [patterns/e2e-testing.md](patterns/e2e-testing.md) | E2E テストパターン | testing ロール |
-| [patterns/tailwind-v4.md](patterns/tailwind-v4.md) | Tailwind v4 CSS 変数問題 | nextjs ロール |
-| [patterns/radix-ui-hydration.md](patterns/radix-ui-hydration.md) | ハイドレーションエラー対策 | nextjs ロール |
-| [patterns/jsdoc.md](patterns/jsdoc.md) | JSDoc パターン | code ロール |
-| [patterns/nextjs-patterns.md](patterns/nextjs-patterns.md) | Next.js パターン | nextjs ロール |
-| [patterns/i18n.md](patterns/i18n.md) | i18n パターン | nextjs ロール |
-| [patterns/code-quality.md](patterns/code-quality.md) | コード品質パターン | code ロール |
-| [patterns/account-lockout.md](patterns/account-lockout.md) | アカウントロックアウト | security ロール |
-| [patterns/audit-logging.md](patterns/audit-logging.md) | 監査ログ | security ロール |
-| [patterns/docs-management.md](patterns/docs-management.md) | ドキュメント管理 | docs ロール |
-| [roles/code.md](roles/code.md) | コードレビュー定義 | code ロール |
-| [roles/security.md](roles/security.md) | セキュリティレビュー定義 | security ロール |
-| [roles/testing.md](roles/testing.md) | テストレビュー定義 | testing ロール |
-| [roles/nextjs.md](roles/nextjs.md) | Next.js レビュー定義 | nextjs ロール |
-| [roles/docs.md](roles/docs.md) | ドキュメントレビュー定義 | docs ロール |
-| [roles/plan.md](roles/plan.md) | 計画レビュー定義 | plan ロール |
-| [templates/report.md](templates/report.md) | レポートテンプレート | レポート生成時 |
-| [docs/setup/auth-setup.md](docs/setup/auth-setup.md) | 認証セットアップガイド | security ロール |
-| [docs/setup/database-setup.md](docs/setup/database-setup.md) | データベースセットアップガイド | code/nextjs ロール |
-| [docs/setup/infra-setup.md](docs/setup/infra-setup.md) | インフラセットアップガイド | nextjs ロール |
-| [docs/setup/project-init.md](docs/setup/project-init.md) | プロジェクト初期化ガイド | nextjs ロール |
-| [docs/setup/styling-setup.md](docs/setup/styling-setup.md) | スタイリングセットアップガイド | nextjs ロール |
-| [docs/workflows/annotation-consistency.md](docs/workflows/annotation-consistency.md) | アノテーション整合性検証 | code ロール |
-| [docs/workflows/shirokuma-docs-verification.md](docs/workflows/shirokuma-docs-verification.md) | shirokuma-docs 検証ワークフロー | code/nextjs ロール |
+ロールごとの読み込みファイルはステップ 1 のロール選択テーブルを参照。

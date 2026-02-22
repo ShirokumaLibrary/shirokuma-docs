@@ -8,25 +8,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 
 Configure Claude Code's behavior by switching between built-in output styles or creating custom styles tailored to your workflow.
 
-## When to Use
-
-Automatically invoke when the user:
-- Asks to "change output style" or "switch to explanatory mode"
-- Mentions "learning mode" or "default mode"
-- Requests "create custom output style"
-- Wants to know "what output style am I using"
-- Says "show available styles" or "list output styles"
-
-## Overview
-
-Output styles modify Claude Code's system prompt to adapt behavior for different use cases:
-
-- **default**: Standard software engineering mode (efficient, production-focused)
-- **explanatory**: Adds educational "Insights" sections explaining decisions
-- **learning**: Collaborative mode with `TODO(human)` markers for hands-on practice
-
-Custom styles allow unlimited personalization.
-
 ## Workflow
 
 ### Step 1: Check Current Style

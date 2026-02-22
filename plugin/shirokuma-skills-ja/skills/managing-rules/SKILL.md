@@ -8,13 +8,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 
 パス固有のコンテキストを自動提供するルールを作成・保守する。
 
-## いつ使うか
-
-- 「ルール作成」「create a rule」「add a rule」
-- パス固有の規約設定（例: 「lib/ のルール」）
-- CLAUDE.md やスキルからルールへの移行
-- `.claude/rules/` に関する質問
-
 ## 推奨アーキテクチャ
 
 **Skills = 汎用/再利用可能、Rules = プロジェクト固有**

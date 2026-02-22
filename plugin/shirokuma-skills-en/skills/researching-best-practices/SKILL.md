@@ -83,7 +83,7 @@ Compare official recommendations with project patterns:
 For significant research, create a Discussion in the Research category:
 
 ```bash
-shirokuma-docs discussions create --category Research --title "[Research] {topic}" --body /tmp/findings.md
+shirokuma-docs discussions create --category Research --title "[Research] {topic}" --body /tmp/shirokuma-docs/findings.md
 ```
 
 ## Output Format

@@ -45,7 +45,7 @@ shirokuma-docs issues list --all                    # Include closed
 shirokuma-docs issues list --status "In Progress"   # Filter by status
 shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/shirokuma-docs/body.md \
   --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
@@ -55,6 +55,7 @@ shirokuma-docs issues comment {number} --body - <<'EOF'
 Comment content
 EOF
 shirokuma-docs issues comments {number}                 # List comments
+shirokuma-docs issues comment-edit {comment-id} --body /tmp/shirokuma-docs/comment.md  # Works for Issue/PR comments
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
 ```
@@ -80,7 +81,7 @@ shirokuma-docs projects list                        # Project items
 shirokuma-docs projects fields                      # Show field options
 shirokuma-docs projects add-issue {number}          # Add issue to project
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/body.md \
+  --title "Title" --body /tmp/shirokuma-docs/body.md \
   --field-status "Backlog" --priority "Medium"               # DraftIssue
 shirokuma-docs projects get PVTI_xxx                # By item ID
 shirokuma-docs projects update {number} --field-status "Done"
@@ -94,7 +95,7 @@ shirokuma-docs discussions show {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
-  --body /tmp/body.md
+  --body /tmp/shirokuma-docs/body.md
 ```
 
 ### Repository
@@ -108,7 +109,7 @@ shirokuma-docs repo labels
 
 ```bash
 shirokuma-docs issues list --repo docs
-shirokuma-docs issues create --repo docs --title "Title" --body /tmp/body.md
+shirokuma-docs issues create --repo docs --title "Title" --body /tmp/shirokuma-docs/body.md
 ```
 
 ### gh Fallback (CLI unsupported only)
@@ -126,7 +127,7 @@ gh auth login
 gh auth status
 
 # PR creation (not in shirokuma-docs CLI — single operation, gh direct use allowed)
-gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/body.md)"
+gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```
 
 ## `--body` Usage Guide
@@ -134,7 +135,7 @@ gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/body.
 | Tier | Pattern | Usage |
 |------|---------|-------|
 | Tier 1 (stdin) | `--body - <<'EOF'...EOF` | Comments, replies, short reasons |
-| Tier 2 (file) | Write → `--body /tmp/xxx.md` | Issue/Discussion body, handovers |
+| Tier 2 (file) | Write → `--body /tmp/shirokuma-docs/xxx.md` | Issue/Discussion body, handovers |
 
 Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion).
 

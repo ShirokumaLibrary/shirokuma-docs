@@ -89,6 +89,14 @@ CLI と冪等に協調動作。確認: `shirokuma-docs projects workflows`
 
 > **コメントファースト**: 本文更新前に必ずコメントを投稿する。コメントは作業の一次記録として独立した価値を持つこと。
 
+コメント操作の CLI コマンド:
+
+| 操作 | コマンド | 備考 |
+|------|---------|------|
+| コメント追加 | `issues comment {number}` | Issue/PR 両対応 |
+| コメント一覧 | `issues comments {number}` | JSON 出力 |
+| コメント編集 | `issues comment-edit {comment-id}` | Issue/PR 両対応、`--body` でファイル/stdin 指定 |
+
 ## 本文テンプレート
 
 ```markdown

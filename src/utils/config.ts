@@ -125,6 +125,10 @@ export interface ShirokumaConfig {
     description?: string;
     /** プロジェクトURL */
     url?: string;
+    /** プロジェクトバージョン */
+    version?: string;
+    /** リポジトリURL */
+    repository?: string;
   };
 
   /** 出力設定 */

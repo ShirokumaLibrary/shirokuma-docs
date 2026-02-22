@@ -16,10 +16,10 @@ Issues / Discussions / PRs 共通。`project-items` ルールの概要セクシ�
 
 ```bash
 # Issues（Write ツールでファイル作成後）
-shirokuma-docs issues update {number} --body /tmp/body.md
+shirokuma-docs issues update {number} --body /tmp/shirokuma-docs/body.md
 
 # Discussions（Write ツールでファイル作成後）
-shirokuma-docs discussions update {number} --body /tmp/body.md
+shirokuma-docs discussions update {number} --body /tmp/shirokuma-docs/body.md
 ```
 
 ## ワークフロー順序（コメントファースト）

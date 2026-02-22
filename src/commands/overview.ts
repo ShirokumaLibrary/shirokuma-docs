@@ -8,6 +8,7 @@
 import { resolve, relative } from "node:path";
 import { loadConfig, getOutputPath, resolvePath, ShirokumaConfig } from "../utils/config.js";
 import { ensureDir, writeFile, readFile, fileExists } from "../utils/file.js";
+import type { FeatureMap } from "./feature-map-types.js";
 import { createLogger } from "../utils/logger.js";
 import { wrapHtmlDocument, escapeHtml, icons } from "../utils/html.js";
 
@@ -111,7 +112,7 @@ function loadFeatureMapStats(portalDir: string): FeatureMapStats | null {
   }
 
   try {
-    const data = JSON.parse(content);
+    const data = JSON.parse(content) as FeatureMap;
     const features = data.features || {};
     const uncategorized = data.uncategorized || {};
 
@@ -120,7 +121,7 @@ function loadFeatureMapStats(portalDir: string): FeatureMapStats | null {
     let actionCount = uncategorized.actions?.length || 0;
     let tableCount = uncategorized.tables?.length || 0;
 
-    for (const group of Object.values(features) as any[]) {
+    for (const group of Object.values(features)) {
       screenCount += group.screens?.length || 0;
       componentCount += group.components?.length || 0;
       actionCount += group.actions?.length || 0;
@@ -218,8 +219,8 @@ function generateOverviewHtml(
 ): string {
   const projectName = config.project.name;
   const projectDesc = config.project.description || packageInfo.description || "";
-  const projectVersion = (config.project as any).version || packageInfo.version || "0.0.0";
-  const projectRepo = (config.project as any).repository || "";
+  const projectVersion = config.project.version || packageInfo.version || "0.0.0";
+  const projectRepo = config.project.repository || "";
 
   const overviewConfig = config.overview || {};
 

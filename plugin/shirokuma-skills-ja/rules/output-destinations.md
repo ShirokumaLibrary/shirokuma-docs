@@ -24,7 +24,7 @@ Claude Code のスキルは2種類の出力を生成する。それぞれを適�
 shirokuma-docs discussions create \
   --category Reports \
   --title "Review: {target}" \
-  --body /tmp/report.md
+  --body /tmp/shirokuma-docs/report.md
 ```
 
 **特徴**: 作業セッション中に作成、人間の確認用、定期的にクリーンアップ可能

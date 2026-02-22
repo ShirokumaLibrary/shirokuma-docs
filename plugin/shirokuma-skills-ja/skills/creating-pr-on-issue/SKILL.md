@@ -106,7 +106,7 @@ graph LR
   E -->|FAIL + Not auto-fixable| J[ループ停止、ユーザーに報告]
   E -->|PASS| L[完了] --> M{out-of-scope あり?}
   M -->|あり| N[フォローアップ Issue 作成]
-  M -->|なし| O[終了]
+  M -->|なし| O[6c へ]
   J --> M
   K --> M
 ```
@@ -133,7 +133,7 @@ graph LR
 **手順:**
 
 1. カテゴリ検出して適切なスキルを起動（PR 番号をコンテキストとして渡す）
-2. レビュー結果の Self-Review Result を確認し、PR コメントとしてレビューレポートが投稿済みであることも確認する。未投稿の場合は `shirokuma-docs issues comment {PR#} --body /tmp/review-summary.md` で手動投稿する：
+2. レビュー結果の Self-Review Result を確認し、PR コメントとしてレビューレポートが投稿済みであることも確認する。未投稿の場合は `shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md` で手動投稿する：
    - **PASS**: ループ終了、out-of-scope 処理（6c）へ
    - **FAIL + Auto-fixable: yes**: 指摘（critical + fixable-warning）に基づき自動修正 → `git add` → `git commit` → `git push` → 収束判定 → 再レビュー
    - **FAIL + Auto-fixable: no**: ループ停止、手動対応が必要な指摘を報告、out-of-scope 処理（6c）へ
@@ -211,6 +211,8 @@ EOF
 2. **本文への統合**: レビュー指摘に基づき、Issue 本文の該当セクション（タスクリスト、成果物等）を更新する。具体的な手順パターンは `item-maintenance.md` の「レビュー結果からの本文更新」セクションを参照。
 
 **条件付き実行**: レビューが PASS で指摘がない場合、本文更新は不要のためこのステップをスキップ。
+
+6d 完了後、次にステップ 7（Status 更新）を実行する。
 
 ### ステップ 7: Status 更新
 

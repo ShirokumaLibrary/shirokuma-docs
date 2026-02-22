@@ -238,6 +238,30 @@ export function getPluginVersion(): string {
   return "unknown";
 }
 
+/**
+ * グローバルキャッシュから直接プラグインバージョンを読み取る
+ *
+ * `getPluginVersion()` はバンドルプラグインを最優先するため、
+ * キャッシュ更新後も古い値を返す場合がある。この関数はバンドル
+ * フォールバックをバイパスし、グローバルキャッシュのみ参照する。
+ *
+ * @param pluginName - プラグイン名
+ * @returns バージョン文字列、取得失敗時は undefined
+ */
+export function getPluginVersionFromGlobalCache(pluginName: string): string | undefined {
+  const cachePath = getGlobalCachePath(pluginName);
+  if (!cachePath) return undefined;
+
+  try {
+    const pluginJsonPath = join(cachePath, ".claude-plugin", "plugin.json");
+    const content = readFileSync(pluginJsonPath, "utf-8");
+    const pluginJson = JSON.parse(content) as { version?: string };
+    return pluginJson.version ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // ========================================
 // Validation
 // ========================================

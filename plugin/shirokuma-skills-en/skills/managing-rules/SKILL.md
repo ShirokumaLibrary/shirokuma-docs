@@ -8,15 +8,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 
 Create and maintain rules that provide automatic, path-specific context to Claude.
 
-## When to Use
-
-Automatically invoke when the user:
-- Wants to "create a rule" or "add a rule"
-- Says "ルール作成" or "ルール追加"
-- Needs path-specific conventions (e.g., "rules for lib/ files")
-- Wants to migrate from CLAUDE.md or skills to rules
-- Mentions `.claude/rules/`
-
 ## Recommended Architecture
 
 **Skills = Generic/Reusable, Rules = Project-Specific**

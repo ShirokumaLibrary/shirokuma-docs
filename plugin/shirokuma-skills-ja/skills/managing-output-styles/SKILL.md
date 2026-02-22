@@ -8,24 +8,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep
 
 ビルトインスタイルの切り替えやカスタムスタイルの作成で Claude Code の動作を設定する。
 
-## いつ使うか
-
-- 「スタイル変更」「change output style」「switch to explanatory mode」
-- 「学習モード」「learning mode」「default mode」
-- 「カスタムスタイル作成」「create custom output style」
-- 「現在のスタイルは?」「what output style am I using」
-- 「スタイル一覧」「show available styles」「list output styles」
-
-## 概要
-
-出力スタイルは Claude Code のシステムプロンプトを変更し、ユースケースに応じた動作を実現する:
-
-- **default**: 標準エンジニアリングモード（効率的、プロダクション重視）
-- **explanatory**: 判断を説明する「Insights」セクション追加
-- **learning**: `TODO(human)` マーカー付き協調モード（ハンズオン練習用）
-
-カスタムスタイルで無制限のパーソナライズが可能。
-
 ## ワークフロー
 
 ### ステップ 1: 現在のスタイル確認

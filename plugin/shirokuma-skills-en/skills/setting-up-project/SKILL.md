@@ -8,12 +8,6 @@ allowed-tools: Bash, AskUserQuestion, Read, Write, Glob, TodoWrite
 
 Interactive end-to-end initial setup. Integrates `github-project-setup` and `project-config-generator` functionality.
 
-## When to Use
-
-- When delegated from `working-on-issue` dispatch condition table
-- New project initial setup
-- "initial setup", "set up project", "setup project", "new project"
-
 ## Workflow
 
 Track progress with TodoWrite (5 steps).

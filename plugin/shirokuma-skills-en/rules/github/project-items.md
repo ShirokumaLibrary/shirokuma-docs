@@ -192,6 +192,14 @@ Labels indicate **where** work applies (cross-cutting attribute). Work type clas
 
 > **Comment-first rule**: Always post a comment before updating the body. Comments must have independent value as primary records of work.
 
+Comment operation CLI commands:
+
+| Operation | Command | Notes |
+|-----------|---------|-------|
+| Add comment | `issues comment {number}` | Works for Issues and PRs |
+| List comments | `issues comments {number}` | JSON output |
+| Edit comment | `issues comment-edit {comment-id}` | Works for Issues and PRs, `--body` accepts file/stdin |
+
 ## Creating Items
 
 When creating new items:

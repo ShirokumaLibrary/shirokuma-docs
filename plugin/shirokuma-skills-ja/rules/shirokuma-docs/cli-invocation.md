@@ -19,5 +19,5 @@ npx shirokuma-docs session start
 PR 作成は `shirokuma-docs` CLI に未実装。単一操作で完結するため `gh pr create` の直接使用を許容する。
 
 ```bash
-gh pr create --base develop --title "feat: タイトル (#42)" --body "$(cat /tmp/body.md)"
+gh pr create --base develop --title "feat: タイトル (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```

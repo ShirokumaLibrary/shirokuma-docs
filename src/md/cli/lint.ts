@@ -189,8 +189,8 @@ async function runTokenOptimization(
   console.log();
   console.log(chalk.bold('By Rule:'));
   for (const [rule, issues] of Object.entries(report.issuesByRule)) {
-    const savings = (issues as any[]).reduce((sum, i) => sum + i.tokenSavings, 0);
-    console.log(`  ${rule}: ${(issues as any[]).length} issues (${savings} tokens)`);
+    const savings = issues.reduce((sum, i) => sum + i.tokenSavings, 0);
+    console.log(`  ${rule}: ${issues.length} issues (${savings} tokens)`);
   }
   console.log(chalk.bold('━'.repeat(60)));
   console.log();

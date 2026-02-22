@@ -10,24 +10,7 @@ Issue の種類やタスク説明に基づいて、計画→実装→コミッ�
 
 **注意**: セッションセットアップには `starting-session` を使用。このスキルは特定タスクの作業開始用。
 
-## コンセプト
-
-このスキルは**全作業のオーケストレーター**。分析→委任→チェーン実行を一貫して管理する。
-
-```
-/working-on-issue #42 → 分析 → スキル選択 → [TDD] → 実装 → Commit → PR → Review
-```
-
-### デュアルモード
-
-| モード | トリガー | 動作 |
-|--------|---------|------|
-| 自動チェーン | `/working-on-issue #42`（通常） | 実装 → コミット → PR → セルフレビュー を自動実行 |
-| 個別呼び出し | 各スキル直接起動 | 単一ステップのみ実行 |
-
-**マージは自動チェーンに含まない**（破壊的操作）。明示的な「マージして」でのみ `committing-on-issue` 経由で実行。
-
-### TodoWrite 登録（必須）
+## TodoWrite 登録（必須）
 
 **作業開始前**にチェーン全ステップを TodoWrite に登録する。
 
@@ -39,6 +22,7 @@ Issue の種類やタスク説明に基づいて、計画→実装→コミッ�
 | 2 | 変更をコミット・プッシュする | コミット・プッシュ中 | `committing-on-issue` |
 | 3 | プルリクエストを作成する | プルリクエストを作成中 | `creating-pr-on-issue` |
 | 4 | セルフレビューを実行し結果を PR に投稿する | セルフレビュー・結果投稿中 | `creating-pr-on-issue` ステップ 6 で実行 |
+| 5 | Status を Review に更新する | Status を Review に更新中 | `creating-pr-on-issue` ステップ 7 で実行 |
 
 **リファクタリング / Chore:**
 
@@ -48,6 +32,7 @@ Issue の種類やタスク説明に基づいて、計画→実装→コミッ�
 | 2 | 変更をコミット・プッシュする | コミット・プッシュ中 | `committing-on-issue` |
 | 3 | プルリクエストを作成する | プルリクエストを作成中 | `creating-pr-on-issue` |
 | 4 | セルフレビューを実行し結果を PR に投稿する | セルフレビュー・結果投稿中 | `creating-pr-on-issue` ステップ 6 で実行 |
+| 5 | Status を Review に更新する | Status を Review に更新中 | `creating-pr-on-issue` ステップ 7 で実行 |
 
 **調査:**
 
@@ -152,6 +137,8 @@ TDD 共通ワークフローの詳細は [docs/tdd-workflow.md](docs/tdd-workflo
 | 実装 / デザイン / バグ修正 | Work → Commit → PR → Review |
 | リファクタリング / Chore | Work → Commit → PR → Review |
 | 調査 | Research → Discussion |
+
+> **「Review」の定義**: チェーン末尾の「Review」はセルフレビュー実行（`creating-pr-on-issue` ステップ 6）**と** Status → Review 更新（同ステップ 7）の両方を含む。
 
 - **マージはチェーンに含まない**
 - ステップ間で確認しない、進捗を1行で報告

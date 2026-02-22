@@ -19,5 +19,5 @@ npx shirokuma-docs session start
 PR creation is not implemented in the `shirokuma-docs` CLI. Since it completes in a single operation, direct use of `gh pr create` is allowed.
 
 ```bash
-gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/body.md)"
+gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```

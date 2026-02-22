@@ -8,26 +8,6 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 Create, configure, and distribute Claude Code plugins to extend functionality and share capabilities across projects and teams.
 
-## When to Use
-
-Automatically invoke when the user:
-- Asks to "create a plugin" or "make a plugin"
-- Mentions "plugin.json" or "marketplace.json"
-- Says "publish plugin" or "distribute plugin"
-- Wants to "package skills/agents" for sharing
-- Needs to "setup marketplace" or "install plugins"
-- Asks "how to share my custom commands/skills"
-- Wants to know "plugin structure" or "how plugins work"
-
-## What Are Plugins?
-
-Plugins extend Claude Code with custom functionality shareable across projects and teams. They can contain:
-- **Skills**: Model-invoked capabilities (automatic)
-- **Agents**: Specialized sub-agents for complex workflows
-- **Commands**: Slash commands (user-triggered with `/`)
-- **Hooks**: Event handlers for automation
-- **MCP Servers**: External tool integrations
-
 ## Workflow
 
 ### Step 1: Determine Plugin Scope
