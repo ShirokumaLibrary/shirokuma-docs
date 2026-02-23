@@ -8,7 +8,7 @@
 import { resolve } from "node:path";
 import { writeFileSync, existsSync, mkdirSync } from "node:fs";
 import { createLogger } from "../utils/logger.js";
-import { runGhCommand, getRepoInfo, runGraphQL } from "../utils/github.js";
+import { getRepoInfo, runGraphQL } from "../utils/github.js";
 import { loadGhConfig } from "../utils/gh-config.js";
 
 export interface GithubDataOptions {
@@ -70,51 +70,79 @@ export interface GithubData {
   fetchedAt: string;
 }
 
-interface RepoViewData {
-  owner?: { login?: string } | string;
-  name?: string;
-  nameWithOwner?: string;
-  description?: string | null;
-  url?: string;
-  defaultBranchRef?: { name?: string };
-  visibility?: string;
-  stargazerCount?: number;
-  forkCount?: number;
-  issues?: { totalCount?: number };
-  pullRequests?: { totalCount?: number };
+const GRAPHQL_QUERY_REPO_INFO = `
+query($owner: String!, $name: String!) {
+  repository(owner: $owner, name: $name) {
+    owner { login }
+    name
+    nameWithOwner
+    description
+    url
+    defaultBranchRef { name }
+    visibility
+    stargazerCount
+    forkCount
+    issues(states: OPEN) { totalCount }
+    pullRequests(states: OPEN) { totalCount }
+  }
+}
+`;
+
+interface RepoInfoQueryResult {
+  data?: {
+    repository?: {
+      owner?: { login?: string };
+      name?: string;
+      nameWithOwner?: string;
+      description?: string | null;
+      url?: string;
+      defaultBranchRef?: { name?: string };
+      visibility?: string;
+      stargazerCount?: number;
+      forkCount?: number;
+      issues?: { totalCount?: number };
+      pullRequests?: { totalCount?: number };
+    };
+  };
 }
 
 /**
- * Fetch repository info
+ * Fetch repository info via GraphQL
  */
-function fetchRepoInfo(): GithubRepoInfo {
-  const result = runGhCommand<RepoViewData>([
-    "repo",
-    "view",
-    "--json",
-    "owner,name,nameWithOwner,description,url,defaultBranchRef,visibility,stargazerCount,forkCount,issues,pullRequests",
-  ]);
+async function fetchRepoInfo(): Promise<GithubRepoInfo> {
+  const repoInfo = getRepoInfo();
+  if (!repoInfo) {
+    throw new Error("Failed to get repository info");
+  }
+  const { owner, name } = repoInfo;
+
+  const result = await runGraphQL<RepoInfoQueryResult>(
+    GRAPHQL_QUERY_REPO_INFO,
+    { owner, name }
+  );
 
   if (!result.success) {
     throw new Error(`Failed to fetch repo info: ${result.error}`);
   }
 
-  const data = result.data;
-  const ownerLogin =
-    typeof data?.owner === "object" ? data.owner?.login : data?.owner;
+  if (!result.data?.data?.repository) {
+    throw new Error("Failed to fetch repo info: no repository data");
+  }
+
+  const r = result.data.data.repository;
 
   return {
-    owner: ownerLogin || "",
-    name: data?.name || "",
-    fullName: data?.nameWithOwner || "",
-    description: data?.description ?? null,
-    url: data?.url || "",
-    defaultBranch: data?.defaultBranchRef?.name || "main",
-    visibility: data?.visibility || "private",
-    stargazers: data?.stargazerCount || 0,
-    forks: data?.forkCount || 0,
-    issues: data?.issues?.totalCount || 0,
-    pullRequests: data?.pullRequests?.totalCount || 0,
+    owner: r.owner?.login || "",
+    name: r.name || "",
+    fullName: r.nameWithOwner || "",
+    description: r.description ?? null,
+    url: r.url || "",
+    defaultBranch: r.defaultBranchRef?.name || "main",
+    visibility: r.visibility || "private",
+    stargazers: r.stargazerCount || 0,
+    forks: r.forkCount || 0,
+    issues: r.issues?.totalCount || 0,
+    pullRequests: r.pullRequests?.totalCount || 0,
   };
 }
 
@@ -162,11 +190,11 @@ interface GraphQLIssuesData {
 /**
  * Fetch a single page of issues
  */
-function fetchIssuesPage(
+async function fetchIssuesPage(
   owner: string,
   name: string,
   cursor: string | null
-): { connection: IssuesConnection | undefined; error?: string } {
+): Promise<{ connection: IssuesConnection | undefined; error?: string }> {
   const query = `
     query($owner: String!, $repo: String!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
@@ -204,7 +232,7 @@ function fetchIssuesPage(
     }
   `;
 
-  const result = runGraphQL<GraphQLIssuesData>(query, {
+  const result = await runGraphQL<GraphQLIssuesData>(query, {
     owner,
     repo: name,
     cursor,
@@ -246,7 +274,7 @@ function parseIssueNode(issue: GraphQLIssueNode): GithubIssue {
 /**
  * Fetch issues with project fields using GraphQL
  */
-function fetchIssuesWithProjects(): GithubIssue[] {
+async function fetchIssuesWithProjects(): Promise<GithubIssue[]> {
   const repoInfo = getRepoInfo();
   if (!repoInfo) {
     throw new Error("Failed to get repository info");
@@ -257,7 +285,7 @@ function fetchIssuesWithProjects(): GithubIssue[] {
   let cursor: string | null = null;
 
   for (;;) {
-    const { connection, error } = fetchIssuesPage(owner, name, cursor);
+    const { connection, error } = await fetchIssuesPage(owner, name, cursor);
 
     if (error) {
       throw new Error(`GraphQL query failed: ${error}`);
@@ -311,11 +339,11 @@ interface GraphQLDiscussionsData {
 /**
  * Fetch a single page of discussions
  */
-function fetchDiscussionsPage(
+async function fetchDiscussionsPage(
   owner: string,
   name: string,
   cursor: string | null
-): { connection: DiscussionsConnection | undefined; error?: string } {
+): Promise<{ connection: DiscussionsConnection | undefined; error?: string }> {
   const query = `
     query($owner: String!, $repo: String!, $cursor: String) {
       repository(owner: $owner, name: $repo) {
@@ -339,7 +367,7 @@ function fetchDiscussionsPage(
     }
   `;
 
-  const result = runGraphQL<GraphQLDiscussionsData>(query, {
+  const result = await runGraphQL<GraphQLDiscussionsData>(query, {
     owner,
     repo: name,
     cursor,
@@ -355,7 +383,7 @@ function fetchDiscussionsPage(
 /**
  * Fetch discussions by category
  */
-function fetchDiscussions(categoryName: string): GithubDiscussion[] {
+async function fetchDiscussions(categoryName: string): Promise<GithubDiscussion[]> {
   const repoInfo = getRepoInfo();
   if (!repoInfo) {
     throw new Error("Failed to get repository info");
@@ -366,7 +394,7 @@ function fetchDiscussions(categoryName: string): GithubDiscussion[] {
   let cursor: string | null = null;
 
   for (;;) {
-    const { connection, error } = fetchDiscussionsPage(owner, name, cursor);
+    const { connection, error } = await fetchDiscussionsPage(owner, name, cursor);
 
     if (error) {
       throw new Error(`GraphQL query failed: ${error}`);
@@ -482,28 +510,28 @@ export async function githubDataCommand(
   let specs: GithubDiscussion[] = [];
 
   try {
-    repoInfo = fetchRepoInfo();
+    repoInfo = await fetchRepoInfo();
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     logger.warn(`Repository info fetch failed: ${message}`);
   }
 
   try {
-    issues = fetchIssuesWithProjects();
+    issues = await fetchIssuesWithProjects();
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     logger.warn(`Issues fetch failed: ${message}`);
   }
 
   try {
-    handovers = fetchDiscussions(handoverCategory);
+    handovers = await fetchDiscussions(handoverCategory);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     logger.warn(`Handovers fetch failed: ${message}`);
   }
 
   try {
-    specs = fetchDiscussions(specsCategory);
+    specs = await fetchDiscussions(specsCategory);
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     logger.warn(`Specs fetch failed: ${message}`);

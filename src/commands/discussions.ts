@@ -206,7 +206,7 @@ query($searchQuery: String!, $first: Int!) {
 /**
  * Get discussion categories
  */
-function getCategories(owner: string, repo: string): DiscussionCategory[] {
+async function getCategories(owner: string, repo: string): Promise<DiscussionCategory[]> {
   interface CategoryNode {
     id?: string;
     name?: string;
@@ -225,7 +225,7 @@ function getCategories(owner: string, repo: string): DiscussionCategory[] {
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_CATEGORIES, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_CATEGORIES, {
     owner,
     name: repo,
   });
@@ -249,12 +249,12 @@ function getCategories(owner: string, repo: string): DiscussionCategory[] {
 /**
  * Find category by name
  */
-function findCategory(
+async function findCategory(
   owner: string,
   repo: string,
   categoryName: string
-): DiscussionCategory | null {
-  const categories = getCategories(owner, repo);
+): Promise<DiscussionCategory | null> {
+  const categories = await getCategories(owner, repo);
   return (
     categories.find(
       (c) => c.name.toLowerCase() === categoryName.toLowerCase()
@@ -265,7 +265,7 @@ function findCategory(
 /**
  * Get discussion GraphQL ID by number
  */
-function getDiscussionId(owner: string, repo: string, number: number): string | null {
+async function getDiscussionId(owner: string, repo: string, number: number): Promise<string | null> {
   interface QueryResult {
     data?: {
       repository?: {
@@ -276,7 +276,7 @@ function getDiscussionId(owner: string, repo: string, number: number): string | 
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_DISCUSSION, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_DISCUSSION, {
     owner,
     name: repo,
     number,
@@ -304,7 +304,7 @@ async function cmdCategories(
   }
 
   const { owner, name: repo } = repoInfo;
-  const categories = getCategories(owner, repo);
+  const categories = await getCategories(owner, repo);
 
   if (categories.length === 0) {
     logger.warn("No discussion categories found. Discussions may not be enabled for this repository.");
@@ -351,10 +351,10 @@ async function cmdList(
   // Find category ID
   let categoryId: string | null = null;
   if (categoryName) {
-    const category = findCategory(owner, repo, categoryName);
+    const category = await findCategory(owner, repo, categoryName);
     if (!category) {
       logger.error(`Category '${categoryName}' not found`);
-      const categories = getCategories(owner, repo);
+      const categories = await getCategories(owner, repo);
       if (categories.length > 0) {
         logger.info(`Available categories: ${categories.map((c) => c.name).join(", ")}`);
       }
@@ -393,7 +393,7 @@ async function cmdList(
   while (discussions.length < limit) {
     const fetchCount = Math.min(limit - discussions.length, 50);
 
-    const result: GhResult<QueryResult> = runGraphQL<QueryResult>(
+    const result: GhResult<QueryResult> = await runGraphQL<QueryResult>(
       GRAPHQL_QUERY_DISCUSSIONS,
       {
         owner,
@@ -501,7 +501,7 @@ async function cmdGet(
       };
     }
 
-    const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_DISCUSSION, {
+    const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_DISCUSSION, {
       owner,
       name: repo,
       number,
@@ -518,7 +518,7 @@ async function cmdGet(
       };
     }
 
-    const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_DISCUSSION_BY_ID, {
+    const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_DISCUSSION_BY_ID, {
       id: idOrNumber,
     });
 
@@ -598,17 +598,17 @@ async function cmdCreate(
   const { owner, name: repo } = repoInfo;
 
   // Get repository ID
-  const repoId = getRepoId(owner, repo);
+  const repoId = await getRepoId(owner, repo);
   if (!repoId) {
     logger.error("Could not get repository ID");
     return 1;
   }
 
   // Find category
-  const category = findCategory(owner, repo, categoryName);
+  const category = await findCategory(owner, repo, categoryName);
   if (!category) {
     logger.error(`Category '${categoryName}' not found`);
-    const categories = getCategories(owner, repo);
+    const categories = await getCategories(owner, repo);
     if (categories.length > 0) {
       logger.info(`Available categories: ${categories.map((c) => c.name).join(", ")}`);
     }
@@ -629,7 +629,7 @@ async function cmdCreate(
     };
   }
 
-  const result = runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_DISCUSSION, {
+  const result = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_DISCUSSION, {
     repositoryId: repoId,
     categoryId: category.id,
     title: options.title,
@@ -706,7 +706,7 @@ async function cmdUpdate(
   if (/^\d+$/.test(idOrNumber)) {
     // It's a discussion number
     const number = parseInt(idOrNumber, 10);
-    discussionId = getDiscussionId(owner, repo, number);
+    discussionId = await getDiscussionId(owner, repo, number);
   } else {
     // It's already a GraphQL ID
     discussionId = idOrNumber;
@@ -732,7 +732,7 @@ async function cmdUpdate(
     };
   }
 
-  const result = runGraphQL<UpdateResult>(GRAPHQL_MUTATION_UPDATE_DISCUSSION, {
+  const result = await runGraphQL<UpdateResult>(GRAPHQL_MUTATION_UPDATE_DISCUSSION, {
     discussionId,
     title: options.title ?? null,
     body: options.body ?? null,
@@ -811,7 +811,7 @@ async function cmdSearch(
     };
   }
 
-  const result = runGraphQL<SearchResult>(GRAPHQL_QUERY_SEARCH_DISCUSSIONS, {
+  const result = await runGraphQL<SearchResult>(GRAPHQL_QUERY_SEARCH_DISCUSSIONS, {
     searchQuery,
     first: Math.min(limit, 100),
   });
@@ -899,7 +899,7 @@ async function cmdComment(
   if (/^\d+$/.test(idOrNumber)) {
     // It's a discussion number
     discussionNumber = parseInt(idOrNumber, 10);
-    discussionId = getDiscussionId(owner, repo, discussionNumber);
+    discussionId = await getDiscussionId(owner, repo, discussionNumber);
   } else {
     // It's already a GraphQL ID
     discussionId = idOrNumber;
@@ -923,7 +923,7 @@ async function cmdComment(
     };
   }
 
-  const result = runGraphQL<CommentResult>(GRAPHQL_MUTATION_ADD_DISCUSSION_COMMENT, {
+  const result = await runGraphQL<CommentResult>(GRAPHQL_MUTATION_ADD_DISCUSSION_COMMENT, {
     discussionId,
     body: options.body,
   });

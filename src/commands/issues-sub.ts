@@ -14,7 +14,6 @@
 
 import { Logger } from "../utils/logger.js";
 import {
-  runGhCommand,
   runGraphQL,
   isIssueNumber,
   parseIssueNumber,
@@ -22,6 +21,7 @@ import {
 import {
   resolveTargetRepo,
 } from "../utils/repo-pairs.js";
+import { getOctokit } from "../utils/octokit-client.js";
 
 // =============================================================================
 // Types
@@ -104,32 +104,23 @@ query($owner: String!, $name: String!, $number: Int!) {
  * Issue 番号から GitHub 内部 ID（REST API の id フィールド）を取得する。
  * Sub-Issues REST API の sub_issue_id パラメータに必要。
  */
-export function getIssueInternalId(
+export async function getIssueInternalId(
   owner: string,
   repo: string,
   issueNumber: number,
-  options?: { silent?: boolean }
-): number | null {
-  interface IssueResponse {
-    id?: number;
-    number?: number;
+  _options?: { silent?: boolean }
+): Promise<number | null> {
+  try {
+    const octokit = getOctokit();
+    const { data } = await octokit.rest.issues.get({
+      owner,
+      repo,
+      issue_number: issueNumber,
+    });
+    return data.id ?? null;
+  } catch {
+    return null;
   }
-
-  const result = runGhCommand<IssueResponse>(
-    ["api", `repos/${owner}/${repo}/issues/${issueNumber}`, "--jq", ".id"],
-    { silent: options?.silent ?? true }
-  );
-
-  if (!result.success) return null;
-
-  // --jq ".id" は数値を文字列として返すので parseInt で変換
-  const id = typeof result.data === "string"
-    ? parseInt(result.data, 10)
-    : typeof result.data === "number"
-      ? result.data
-      : null;
-
-  return id && !isNaN(id) ? id : null;
 }
 
 // =============================================================================
@@ -193,7 +184,7 @@ export async function cmdSubList(
     };
   }
 
-  const result = runGraphQL<QueryResult>(
+  const result = await runGraphQL<QueryResult>(
     GRAPHQL_QUERY_SUB_ISSUES,
     { owner, name: repo, number: parentNumber },
     { headers: SUB_ISSUES_GRAPHQL_HEADERS }
@@ -276,38 +267,34 @@ export async function cmdSubAdd(
   const childNumber = parseIssueNumber(childNumberStr);
 
   // 子 Issue の内部 ID を取得
-  const childInternalId = getIssueInternalId(owner, repo, childNumber);
+  const childInternalId = await getIssueInternalId(owner, repo, childNumber);
   if (!childInternalId) {
     logger.error(`Could not resolve internal ID for issue #${childNumber}`);
     return 1;
   }
 
   // REST API で子 Issue を紐付け
-  const apiArgs = [
-    "api",
-    "-X", "POST",
-    `repos/${owner}/${repo}/issues/${parentNumber}/sub_issues`,
-    "-F", `sub_issue_id=${childInternalId}`,
-  ];
-
-  if (options.replaceParent) {
-    apiArgs.push("-F", "replace_parent_issue=true");
-  }
-
-  const result = runGhCommand<{ id?: number; number?: number }>(
-    apiArgs,
-    { silent: true }
-  );
-
-  if (!result.success) {
-    // 親 Issue が既にある場合のエラーハンドリング
-    if (result.error?.includes("422") || result.error?.includes("already has a parent") || result.error?.includes("sub_issue_id")) {
+  try {
+    const octokit = getOctokit();
+    await octokit.request(
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
+      {
+        owner,
+        repo,
+        issue_number: parentNumber,
+        sub_issue_id: childInternalId,
+        ...(options.replaceParent ? { replace_parent_issue: true } : {}),
+      }
+    );
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (message.includes("422") || message.includes("already has a parent") || message.includes("sub_issue_id")) {
       logger.error(
         `Issue #${childNumber} は既に親 Issue に紐付けられています。` +
         ` --replace-parent で上書きできます。`
       );
     } else {
-      logger.error(`Failed to add #${childNumber} as sub-issue of #${parentNumber}: ${result.error}`);
+      logger.error(`Failed to add #${childNumber} as sub-issue of #${parentNumber}: ${message}`);
     }
     return 1;
   }
@@ -356,7 +343,7 @@ export async function cmdSubRemove(
   const childNumber = parseIssueNumber(childNumberStr);
 
   // 子 Issue の内部 ID を取得
-  const childInternalId = getIssueInternalId(owner, repo, childNumber);
+  const childInternalId = await getIssueInternalId(owner, repo, childNumber);
   if (!childInternalId) {
     logger.error(`Could not resolve internal ID for issue #${childNumber}`);
     return 1;
@@ -364,18 +351,20 @@ export async function cmdSubRemove(
 
   // REST API で子 Issue を解除
   // DELETE /repos/{owner}/{repo}/issues/{parent}/sub_issue (単数形)
-  const result = runGhCommand<{ id?: number }>(
-    [
-      "api",
-      "-X", "DELETE",
-      `repos/${owner}/${repo}/issues/${parentNumber}/sub_issue`,
-      "-F", `sub_issue_id=${childInternalId}`,
-    ],
-    { silent: true }
-  );
-
-  if (!result.success) {
-    logger.error(`Failed to remove #${childNumber} from sub-issues of #${parentNumber}: ${result.error}`);
+  try {
+    const octokit = getOctokit();
+    await octokit.request(
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/sub_issue",
+      {
+        owner,
+        repo,
+        issue_number: parentNumber,
+        sub_issue_id: childInternalId,
+      }
+    );
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    logger.error(`Failed to remove #${childNumber} from sub-issues of #${parentNumber}: ${message}`);
     return 1;
   }
 

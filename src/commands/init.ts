@@ -19,7 +19,7 @@
 
 import { resolve, dirname } from "node:path";
 import { existsSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { simpleGit } from "simple-git";
 import { Document as YamlDocument, type YAMLMap, type Scalar } from "yaml";
 import { createLogger, type Logger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
@@ -264,7 +264,7 @@ interface ScaffoldResult {
  * Scaffold Next.js monorepo directory structure and base files.
  * Skips existing directories and files to avoid overwriting user data.
  */
-function scaffoldNextjsMonorepo(projectPath: string): ScaffoldResult {
+async function scaffoldNextjsMonorepo(projectPath: string): Promise<ScaffoldResult> {
   const result: ScaffoldResult = {
     directories_created: [],
     files_created: [],
@@ -394,13 +394,8 @@ function scaffoldNextjsMonorepo(projectPath: string): ScaffoldResult {
   const gitDir = resolve(projectPath, ".git");
   if (!existsSync(gitDir)) {
     try {
-      const gitResult = spawnSync("git", ["init"], {
-        cwd: projectPath,
-        encoding: "utf-8",
-      });
-      if (gitResult.status === 0) {
-        result.git_initialized = true;
-      }
+      await simpleGit(projectPath).init();
+      result.git_initialized = true;
     } catch {
       // git init 失敗は無視
     }
@@ -544,7 +539,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
       // marketplace 登録 + キャッシュインストール (#801: 常に external フロー)
       if (isClaudeCliAvailable()) {
         logger.info("\n" + t("commands.init.registeringCache"));
-        const marketplaceOk = ensureMarketplace();
+        const marketplaceOk = await ensureMarketplace();
         if (marketplaceOk) {
           // プラグインインストール処理を関数化（チャンネルラップ対応 #961）
           const installPlugins = () => {
@@ -578,10 +573,10 @@ export async function initCommand(options: InitOptions): Promise<void> {
           if (effectiveChannel) {
             const clonePath = getMarketplaceClonePath();
             if (clonePath) {
-              const tag = resolveVersionByChannel(effectiveChannel, clonePath);
+              const tag = await resolveVersionByChannel(effectiveChannel, clonePath);
               if (tag) {
                 logger.info(`Resolved version: ${tag} (channel: ${effectiveChannel})`);
-                withMarketplaceVersion(clonePath, tag, installPlugins);
+                await withMarketplaceVersion(clonePath, tag, installPlugins);
               } else {
                 logger.warn(`No matching tag found for channel "${effectiveChannel}", using HEAD`);
                 installPlugins();
@@ -695,7 +690,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
   // Scaffold Next.js monorepo structure
   if (options.nextjs) {
     logger.info("\n" + t("commands.init.nextjsScaffolding"));
-    const scaffoldResult = scaffoldNextjsMonorepo(projectPath);
+    const scaffoldResult = await scaffoldNextjsMonorepo(projectPath);
     result.nextjs_scaffolded = true;
     result.nextjs_directories_created = scaffoldResult.directories_created.length;
     if (scaffoldResult.git_initialized) {
@@ -763,7 +758,7 @@ export async function initCommand(options: InitOptions): Promise<void> {
   // Next steps guidance (#801: 常に external フロー)
   if (result.plugin_installed) {
     const claudeCliFound = isClaudeCliAvailable();
-    printNextSteps(logger, result.cache_registered, claudeCliFound);
+    await printNextSteps(logger, result.cache_registered, claudeCliFound);
   } else {
     logger.info("\n" + t("commands.init.editConfigHint"));
     logger.info(t("commands.init.editConfigCmd"));
@@ -771,14 +766,14 @@ export async function initCommand(options: InitOptions): Promise<void> {
 }
 
 /**
- * gh CLI を使った GitHub セットアップ検証を試みる。
- * gh 未インストール、未認証、オフライン、GitHub remote 未設定の場合は null を返す。
+ * GitHub セットアップ検証を試みる（octokit 経由）。
+ * 未認証、オフライン、GitHub remote 未設定の場合は null を返す。
  */
-function tryValidateGitHubSetup(logger: Logger): SetupCheckResult | null {
+async function tryValidateGitHubSetup(logger: Logger): Promise<SetupCheckResult | null> {
   // テスト時は GitHub API 呼び出しをスキップ（タイムアウト防止 #703）
   if (process.env.SHIROKUMA_NO_CLAUDE_CLI) return null;
   try {
-    return validateGitHubSetup(logger);
+    return await validateGitHubSetup(logger);
   } catch {
     return null;
   }
@@ -791,7 +786,7 @@ function tryValidateGitHubSetup(logger: Logger): SetupCheckResult | null {
  * @param cacheRegistered - Whether cache registration succeeded (skip manual step if true)
  * @param claudeCliFound - Whether claude CLI was found in PATH
  */
-function printNextSteps(logger: Logger, cacheRegistered: boolean, claudeCliFound: boolean): void {
+async function printNextSteps(logger: Logger, cacheRegistered: boolean, claudeCliFound: boolean): Promise<void> {
   logger.info("\n" + t("commands.init.nextSteps") + "\n");
 
   let step = 1;
@@ -819,7 +814,7 @@ function printNextSteps(logger: Logger, cacheRegistered: boolean, claudeCliFound
 
   // GitHub 手動設定: 動的検証 or テキストベースフォールバック
   logger.info(t("commands.init.stepManualSetup", { step }));
-  const setupResult = tryValidateGitHubSetup(logger);
+  const setupResult = await tryValidateGitHubSetup(logger);
   if (setupResult) {
     printSetupCheckResults(setupResult, logger);
     if (setupResult.summary.missing > 0) {
@@ -828,7 +823,7 @@ function printNextSteps(logger: Logger, cacheRegistered: boolean, claudeCliFound
       logger.info("\n" + t("commands.init.stepManualSetupAllOk"));
     }
   } else {
-    // フォールバック: gh CLI が使えない場合はテキスト案内
+    // フォールバック: GitHub API が使えない場合はテキスト案内
     logger.info(t("commands.init.stepManualSetupCategories"));
     logger.info(t("commands.init.stepManualSetupWorkflows"));
     logger.info(t("commands.init.stepManualSetupVerify") + "\n");

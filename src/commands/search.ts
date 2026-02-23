@@ -198,7 +198,7 @@ export async function searchCommand(
 
   // GraphQL 実行
   const graphqlQuery = buildGraphQLQuery(requestedTypes);
-  const result = runGraphQL<SearchResult>(graphqlQuery, variables);
+  const result = await runGraphQL<SearchResult>(graphqlQuery, variables);
 
   if (!result.success) {
     logger.error("Search failed");

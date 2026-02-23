@@ -15,11 +15,11 @@ import type { Logger } from "../../src/utils/logger.js";
 // Mocks (ESM: unstable_mockModule + dynamic import)
 // =============================================================================
 
-const mockSetItemFields = jest.fn<(...args: any[]) => number>();
-const mockAutoSetTimestamps = jest.fn<(...args: any[]) => void>();
-const mockGetProjectFields = jest.fn<(...args: any[]) => Record<string, ProjectField>>();
+const mockSetItemFields = jest.fn<(...args: any[]) => any>();
+const mockAutoSetTimestamps = jest.fn<(...args: any[]) => any>();
+const mockGetProjectFields = jest.fn<(...args: any[]) => any>();
 const mockRunGraphQL = jest.fn<(...args: any[]) => any>();
-const mockGetProjectId = jest.fn<(...args: any[]) => string | null>();
+const mockGetProjectId = jest.fn<(...args: any[]) => any>();
 
 jest.unstable_mockModule("../../src/utils/project-fields.js", () => ({
   setItemFields: mockSetItemFields,
@@ -38,17 +38,27 @@ jest.unstable_mockModule("../../src/utils/project-fields.js", () => ({
 jest.unstable_mockModule("../../src/utils/github.js", () => ({
   runGraphQL: mockRunGraphQL,
   getRepoInfo: jest.fn(() => ({ owner: "test-owner", name: "test-repo" })),
-  runGhCommand: jest.fn(),
   getOwner: jest.fn(() => "test-owner"),
   getRepoName: jest.fn(() => "test-repo"),
   validateTitle: jest.fn(),
   validateBody: jest.fn(),
   isIssueNumber: jest.fn(),
   parseIssueNumber: jest.fn(),
+  parseGitRemoteUrl: jest.fn(),
+  readBodyFile: jest.fn(),
+  checkGitHubAuth: jest.fn(),
+  diagnoseRepoFailure: jest.fn(),
+  MAX_TITLE_LENGTH: 256,
+  MAX_BODY_LENGTH: 65536,
+  ITEMS_PER_PAGE: 100,
+  FIELDS_PER_PAGE: 20,
 }));
 
-jest.unstable_mockModule("../../src/commands/projects.js", () => ({
+// getProjectId は project-utils.js に移動済み（#952）
+jest.unstable_mockModule("../../src/utils/project-utils.js", () => ({
   getProjectId: mockGetProjectId,
+  fetchWorkflows: jest.fn(),
+  RECOMMENDED_WORKFLOWS: ["Item closed", "Pull request merged"],
 }));
 
 jest.unstable_mockModule("../../src/utils/gh-config.js", () => ({
@@ -57,6 +67,14 @@ jest.unstable_mockModule("../../src/utils/gh-config.js", () => ({
 
 jest.unstable_mockModule("../../src/utils/status-workflow.js", () => ({
   validateStatusTransition: jest.fn(() => ({ valid: true })),
+}));
+
+// octokit-client のモック（github.js が内部で使用）
+jest.unstable_mockModule("../../src/utils/octokit-client.js", () => ({
+  getOctokit: jest.fn(),
+  resolveAuthToken: jest.fn(() => "test-token"),
+  resetOctokit: jest.fn(),
+  setOctokit: jest.fn(),
 }));
 
 // Dynamic import after mocks
@@ -101,10 +119,10 @@ describe("updateProjectStatus", () => {
    * @testdoc Status 更新成功時に autoSetTimestamps を呼ぶ
    * @purpose Status 更新と同時にタイムスタンプが設定される
    */
-  it("should call setItemFields and autoSetTimestamps on success", () => {
-    mockSetItemFields.mockReturnValue(1);
+  it("should call setItemFields and autoSetTimestamps on success", async () => {
+    mockSetItemFields.mockResolvedValue(1);
 
-    const result = updateProjectStatus({
+    const result = await updateProjectStatus({
       projectId: "proj-1",
       itemId: "item-1",
       statusValue: "Done",
@@ -125,10 +143,10 @@ describe("updateProjectStatus", () => {
    * @testdoc Status 更新失敗時は autoSetTimestamps を呼ばない
    * @purpose 失敗時のフォールバック動作
    */
-  it("should return failure and not call autoSetTimestamps when setItemFields returns 0", () => {
-    mockSetItemFields.mockReturnValue(0);
+  it("should return failure and not call autoSetTimestamps when setItemFields returns 0", async () => {
+    mockSetItemFields.mockResolvedValue(0);
 
-    const result = updateProjectStatus({
+    const result = await updateProjectStatus({
       projectId: "proj-1",
       itemId: "item-1",
       statusValue: "Done",
@@ -145,10 +163,10 @@ describe("updateProjectStatus", () => {
    * @testdoc Not Planned への更新でも autoSetTimestamps が呼ばれる
    * @purpose Not Planned のタイムスタンプ対応
    */
-  it("should call autoSetTimestamps for Not Planned status", () => {
-    mockSetItemFields.mockReturnValue(1);
+  it("should call autoSetTimestamps for Not Planned status", async () => {
+    mockSetItemFields.mockResolvedValue(1);
 
-    const result = updateProjectStatus({
+    const result = await updateProjectStatus({
       projectId: "proj-1",
       itemId: "item-1",
       statusValue: "Not Planned",
@@ -175,8 +193,8 @@ describe("getIssueDetail", () => {
   /**
    * @testdoc GraphQL 成功時に projectItemId と projectId を返す
    */
-  it("should return projectItemId and projectId on success", () => {
-    mockRunGraphQL.mockReturnValue({
+  it("should return projectItemId and projectId on success", async () => {
+    mockRunGraphQL.mockResolvedValue({
       success: true,
       data: {
         data: {
@@ -194,38 +212,38 @@ describe("getIssueDetail", () => {
       },
     });
 
-    const result = getIssueDetail("test-owner", "test-repo", 42);
+    const result = await getIssueDetail("test-owner", "test-repo", 42);
     expect(result).toEqual({ projectItemId: "item-1", projectId: "proj-1" });
   });
 
   /**
    * @testdoc GraphQL 失敗時に null を返す
    */
-  it("should return null on GraphQL failure", () => {
-    mockRunGraphQL.mockReturnValue({ success: false });
+  it("should return null on GraphQL failure", async () => {
+    mockRunGraphQL.mockResolvedValue({ success: false });
 
-    const result = getIssueDetail("test-owner", "test-repo", 42);
+    const result = await getIssueDetail("test-owner", "test-repo", 42);
     expect(result).toBeNull();
   });
 
   /**
    * @testdoc Issue が見つからない場合に null を返す
    */
-  it("should return null when issue not found", () => {
-    mockRunGraphQL.mockReturnValue({
+  it("should return null when issue not found", async () => {
+    mockRunGraphQL.mockResolvedValue({
       success: true,
       data: { data: { repository: { issue: null } } },
     });
 
-    const result = getIssueDetail("test-owner", "test-repo", 999);
+    const result = await getIssueDetail("test-owner", "test-repo", 999);
     expect(result).toBeNull();
   });
 
   /**
    * @testdoc projectItems が空の場合に undefined フィールドを返す
    */
-  it("should return undefined fields when no project items", () => {
-    mockRunGraphQL.mockReturnValue({
+  it("should return undefined fields when no project items", async () => {
+    mockRunGraphQL.mockResolvedValue({
       success: true,
       data: {
         data: {
@@ -236,7 +254,7 @@ describe("getIssueDetail", () => {
       },
     });
 
-    const result = getIssueDetail("test-owner", "test-repo", 42);
+    const result = await getIssueDetail("test-owner", "test-repo", 42);
     expect(result).toEqual({ projectItemId: undefined, projectId: undefined });
   });
 });
@@ -256,10 +274,10 @@ describe("resolveProjectItem", () => {
   /**
    * @testdoc プロジェクト未検出時に null を返す
    */
-  it("should return null when no project found", () => {
-    mockGetProjectId.mockReturnValue(null);
+  it("should return null when no project found", async () => {
+    mockGetProjectId.mockResolvedValue(null);
 
-    const result = resolveProjectItem("test-owner", "test-repo", 42, logger);
+    const result = await resolveProjectItem("test-owner", "test-repo", 42, logger);
     expect(result).toBeNull();
     expect(logger.warn).toHaveBeenCalledWith("No project found");
   });
@@ -267,9 +285,9 @@ describe("resolveProjectItem", () => {
   /**
    * @testdoc Issue が Project に未登録の場合に null を返す
    */
-  it("should return null when issue not in project", () => {
-    mockGetProjectId.mockReturnValue("proj-1");
-    mockRunGraphQL.mockReturnValue({
+  it("should return null when issue not in project", async () => {
+    mockGetProjectId.mockResolvedValue("proj-1");
+    mockRunGraphQL.mockResolvedValue({
       success: true,
       data: {
         data: {
@@ -280,16 +298,16 @@ describe("resolveProjectItem", () => {
       },
     });
 
-    const result = resolveProjectItem("test-owner", "test-repo", 42, logger);
+    const result = await resolveProjectItem("test-owner", "test-repo", 42, logger);
     expect(result).toBeNull();
   });
 
   /**
    * @testdoc 正常時に ResolvedProjectItem を返す
    */
-  it("should return resolved project item on success", () => {
-    mockGetProjectId.mockReturnValue("proj-1");
-    mockRunGraphQL.mockReturnValue({
+  it("should return resolved project item on success", async () => {
+    mockGetProjectId.mockResolvedValue("proj-1");
+    mockRunGraphQL.mockResolvedValue({
       success: true,
       data: {
         data: {
@@ -304,9 +322,9 @@ describe("resolveProjectItem", () => {
         },
       },
     });
-    mockGetProjectFields.mockReturnValue(mockFields);
+    mockGetProjectFields.mockResolvedValue(mockFields);
 
-    const result = resolveProjectItem("test-owner", "test-repo", 42, logger);
+    const result = await resolveProjectItem("test-owner", "test-repo", 42, logger);
     expect(result).toEqual({
       projectId: "proj-1",
       projectItemId: "item-1",
@@ -330,9 +348,9 @@ describe("resolveAndUpdateStatus", () => {
   /**
    * @testdoc 解決から更新までの一連の流れ
    */
-  it("should resolve and update status successfully", () => {
-    mockGetProjectId.mockReturnValue("proj-1");
-    mockRunGraphQL.mockReturnValue({
+  it("should resolve and update status successfully", async () => {
+    mockGetProjectId.mockResolvedValue("proj-1");
+    mockRunGraphQL.mockResolvedValue({
       success: true,
       data: {
         data: {
@@ -347,10 +365,10 @@ describe("resolveAndUpdateStatus", () => {
         },
       },
     });
-    mockGetProjectFields.mockReturnValue(mockFields);
-    mockSetItemFields.mockReturnValue(1);
+    mockGetProjectFields.mockResolvedValue(mockFields);
+    mockSetItemFields.mockResolvedValue(1);
 
-    const result = resolveAndUpdateStatus("test-owner", "test-repo", 42, "Done", logger);
+    const result = await resolveAndUpdateStatus("test-owner", "test-repo", 42, "Done", logger);
     expect(result.success).toBe(true);
     expect(mockAutoSetTimestamps).toHaveBeenCalled();
   });
@@ -358,10 +376,10 @@ describe("resolveAndUpdateStatus", () => {
   /**
    * @testdoc プロジェクト未検出時に no-item を返す
    */
-  it("should return failure with reason when project not found", () => {
-    mockGetProjectId.mockReturnValue(null);
+  it("should return failure with reason when project not found", async () => {
+    mockGetProjectId.mockResolvedValue(null);
 
-    const result = resolveAndUpdateStatus("test-owner", "test-repo", 42, "Done", logger);
+    const result = await resolveAndUpdateStatus("test-owner", "test-repo", 42, "Done", logger);
     expect(result.success).toBe(false);
     expect(result.reason).toBe("no-item");
   });
@@ -369,9 +387,9 @@ describe("resolveAndUpdateStatus", () => {
   /**
    * @testdoc Status 更新失敗時に update-failed を返す
    */
-  it("should return failure when status update fails", () => {
-    mockGetProjectId.mockReturnValue("proj-1");
-    mockRunGraphQL.mockReturnValue({
+  it("should return failure when status update fails", async () => {
+    mockGetProjectId.mockResolvedValue("proj-1");
+    mockRunGraphQL.mockResolvedValue({
       success: true,
       data: {
         data: {
@@ -386,10 +404,10 @@ describe("resolveAndUpdateStatus", () => {
         },
       },
     });
-    mockGetProjectFields.mockReturnValue(mockFields);
-    mockSetItemFields.mockReturnValue(0);
+    mockGetProjectFields.mockResolvedValue(mockFields);
+    mockSetItemFields.mockResolvedValue(0);
 
-    const result = resolveAndUpdateStatus("test-owner", "test-repo", 42, "Done", logger);
+    const result = await resolveAndUpdateStatus("test-owner", "test-repo", 42, "Done", logger);
     expect(result.success).toBe(false);
     expect(result.reason).toBe("update-failed");
   });

@@ -2,10 +2,10 @@
  * discussions Command Tests
  *
  * Tests for GitHub Discussions management command.
- * Since the command relies heavily on external API calls (gh CLI GraphQL),
+ * Since the command relies heavily on external API calls (octokit GraphQL/REST),
  * these tests focus on input validation and command routing logic.
  *
- * For full integration testing, use actual gh CLI in CI environment.
+ * For full integration testing, use actual GitHub API in CI environment.
  *
  * @testdoc GitHub Discussions管理コマンドのテスト
  */
@@ -811,7 +811,7 @@ describe("discussions error handling", () => {
      */
     it("should document repository unavailable error", () => {
       const errorCondition = {
-        cause: "Not in a git repository or gh CLI not configured",
+        cause: "Not in a git repository or GitHub API not configured",
         expectedError: "Could not determine repository",
         exitCode: 1,
       };

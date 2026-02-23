@@ -2,10 +2,10 @@
  * projects Command Tests
  *
  * Tests for GitHub Projects V2 management command.
- * Since the command relies heavily on external API calls (gh CLI + GraphQL),
+ * Since the command relies heavily on external API calls (octokit GraphQL/REST),
  * these tests focus on input validation and command routing logic.
  *
- * For full integration testing, use actual gh CLI in CI environment.
+ * For full integration testing, use actual GitHub API in CI environment.
  *
  * @testdoc GitHub Projects V2管理コマンドのテスト
  */
@@ -774,7 +774,7 @@ describe("projects error handling", () => {
      */
     it("should document owner unavailable error", () => {
       const errorCondition = {
-        cause: "Not in a git repository or gh CLI not configured",
+        cause: "Not in a git repository or GitHub API not configured",
         expectedError: "Could not determine repository owner",
         exitCode: 1,
       };

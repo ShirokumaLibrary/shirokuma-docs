@@ -192,7 +192,7 @@ async function updateExternalProject(
   // claude CLI が利用可能な場合のみキャッシュ更新を実行 (#632: graceful degradation)
   if (isClaudeCliAvailable()) {
     // Marketplace 登録確認
-    const marketplaceOk = ensureMarketplace();
+    const marketplaceOk = await ensureMarketplace();
     if (!marketplaceOk) {
       logger.warn("Marketplace registration failed, proceeding with bundled fallback");
     }
@@ -224,10 +224,10 @@ async function updateExternalProject(
       if (effectiveChannel) {
         const clonePath = getMarketplaceClonePath();
         if (clonePath) {
-          const tag = resolveVersionByChannel(effectiveChannel, clonePath);
+          const tag = await resolveVersionByChannel(effectiveChannel, clonePath);
           if (tag) {
             logger.info(`Resolved version: ${tag} (channel: ${effectiveChannel})`);
-            withMarketplaceVersion(clonePath, tag, installPlugins);
+            await withMarketplaceVersion(clonePath, tag, installPlugins);
           } else {
             logger.warn(`No matching tag found for channel "${effectiveChannel}", using HEAD`);
             installPlugins();

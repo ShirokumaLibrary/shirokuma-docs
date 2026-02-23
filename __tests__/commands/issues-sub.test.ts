@@ -2,7 +2,7 @@
  * issues Sub-Issue Commands Tests
  *
  * Tests for Sub-Issue subcommands: sub-list, sub-add, sub-remove.
- * Since these commands rely on external API calls (gh CLI),
+ * Since these commands rely on external API calls (octokit GraphQL/REST),
  * tests focus on input validation, helper functions, and output structure contracts.
  *
  * @testdoc Sub-Issue 関連サブコマンドのテスト（sub-list, sub-add, sub-remove）

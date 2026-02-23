@@ -9,10 +9,10 @@
  */
 
 import chalk from "chalk";
-import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync, rmSync } from "node:fs";
-import { join, resolve } from "node:path";
-import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync, writeFileSync, mkdirSync, cpSync, readdirSync, statSync } from "node:fs";
+import { join, resolve, relative } from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
+import { minimatch } from "minimatch";
 import {
   getAllRepoPairs,
   getRepoPair,
@@ -20,8 +20,9 @@ import {
   getMergedExcludePatterns,
   DEFAULT_EXCLUDE_PATTERNS,
 } from "../utils/repo-pairs.js";
-import { runGhCommand, getRepoInfo } from "../utils/github.js";
+import { getRepoInfo } from "../utils/github.js";
 import { loadGhConfig } from "../utils/gh-config.js";
+import { getOctokit } from "../utils/octokit-client.js";
 
 // ========================================
 // Types
@@ -100,7 +101,7 @@ function cmdList(logger: Logger): number {
 /**
  * Initialize a new repo pair
  */
-function cmdInit(alias: string, options: RepoPairsOptions, logger: Logger): number {
+async function cmdInit(alias: string, options: RepoPairsOptions, logger: Logger): Promise<number> {
   if (!alias) {
     logger.error("Alias is required. Usage: repo-pairs init <alias>");
     return 1;
@@ -128,22 +129,36 @@ function cmdInit(alias: string, options: RepoPairsOptions, logger: Logger): numb
   }
 
   // Validate repos exist
+  const octokit = getOctokit();
+  const privateParsed = parseRepoFullName(privateRepo);
+  if (!privateParsed) {
+    logger.error(`Invalid repo format: ${privateRepo}`);
+    return 1;
+  }
+  const publicParsed = parseRepoFullName(publicRepo);
+  if (!publicParsed) {
+    logger.error(`Invalid repo format: ${publicRepo}`);
+    return 1;
+  }
+
   logger.verbose(`Validating private repo: ${privateRepo}`);
-  const privateResult = runGhCommand(
-    ["repo", "view", privateRepo, "--json", "name"],
-    { silent: true }
-  );
-  if (!privateResult.success) {
+  try {
+    await octokit.rest.repos.get({
+      owner: privateParsed.owner,
+      repo: privateParsed.name,
+    });
+  } catch {
     logger.error(`Private repo not found: ${privateRepo}`);
     return 1;
   }
 
   logger.verbose(`Validating public repo: ${publicRepo}`);
-  const publicResult = runGhCommand(
-    ["repo", "view", publicRepo, "--json", "name"],
-    { silent: true }
-  );
-  if (!publicResult.success) {
+  try {
+    await octokit.rest.repos.get({
+      owner: publicParsed.owner,
+      repo: publicParsed.name,
+    });
+  } catch {
     logger.info(`Public repo not found: ${publicRepo}`);
     logger.info("Create it? Run:");
     logger.info(chalk.gray(`  gh repo create ${publicRepo} --public`));
@@ -182,7 +197,7 @@ function cmdInit(alias: string, options: RepoPairsOptions, logger: Logger): numb
 /**
  * Show sync status between repo pairs
  */
-function cmdStatus(alias: string | undefined, options: RepoPairsOptions, logger: Logger): number {
+async function cmdStatus(alias: string | undefined, options: RepoPairsOptions, logger: Logger): Promise<number> {
   const config = loadGhConfig();
 
   if (alias) {
@@ -191,7 +206,7 @@ function cmdStatus(alias: string | undefined, options: RepoPairsOptions, logger:
       logger.error(`Unknown alias: ${alias}`);
       return 1;
     }
-    return showPairStatus(pair, logger);
+    return await showPairStatus(pair, logger);
   }
 
   // Show all pairs
@@ -202,20 +217,20 @@ function cmdStatus(alias: string | undefined, options: RepoPairsOptions, logger:
   }
 
   for (const pair of pairs) {
-    showPairStatus(pair, logger);
+    await showPairStatus(pair, logger);
     logger.info("");
   }
 
   return 0;
 }
 
-function showPairStatus(pair: { alias: string; private: string; public: string }, logger: Logger): number {
+async function showPairStatus(pair: { alias: string; private: string; public: string }, logger: Logger): Promise<number> {
   logger.info(chalk.bold(`Status: ${pair.alias}`));
   logger.info(chalk.gray("─".repeat(40)));
 
   // Get latest tags from both repos
-  const privateTag = getLatestTag(pair.private);
-  const publicTag = getLatestTag(pair.public);
+  const privateTag = await getLatestTag(pair.private);
+  const publicTag = await getLatestTag(pair.public);
 
   logger.info(`  Private: ${pair.private}`);
   logger.info(`    Latest tag: ${privateTag || "(none)"}`);
@@ -233,23 +248,27 @@ function showPairStatus(pair: { alias: string; private: string; public: string }
   return 0;
 }
 
-function getLatestTag(repo: string): string | null {
-  const result = runGhCommand<Array<{ name: string }>>(
-    ["api", `repos/${repo}/tags`],
-    { silent: true }
-  );
+async function getLatestTag(repo: string): Promise<string | null> {
+  const parsed = parseRepoFullName(repo);
+  if (!parsed) return null;
 
-  if (!result.success) return null;
-  if (Array.isArray(result.data) && result.data.length > 0) {
-    return result.data[0].name || null;
+  try {
+    const octokit = getOctokit();
+    const { data } = await octokit.rest.repos.listTags({
+      owner: parsed.owner,
+      repo: parsed.name,
+      per_page: 1,
+    });
+    return data.length > 0 ? data[0].name : null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /**
  * Release: copy code from private to public repo
  */
-function cmdRelease(alias: string, options: RepoPairsOptions, logger: Logger): number {
+async function cmdRelease(alias: string, options: RepoPairsOptions, logger: Logger): Promise<number> {
   if (!alias) {
     logger.error("Alias is required. Usage: repo-pairs release <alias> --tag <version>");
     return 1;
@@ -274,156 +293,276 @@ function cmdRelease(alias: string, options: RepoPairsOptions, logger: Logger): n
   logger.info(`  To:   ${pair.public}`);
   logger.info(`  Exclude: ${excludePatterns.join(", ")}`);
 
+  const publicParsedRepo = parseRepoFullName(pair.public);
+  if (!publicParsedRepo) {
+    logger.error(`Invalid public repo format: ${pair.public}`);
+    return 1;
+  }
+
   if (options.dryRun) {
     logger.info(chalk.yellow("\n[DRY RUN] No changes will be made."));
     return 0;
   }
 
-  // 1. Clone public repo to temp dir
-  const tmpDir = join("/tmp", `shirokuma-release-${Date.now()}`);
-  logger.verbose(`Cloning public repo to ${tmpDir}`);
+  const octokit = getOctokit();
+  const { owner: pubOwner, name: pubRepo } = publicParsedRepo;
 
-  const cloneResult = spawnSync("gh", ["repo", "clone", pair.public, tmpDir], {
-    encoding: "utf-8",
-    timeout: 60_000,
-  });
+  // 1. ローカルファイルを収集（除外パターン適用）
+  logger.verbose(`Collecting files from ${projectPath}`);
+  const allExcludes = [...excludePatterns, ".git/", "node_modules/"];
+  const localFiles = collectLocalFiles(projectPath, allExcludes);
+  logger.verbose(`Collected ${localFiles.length} files`);
 
-  if (cloneResult.status !== 0) {
-    logger.error(`Failed to clone ${pair.public}: ${cloneResult.stderr}`);
-    return 1;
-  }
+  // 2. octokit Git Data API で tree を作成
+  // base_tree なし = 完全置換（rsync --delete と同等）
+  const treeItems: Array<{
+    path: string;
+    mode: "100644" | "100755";
+    type: "blob";
+    content?: string;
+    sha?: string;
+  }> = [];
 
-  // 2. Clear public repo contents (except .git)
-  const gitDir = join(tmpDir, ".git");
-  const entries = spawnSync("ls", ["-A", tmpDir], { encoding: "utf-8" });
-  for (const entry of (entries.stdout || "").trim().split("\n")) {
-    if (entry && entry !== ".git") {
-      rmSync(join(tmpDir, entry), { recursive: true, force: true });
+  for (const file of localFiles) {
+    const fullPath = join(projectPath, file.path);
+    const isExecutable = (statSync(fullPath).mode & 0o111) !== 0;
+
+    if (file.isBinary) {
+      // バイナリファイルは createBlob (base64) で処理
+      const content = readFileSync(fullPath).toString("base64");
+      const { data: blob } = await octokit.rest.git.createBlob({
+        owner: pubOwner,
+        repo: pubRepo,
+        content,
+        encoding: "base64",
+      });
+      treeItems.push({
+        path: file.path,
+        mode: isExecutable ? "100755" : "100644",
+        type: "blob",
+        sha: blob.sha,
+      });
+    } else {
+      // テキストファイルは content インライン
+      treeItems.push({
+        path: file.path,
+        mode: isExecutable ? "100755" : "100644",
+        type: "blob",
+        content: readFileSync(fullPath, "utf-8"),
+      });
     }
   }
 
-  // 3. Copy from private repo, excluding patterns
-  logger.verbose(`Copying from ${projectPath} to ${tmpDir}`);
-  logger.verbose(`Exclude patterns (${excludePatterns.length}): ${excludePatterns.join(", ")}`);
-
-  const rsyncResult = spawnSync("rsync", [
-    "-a", "--delete",
-    ...excludePatterns.map(p => `--exclude=${p}`),
-    "--exclude=.git/",
-    "--exclude=node_modules/",
-    `${projectPath}/`,
-    `${tmpDir}/`,
-  ], {
-    encoding: "utf-8",
-    timeout: 120_000,
+  const { data: tree } = await octokit.rest.git.createTree({
+    owner: pubOwner,
+    repo: pubRepo,
+    tree: treeItems,
   });
 
-  if (rsyncResult.status !== 0) {
-    logger.error(`File sync failed: ${rsyncResult.stderr}`);
-    // Cleanup
-    rmSync(tmpDir, { recursive: true, force: true });
-    return 1;
+  // 3. 現在のブランチ HEAD コミットを取得
+  let parentSha: string | undefined;
+  try {
+    const { data: ref } = await octokit.rest.git.getRef({
+      owner: pubOwner,
+      repo: pubRepo,
+      ref: `heads/${pair.defaultBranch}`,
+    });
+    parentSha = ref.object.sha;
+  } catch {
+    // 空リポジトリの場合は parent なし
   }
 
-  // 4. Generate changelog
-  const changelog = generateChangelog(projectPath, tag);
+  // 4. changelog を生成
+  const changelog = await generateChangelog(pubOwner, pubRepo, tag, octokit);
 
-  // 5. Commit and push
-  const gitOpts = { cwd: tmpDir, encoding: "utf-8" as const, timeout: 30_000 };
-
-  spawnSync("git", ["add", "-A"], gitOpts);
-
+  // 5. コミットを作成
   const commitMsg = `release: ${tag}\n\n${changelog}`;
-  const commitResult = spawnSync("git", ["commit", "-m", commitMsg, "--allow-empty"], gitOpts);
+  const { data: commit } = await octokit.rest.git.createCommit({
+    owner: pubOwner,
+    repo: pubRepo,
+    message: commitMsg,
+    tree: tree.sha,
+    parents: parentSha ? [parentSha] : [],
+  });
 
-  if (commitResult.status !== 0) {
-    logger.verbose(`Commit output: ${commitResult.stderr}`);
+  // 6. ブランチ参照を更新
+  try {
+    await octokit.rest.git.updateRef({
+      owner: pubOwner,
+      repo: pubRepo,
+      ref: `heads/${pair.defaultBranch}`,
+      sha: commit.sha,
+    });
+  } catch {
+    // ブランチが存在しない場合は作成
+    await octokit.rest.git.createRef({
+      owner: pubOwner,
+      repo: pubRepo,
+      ref: `refs/heads/${pair.defaultBranch}`,
+      sha: commit.sha,
+    });
   }
 
-  // Tag
-  spawnSync("git", ["tag", tag, "-m", `Release ${tag}`], gitOpts);
+  // 7. タグを作成
+  const { data: tagObj } = await octokit.rest.git.createTag({
+    owner: pubOwner,
+    repo: pubRepo,
+    tag,
+    message: `Release ${tag}`,
+    object: commit.sha,
+    type: "commit",
+  });
 
-  // Push
-  const pushResult = spawnSync("git", ["push", "origin", pair.defaultBranch, "--tags"], gitOpts);
+  await octokit.rest.git.createRef({
+    owner: pubOwner,
+    repo: pubRepo,
+    ref: `refs/tags/${tag}`,
+    sha: tagObj.sha,
+  });
 
-  if (pushResult.status !== 0) {
-    logger.error(`Push failed: ${pushResult.stderr}`);
-    rmSync(tmpDir, { recursive: true, force: true });
-    return 1;
+  // 8. GitHub Release を作成
+  try {
+    await octokit.rest.repos.createRelease({
+      owner: pubOwner,
+      repo: pubRepo,
+      tag_name: tag,
+      name: `Release ${tag}`,
+      body: changelog,
+    });
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    logger.verbose(`Release creation warning: ${message}`);
   }
-
-  // 6. Create GitHub release with changelog
-  runGhCommand([
-    "release", "create", tag,
-    "--repo", pair.public,
-    "--title", `Release ${tag}`,
-    "--notes", changelog,
-  ]);
-
-  // Cleanup
-  rmSync(tmpDir, { recursive: true, force: true });
 
   logger.success(`Released ${tag} to ${pair.public}`);
   return 0;
 }
 
 /**
- * Generate changelog from git log
+ * ローカルファイルを再帰的に収集し、除外パターンでフィルタリングする。
  */
-function generateChangelog(repoPath: string, tag: string): string {
-  // Find previous tag
-  const prevTagResult = spawnSync("git", ["describe", "--tags", "--abbrev=0", "HEAD^"], {
-    cwd: repoPath,
-    encoding: "utf-8",
-    timeout: 10_000,
-  });
+function collectLocalFiles(
+  basePath: string,
+  excludePatterns: string[]
+): Array<{ path: string; isBinary: boolean }> {
+  const result: Array<{ path: string; isBinary: boolean }> = [];
 
-  const prevTag = prevTagResult.status === 0 ? prevTagResult.stdout.trim() : null;
-  const range = prevTag ? `${prevTag}..HEAD` : "HEAD";
+  function walk(dir: string): void {
+    const entries = readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = join(dir, entry.name);
+      const relPath = relative(basePath, fullPath);
 
-  const logResult = spawnSync("git", [
-    "log", range, "--oneline", "--no-merges",
-    "--format=%s",
-  ], {
-    cwd: repoPath,
-    encoding: "utf-8",
-    timeout: 10_000,
-  });
+      // ディレクトリの場合: relPath + "/" でマッチング
+      if (entry.isDirectory()) {
+        const dirRelPath = relPath + "/";
+        const isExcluded = excludePatterns.some(p => minimatch(dirRelPath, p, { dot: true }));
+        if (!isExcluded) {
+          walk(fullPath);
+        }
+        continue;
+      }
 
-  if (logResult.status !== 0 || !logResult.stdout.trim()) {
-    return `Release ${tag}`;
-  }
-
-  const commits = logResult.stdout.trim().split("\n");
-
-  // Categorize commits
-  const features: string[] = [];
-  const fixes: string[] = [];
-  const others: string[] = [];
-
-  for (const commit of commits) {
-    if (commit.startsWith("feat:") || commit.startsWith("feat(")) {
-      features.push(commit.replace(/^feat(\([^)]*\))?:\s*/, ""));
-    } else if (commit.startsWith("fix:") || commit.startsWith("fix(")) {
-      fixes.push(commit.replace(/^fix(\([^)]*\))?:\s*/, ""));
-    } else if (!commit.startsWith("chore:") && !commit.startsWith("ci:")) {
-      others.push(commit);
+      // ファイルの場合
+      if (entry.isFile()) {
+        const isExcluded = excludePatterns.some(p => minimatch(relPath, p, { dot: true }));
+        if (!isExcluded) {
+          result.push({ path: relPath, isBinary: isBinaryFile(fullPath) });
+        }
+      }
     }
   }
 
-  const sections: string[] = [];
+  walk(basePath);
+  return result;
+}
 
-  if (features.length > 0) {
-    sections.push("## Features\n" + features.map(f => `- ${f}`).join("\n"));
+/**
+ * ファイルがバイナリかどうかを判定する。
+ * 先頭 512 バイトに null バイトが含まれていればバイナリと判定。
+ */
+function isBinaryFile(filePath: string): boolean {
+  try {
+    const buffer = readFileSync(filePath);
+    const checkLength = Math.min(buffer.length, 512);
+    for (let i = 0; i < checkLength; i++) {
+      if (buffer[i] === 0) return true;
+    }
+    return false;
+  } catch {
+    return false;
   }
-  if (fixes.length > 0) {
-    sections.push("## Bug Fixes\n" + fixes.map(f => `- ${f}`).join("\n"));
-  }
-  if (others.length > 0) {
-    sections.push("## Other Changes\n" + others.map(o => `- ${o}`).join("\n"));
-  }
+}
 
-  return sections.join("\n\n") || `Release ${tag}`;
+/**
+ * octokit を使用して changelog を生成する。
+ * public リポジトリのタグとコミット情報を API で取得。
+ */
+async function generateChangelog(
+  owner: string,
+  repo: string,
+  tag: string,
+  octokit: ReturnType<typeof getOctokit>
+): Promise<string> {
+  try {
+    // 前回のタグを取得
+    const { data: tags } = await octokit.rest.repos.listTags({
+      owner,
+      repo,
+      per_page: 2,
+    });
+
+    const prevTag = tags.length > 0 ? tags[0].name : null;
+
+    if (!prevTag) {
+      return `Release ${tag}`;
+    }
+
+    // 前回タグから現在の default branch までのコミットを比較
+    const { data: comparison } = await octokit.rest.repos.compareCommits({
+      owner,
+      repo,
+      base: prevTag,
+      head: tags.length > 0 ? tags[0].commit.sha : "HEAD",
+    });
+
+    const commitMessages = comparison.commits.map(c => c.commit.message.split("\n")[0]);
+
+    if (commitMessages.length === 0) {
+      return `Release ${tag}`;
+    }
+
+    // コミットをカテゴリ分類
+    const features: string[] = [];
+    const fixes: string[] = [];
+    const others: string[] = [];
+
+    for (const msg of commitMessages) {
+      if (msg.startsWith("feat:") || msg.startsWith("feat(")) {
+        features.push(msg.replace(/^feat(\([^)]*\))?:\s*/, ""));
+      } else if (msg.startsWith("fix:") || msg.startsWith("fix(")) {
+        fixes.push(msg.replace(/^fix(\([^)]*\))?:\s*/, ""));
+      } else if (!msg.startsWith("chore:") && !msg.startsWith("ci:")) {
+        others.push(msg);
+      }
+    }
+
+    const sections: string[] = [];
+
+    if (features.length > 0) {
+      sections.push("## Features\n" + features.map(f => `- ${f}`).join("\n"));
+    }
+    if (fixes.length > 0) {
+      sections.push("## Bug Fixes\n" + fixes.map(f => `- ${f}`).join("\n"));
+    }
+    if (others.length > 0) {
+      sections.push("## Other Changes\n" + others.map(o => `- ${o}`).join("\n"));
+    }
+
+    return sections.join("\n\n") || `Release ${tag}`;
+  } catch {
+    return `Release ${tag}`;
+  }
 }
 
 /**
@@ -626,15 +765,15 @@ export async function repoPairsCommand(
       break;
 
     case "init":
-      exitCode = cmdInit(alias || "", options, logger);
+      exitCode = await cmdInit(alias || "", options, logger);
       break;
 
     case "status":
-      exitCode = cmdStatus(alias, options, logger);
+      exitCode = await cmdStatus(alias, options, logger);
       break;
 
     case "release":
-      exitCode = cmdRelease(alias || "", options, logger);
+      exitCode = await cmdRelease(alias || "", options, logger);
       break;
 
     case "templates":

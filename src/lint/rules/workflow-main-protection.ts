@@ -6,8 +6,9 @@
  * Also checks recent commits for Co-Authored-By signatures.
  */
 
-import { spawnSync } from "node:child_process";
+import { simpleGit } from "simple-git";
 import type { WorkflowIssue, WorkflowIssueSeverity } from "../workflow-types.js";
+import { getCurrentBranch } from "../../utils/git-local.js";
 
 const DEFAULT_PROTECTED_BRANCHES = ["main", "develop"];
 
@@ -75,17 +76,14 @@ export function validateMainProtection(
 /**
  * Gather git state and run main-protection checks.
  */
-export function checkMainProtection(
+export async function checkMainProtection(
   severity: WorkflowIssueSeverity = "error",
   protectedBranches: string[] = DEFAULT_PROTECTED_BRANCHES
-): WorkflowIssue[] {
+): Promise<WorkflowIssue[]> {
   // Get current branch name
-  const branchResult = spawnSync("git", ["branch", "--show-current"], {
-    encoding: "utf-8",
-    timeout: 5_000,
-  });
+  const currentBranch = getCurrentBranch();
 
-  if (branchResult.status !== 0 || !branchResult.stdout?.trim()) {
+  if (!currentBranch) {
     return [
       {
         type: "info",
@@ -95,7 +93,7 @@ export function checkMainProtection(
     ];
   }
 
-  const currentBranch = branchResult.stdout.trim();
+  const git = simpleGit();
 
   // Gather state
   let hasUncommittedChanges = false;
@@ -103,54 +101,49 @@ export function checkMainProtection(
 
   if (protectedBranches.includes(currentBranch)) {
     // Check uncommitted changes
-    const statusResult = spawnSync("git", ["status", "--porcelain"], {
-      encoding: "utf-8",
-      timeout: 5_000,
-    });
-    hasUncommittedChanges =
-      statusResult.status === 0 && statusResult.stdout?.trim().length > 0;
+    try {
+      const status = await git.status();
+      hasUncommittedChanges = status.files.length > 0;
+    } catch {
+      // git status 失敗時は false のまま
+    }
 
     // Check direct commits
-    const logResult = spawnSync(
-      "git",
-      ["log", "--oneline", "--no-merges", "-10", `origin/${currentBranch}..HEAD`],
-      {
-        encoding: "utf-8",
-        timeout: 5_000,
+    try {
+      const logResult = await git.raw([
+        "log", "--oneline", "--no-merges", "-10", `origin/${currentBranch}..HEAD`,
+      ]);
+      if (logResult?.trim()) {
+        directCommitCount = logResult
+          .trim()
+          .split("\n")
+          .filter((l) => l.length > 0).length;
       }
-    );
-    if (logResult.status === 0 && logResult.stdout?.trim()) {
-      directCommitCount = logResult.stdout
-        .trim()
-        .split("\n")
-        .filter((l) => l.length > 0).length;
+    } catch {
+      // log 失敗時は 0 のまま
     }
   }
 
   // Check recent commits for Co-Authored-By
-  // Use record separator (%x00) between commits to handle multi-line bodies
   const recentCommits: GitProtectionState["recentCommits"] = [];
-  const commitLogResult = spawnSync(
-    "git",
-    ["log", "--format=%H%x00%s%x00%b%x00", "-20"],
-    {
-      encoding: "utf-8",
-      timeout: 5_000,
-    }
-  );
+  try {
+    const commitLogResult = await git.raw([
+      "log", "--format=%H%x00%s%x00%b%x00", "-20",
+    ]);
 
-  if (commitLogResult.status === 0 && commitLogResult.stdout?.trim()) {
-    // Split by null byte groups: each commit produces hash\0subject\0body\0
-    const parts = commitLogResult.stdout.split("\0");
-    // Process in groups of 3 (hash, subject, body) with trailing element
-    for (let i = 0; i + 2 < parts.length; i += 3) {
-      const rawHash = parts[i].trim();
-      if (!rawHash) continue;
-      const hash = rawHash.substring(0, 7);
-      const subject = parts[i + 1];
-      const body = parts[i + 2];
-      recentCommits.push({ hash, subject, body });
+    if (commitLogResult?.trim()) {
+      const parts = commitLogResult.split("\0");
+      for (let i = 0; i + 2 < parts.length; i += 3) {
+        const rawHash = parts[i].trim();
+        if (!rawHash) continue;
+        const hash = rawHash.substring(0, 7);
+        const subject = parts[i + 1];
+        const body = parts[i + 2];
+        recentCommits.push({ hash, subject, body });
+      }
     }
+  } catch {
+    // log 失敗時は空配列のまま
   }
 
   return validateMainProtection(

@@ -1,7 +1,7 @@
 /**
  * workflow-branch-naming Rule Tests
  *
- * validateBranchName（純粋関数）と checkBranchNaming（spawnSync ラッパー）のテスト
+ * validateBranchName（純粋関数）と checkBranchNaming（git-local.ts ラッパー）のテスト
  * ESM 環境のため jest.unstable_mockModule + dynamic import を使用。
  *
  * @testdoc ブランチ命名規則の検証テスト
@@ -13,27 +13,18 @@ import { jest } from "@jest/globals";
 // Mocks (ESM: unstable_mockModule + dynamic import)
 // =============================================================================
 
-const mockSpawnSync = jest.fn<(...args: any[]) => any>();
+const mockGetCurrentBranch = jest.fn<() => string | null>();
 
-jest.unstable_mockModule("node:child_process", () => ({
-  spawnSync: mockSpawnSync,
+jest.unstable_mockModule("../../../src/utils/git-local.js", () => ({
+  getCurrentBranch: mockGetCurrentBranch,
+  getGitRemoteUrl: jest.fn(),
+  isInsideGitRepo: jest.fn(),
+  getGitRemotes: jest.fn(),
 }));
 
 const { validateBranchName, checkBranchNaming } = await import(
   "../../../src/lint/rules/workflow-branch-naming.js"
 );
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-function spawnOk(stdout: string) {
-  return { status: 0, stdout, stderr: "", pid: 0, output: [], signal: null };
-}
-
-function spawnFail(stderr = "error") {
-  return { status: 1, stdout: "", stderr, pid: 0, output: [], signal: null };
-}
 
 // =============================================================================
 // Tests
@@ -132,29 +123,25 @@ describe("workflow-branch-naming", () => {
 
   describe("checkBranchNaming", () => {
     beforeEach(() => {
-      mockSpawnSync.mockReset();
+      mockGetCurrentBranch.mockReset();
     });
 
     /**
-     * @testdoc git コマンド成功時にブランチ名を検証する
+     * @testdoc git-local.ts からブランチ名を取得して検証する
      */
-    it("should validate branch name from git output", () => {
-      mockSpawnSync.mockReturnValue(spawnOk("feat/42-my-feature\n"));
+    it("should validate branch name from git-local", () => {
+      mockGetCurrentBranch.mockReturnValue("feat/42-my-feature");
 
       const issues = checkBranchNaming();
       expect(issues).toEqual([]);
-      expect(mockSpawnSync).toHaveBeenCalledWith(
-        "git",
-        ["branch", "--show-current"],
-        expect.objectContaining({ encoding: "utf-8" })
-      );
+      expect(mockGetCurrentBranch).toHaveBeenCalled();
     });
 
     /**
-     * @testdoc checkBranchNaming: git コマンド失敗時に info issue を返す
+     * @testdoc checkBranchNaming: ブランチ名取得失敗時に info issue を返す
      */
-    it("should return info issue when git command fails", () => {
-      mockSpawnSync.mockReturnValue(spawnFail("not a git repo"));
+    it("should return info issue when getCurrentBranch returns null", () => {
+      mockGetCurrentBranch.mockReturnValue(null);
 
       const issues = checkBranchNaming();
       expect(issues).toHaveLength(1);
@@ -163,21 +150,10 @@ describe("workflow-branch-naming", () => {
     });
 
     /**
-     * @testdoc checkBranchNaming: stdout が空の場合に info issue を返す
-     */
-    it("should return info issue when stdout is empty", () => {
-      mockSpawnSync.mockReturnValue(spawnOk(""));
-
-      const issues = checkBranchNaming();
-      expect(issues).toHaveLength(1);
-      expect(issues[0].type).toBe("info");
-    });
-
-    /**
      * @testdoc カスタム severity と prefixes を渡せる
      */
     it("should pass severity and prefixes through", () => {
-      mockSpawnSync.mockReturnValue(spawnOk("wip/42-work\n"));
+      mockGetCurrentBranch.mockReturnValue("wip/42-work");
 
       const issues = checkBranchNaming("error", ["feat", "fix"]);
       expect(issues).toHaveLength(1);

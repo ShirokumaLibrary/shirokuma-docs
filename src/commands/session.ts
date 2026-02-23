@@ -12,14 +12,12 @@
  * - Used internally by starting-session / ending-session skills
  */
 
-import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, unlinkSync } from "node:fs";
 import { join } from "node:path";
+import { simpleGit } from "simple-git";
 import { createLogger, Logger } from "../utils/logger.js";
 import {
-  runGhCommand,
   runGraphQL,
-  getRepoName,
   getRepoInfo,
   validateTitle,
   validateBody,
@@ -27,6 +25,8 @@ import {
   parseIssueNumber,
   GhResult,
 } from "../utils/github.js";
+import { getOctokit } from "../utils/octokit-client.js";
+import { getCurrentBranch } from "../utils/git-local.js";
 import {
   loadGhConfig,
   getDefaultCategory,
@@ -53,7 +53,7 @@ import {
   fetchWorkflows,
   RECOMMENDED_WORKFLOWS,
   type ProjectWorkflow,
-} from "./projects.js";
+} from "../utils/project-utils.js";
 import {
   validateGitHubSetup,
   printSetupCheckResults,
@@ -316,16 +316,11 @@ query($owner: String!, $name: String!, $first: Int!, $cursor: String, $states: [
 // Helper: Get current GitHub username
 // =============================================================================
 
-function getCurrentUsername(): string | null {
+async function getCurrentUsername(): Promise<string | null> {
   try {
-    const result = spawnSync("gh", ["api", "user", "-q", ".login"], {
-      encoding: "utf-8",
-      timeout: 10000,
-    });
-    if (result.status === 0 && result.stdout.trim()) {
-      return result.stdout.trim();
-    }
-    return null;
+    const octokit = getOctokit();
+    const { data } = await octokit.rest.users.getAuthenticated();
+    return data.login ?? null;
   } catch {
     return null;
   }
@@ -335,11 +330,11 @@ function getCurrentUsername(): string | null {
 // Helper: Resolve Handovers category ID
 // =============================================================================
 
-function getHandoversCategoryId(
+async function getHandoversCategoryId(
   owner: string,
   repo: string,
   categoryName: string
-): string | null {
+): Promise<string | null> {
   interface QueryResult {
     data?: {
       repository?: {
@@ -350,7 +345,7 @@ function getHandoversCategoryId(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_CATEGORIES, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_CATEGORIES, {
     owner,
     name: repo,
   });
@@ -380,12 +375,12 @@ interface HandoverData {
  * @param authorFilter - Username to filter by, or null for all
  * @returns The most recent matching handover, or null
  */
-function fetchLatestHandover(
+async function fetchLatestHandover(
   owner: string,
   repo: string,
   categoryId: string,
   authorFilter: string | null,
-): HandoverData | null {
+): Promise<HandoverData | null> {
   interface DiscussionNode {
     number?: number;
     title?: string;
@@ -404,7 +399,7 @@ function fetchLatestHandover(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_RECENT_HANDOVERS, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_RECENT_HANDOVERS, {
     owner,
     name: repo,
     categoryId,
@@ -438,11 +433,11 @@ function fetchLatestHandover(
 /**
  * Fetch all recent handovers and group by author (latest per author).
  */
-function fetchTeamHandovers(
+async function fetchTeamHandovers(
   owner: string,
   repo: string,
   categoryId: string,
-): HandoverData[] {
+): Promise<HandoverData[]> {
   interface DiscussionNode {
     number?: number;
     title?: string;
@@ -461,7 +456,7 @@ function fetchTeamHandovers(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_RECENT_HANDOVERS, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_RECENT_HANDOVERS, {
     owner,
     name: repo,
     categoryId,
@@ -509,12 +504,12 @@ export interface IssueData {
   projectId: string | null;
 }
 
-function fetchActiveIssues(
+async function fetchActiveIssues(
   owner: string,
   repo: string,
   limit: number,
   states: string[] = ["OPEN"]
-): IssueData[] {
+): Promise<IssueData[]> {
   interface IssueNode {
     number?: number;
     title?: string;
@@ -551,7 +546,7 @@ function fetchActiveIssues(
   while (allIssues.length < limit) {
     const fetchCount = Math.min(100, limit - allIssues.length);
 
-    const result: GhResult<QueryResult> = runGraphQL<QueryResult>(
+    const result: GhResult<QueryResult> = await runGraphQL<QueryResult>(
       GRAPHQL_QUERY_ISSUES_WITH_PROJECTS,
       {
         owner,
@@ -612,14 +607,14 @@ function fetchActiveIssues(
 // Helper: Update issue status in project (#676: updateProjectStatus に委任)
 // =============================================================================
 
-function updateIssueStatus(
+async function updateIssueStatus(
   projectId: string,
   itemId: string,
   statusValue: string,
   projectFields: Record<string, ProjectField>,
   logger: Logger
-): boolean {
-  const result = updateProjectStatus({
+): Promise<boolean> {
+  const result = await updateProjectStatus({
     projectId,
     itemId,
     statusValue,
@@ -642,37 +637,33 @@ function updateIssueStatus(
  *
  * @returns マージ済み PR 番号。見つからない場合は null
  */
-export function findMergedPrForIssue(
+export async function findMergedPrForIssue(
   owner: string,
   repo: string,
   issueNumber: number,
   logger: Logger
-): number | null {
+): Promise<number | null> {
+  const octokit = getOctokit();
+
   // Strategy 1: ブランチ名ベースの検出
   // 現在のブランチに紐づくマージ済み PR を探す
   try {
-    const branchResult = spawnSync("git", ["branch", "--show-current"], {
-      encoding: "utf-8",
-      timeout: 5000,
-    });
-    const currentBranch = branchResult.stdout?.trim();
+    const currentBranch = getCurrentBranch();
 
     const baseBranches = ["main", "master", "develop"];
     if (currentBranch && !baseBranches.includes(currentBranch)) {
-      const prResult = runGhCommand<Array<{ number: number }>>(
-        [
-          "pr", "list",
-          "--head", currentBranch,
-          "--state", "merged",
-          "--json", "number",
-          "--repo", `${owner}/${repo}`,
-          "-L", "1",
-        ],
-        { silent: true }
-      );
+      const { data } = await octokit.rest.pulls.list({
+        owner,
+        repo,
+        head: `${owner}:${currentBranch}`,
+        state: "closed",
+        per_page: 5,
+      });
 
-      if (prResult.success && Array.isArray(prResult.data) && prResult.data.length > 0) {
-        const prNum = prResult.data[0].number;
+      // merged_at が非 null のものだけがマージ済み
+      const merged = data.filter((pr) => pr.merged_at !== null);
+      if (merged.length > 0) {
+        const prNum = merged[0].number;
         logger.debug(`Merged PR #${prNum} found for branch ${currentBranch}`);
         return prNum;
       }
@@ -682,27 +673,22 @@ export function findMergedPrForIssue(
   }
 
   // Strategy 2: Issue リンク逆引き
-  // 最近マージされた PR の body を検索して、対象 Issue への参照を探す
-  const searchResult = runGhCommand<Array<{ number: number; body: string }>>(
-    [
-      "pr", "list",
-      "--state", "merged",
-      "--search", `#${issueNumber}`,
-      "--json", "number,body",
-      "--repo", `${owner}/${repo}`,
-      "-L", "10",
-    ],
-    { silent: true }
-  );
+  // サーバーサイド検索で対象 Issue への参照を含むマージ済み PR を探す
+  try {
+    const { data } = await octokit.rest.search.issuesAndPullRequests({
+      q: `is:pr is:merged #${issueNumber} repo:${owner}/${repo}`,
+      per_page: 10,
+    });
 
-  if (searchResult.success && Array.isArray(searchResult.data)) {
-    for (const pr of searchResult.data) {
-      const linked = parseLinkedIssues(pr.body);
+    for (const item of data.items) {
+      const linked = parseLinkedIssues(item.body ?? undefined);
       if (linked.includes(issueNumber)) {
-        logger.debug(`Merged PR #${pr.number} links to issue #${issueNumber}`);
-        return pr.number;
+        logger.debug(`Merged PR #${item.number} links to issue #${issueNumber}`);
+        return item.number;
       }
     }
+  } catch {
+    // 検索 API 失敗時はスキップ
   }
 
   return null;
@@ -717,13 +703,18 @@ export function findMergedPrForIssue(
  * OPEN-only fetch で見つからない Issue 番号の判定に使用。
  * API 失敗時は false を返し、従来の warn 動作にフォールバック（安全側）。
  */
-export function isIssueClosed(owner: string, repo: string, num: number): boolean {
-  const result = runGhCommand<{ state: string }>(
-    ["api", `repos/${owner}/${repo}/issues/${num}`],
-    { silent: true }
-  );
-  if (!result.success) return false;
-  return result.data?.state === "closed";
+export async function isIssueClosed(owner: string, repo: string, num: number): Promise<boolean> {
+  try {
+    const octokit = getOctokit();
+    const { data } = await octokit.rest.issues.get({
+      owner,
+      repo,
+      issue_number: num,
+    });
+    return data.state === "closed";
+  } catch {
+    return false;
+  }
 }
 
 // =============================================================================
@@ -736,35 +727,26 @@ export function isIssueClosed(owner: string, repo: string, num: number): boolean
  *
  * @returns ブランチ名と未コミット変更リスト。git 未使用時はデフォルト値を返す
  */
-export function getGitState(logger?: Logger): GitState {
+export async function getGitState(logger?: Logger): Promise<GitState> {
   let currentBranch: string | null = null;
   let uncommittedChanges: string[] = [];
 
   try {
-    const branchResult = spawnSync("git", ["branch", "--show-current"], {
-      encoding: "utf-8",
-      timeout: 5000,
-    });
-    if (branchResult.status === 0 && branchResult.stdout.trim()) {
-      currentBranch = branchResult.stdout.trim();
-    }
+    currentBranch = getCurrentBranch();
   } catch (e) {
-    logger?.debug(`getGitState: git branch --show-current failed: ${e}`);
+    logger?.debug(`getGitState: getCurrentBranch failed: ${e}`);
   }
 
   try {
-    const statusResult = spawnSync("git", ["status", "--short"], {
-      encoding: "utf-8",
-      timeout: 5000,
-    });
-    if (statusResult.status === 0 && statusResult.stdout.trim()) {
-      uncommittedChanges = statusResult.stdout
-        .trim()
-        .split("\n")
-        .filter((line) => line.length > 0);
+    const git = simpleGit();
+    const status = await git.status();
+    // simple-git の status から変更ファイルリストを構築
+    const files = status.files.map((f) => `${f.working_dir}${f.index} ${f.path}`);
+    if (files.length > 0) {
+      uncommittedChanges = files;
     }
   } catch (e) {
-    logger?.debug(`getGitState: git status --short failed: ${e}`);
+    logger?.debug(`getGitState: git status failed: ${e}`);
   }
 
   return {
@@ -787,36 +769,34 @@ const PROTECTED_BRANCHES = ["main", "develop"];
  * @returns 拡張 git 状態（ベースブランチ、未プッシュコミット数、最近のコミット含む）
  * @see getGitState 基本 git 状態の取得
  */
-export function getPreflightGitState(logger?: Logger): PreflightGitState {
-  const basic = getGitState(logger);
+export async function getPreflightGitState(logger?: Logger): Promise<PreflightGitState> {
+  const basic = await getGitState(logger);
   const branch = basic.currentBranch;
 
   // Base branch detection
   let baseBranch: string | null = null;
   try {
-    const headResult = spawnSync(
-      "git",
-      ["symbolic-ref", "refs/remotes/origin/HEAD"],
-      { encoding: "utf-8", timeout: 5000 }
-    );
-    if (headResult.status === 0 && headResult.stdout.trim()) {
-      baseBranch = headResult.stdout.trim().replace(/^refs\/remotes\/origin\//, "");
+    const git = simpleGit();
+    const result = await git.raw(["symbolic-ref", "refs/remotes/origin/HEAD"]);
+    if (result?.trim()) {
+      baseBranch = result.trim().replace(/^refs\/remotes\/origin\//, "");
     }
   } catch (e) {
     logger?.debug(`getPreflightGitState: git symbolic-ref failed: ${e}`);
   }
   if (!baseBranch) {
     try {
-      const ghResult = spawnSync(
-        "gh",
-        ["repo", "view", "--json", "defaultBranchRef", "-q", ".defaultBranchRef.name"],
-        { encoding: "utf-8", timeout: 10000 }
-      );
-      if (ghResult.status === 0 && ghResult.stdout.trim()) {
-        baseBranch = ghResult.stdout.trim();
+      const repoInfo = getRepoInfo();
+      if (repoInfo) {
+        const octokit = getOctokit();
+        const { data } = await octokit.rest.repos.get({
+          owner: repoInfo.owner,
+          repo: repoInfo.name,
+        });
+        baseBranch = data.default_branch ?? null;
       }
     } catch (e) {
-      logger?.debug(`getPreflightGitState: gh repo view failed: ${e}`);
+      logger?.debug(`getPreflightGitState: octokit repos.get failed: ${e}`);
     }
   }
 
@@ -826,13 +806,10 @@ export function getPreflightGitState(logger?: Logger): PreflightGitState {
   // Unpushed commits
   let unpushedCommits: number | null = null;
   try {
-    const upstreamResult = spawnSync(
-      "git",
-      ["rev-list", "@{u}..HEAD", "--count"],
-      { encoding: "utf-8", timeout: 5000 }
-    );
-    if (upstreamResult.status === 0 && upstreamResult.stdout.trim()) {
-      unpushedCommits = parseInt(upstreamResult.stdout.trim(), 10);
+    const git = simpleGit();
+    const result = await git.raw(["rev-list", "@{u}..HEAD", "--count"]);
+    if (result?.trim()) {
+      unpushedCommits = parseInt(result.trim(), 10);
       if (isNaN(unpushedCommits)) unpushedCommits = null;
     }
   } catch (e) {
@@ -842,24 +819,16 @@ export function getPreflightGitState(logger?: Logger): PreflightGitState {
   // Recent commits (max 10)
   const recentCommits: Array<{ hash: string; message: string }> = [];
   try {
-    const logResult = spawnSync(
-      "git",
-      ["log", "--oneline", "-10"],
-      { encoding: "utf-8", timeout: 5000 }
-    );
-    if (logResult.status === 0 && logResult.stdout.trim()) {
-      for (const line of logResult.stdout.trim().split("\n")) {
-        const spaceIdx = line.indexOf(" ");
-        if (spaceIdx > 0) {
-          recentCommits.push({
-            hash: line.slice(0, spaceIdx),
-            message: line.slice(spaceIdx + 1),
-          });
-        }
-      }
+    const git = simpleGit();
+    const logResult = await git.log({ maxCount: 10 });
+    for (const entry of logResult.all) {
+      recentCommits.push({
+        hash: entry.hash.slice(0, 7),
+        message: entry.message,
+      });
     }
   } catch (e) {
-    logger?.debug(`getPreflightGitState: git log --oneline failed: ${e}`);
+    logger?.debug(`getPreflightGitState: git log failed: ${e}`);
   }
 
   return {
@@ -969,7 +938,7 @@ async function cmdStart(
     authorFilter = options.user;
   } else {
     // Default: filter by current GitHub user
-    authorFilter = getCurrentUsername();
+    authorFilter = await getCurrentUsername();
     if (authorFilter) {
       logger.debug(`Filtering handovers by author: ${authorFilter}`);
     }
@@ -978,9 +947,9 @@ async function cmdStart(
   // 2. Fetch latest handover (filtered)
   let lastHandover: HandoverData | null = null;
 
-  const categoryId = getHandoversCategoryId(owner, repo, categoryName);
+  const categoryId = await getHandoversCategoryId(owner, repo, categoryName);
   if (categoryId) {
-    lastHandover = fetchLatestHandover(owner, repo, categoryId, authorFilter);
+    lastHandover = await fetchLatestHandover(owner, repo, categoryId, authorFilter);
     if (lastHandover) {
       logger.debug(`Found handover #${lastHandover.number} by ${lastHandover.author ?? "unknown"}`);
     } else {
@@ -991,7 +960,7 @@ async function cmdStart(
   }
 
   // 2. Fetch active issues with project fields
-  const allIssues = fetchActiveIssues(owner, repo, limit);
+  const allIssues = await fetchActiveIssues(owner, repo, limit);
 
   // Filter out Done/Released
   const activeIssues = allIssues.filter(
@@ -1001,11 +970,11 @@ async function cmdStart(
   logger.debug(`Issues: ${allIssues.length} total, ${activeIssues.length} active`);
 
   // 3. Fetch open PRs
-  const openPRs = fetchOpenPRs(owner, repo);
+  const openPRs = await fetchOpenPRs(owner, repo);
   logger.debug(`Open PRs: ${openPRs.length}`);
 
   // 4. Get git state
-  const git = getGitState(logger);
+  const git = await getGitState(logger);
   logger.debug(`Branch: ${git.currentBranch ?? "(detached)"}`);
   logger.debug(`Uncommitted changes: ${git.uncommittedChanges.length}`);
 
@@ -1155,38 +1124,39 @@ async function cmdPreflight(
   logger.debug(`Repository: ${owner}/${repo}`);
 
   // 1. Extended git state
-  const git = getPreflightGitState(logger);
+  const git = await getPreflightGitState(logger);
   logger.debug(`Branch: ${git.branch ?? "(detached)"}`);
   logger.debug(`Base branch: ${git.baseBranch ?? "(unknown)"}`);
   logger.debug(`Feature branch: ${git.isFeatureBranch}`);
   logger.debug(`Unpushed: ${git.unpushedCommits ?? "unknown"}`);
 
   // 2. Active issues (flat JSON, not TableJSON)
-  const allIssues = fetchActiveIssues(owner, repo, limit);
+  const allIssues = await fetchActiveIssues(owner, repo, limit);
   const activeIssues = allIssues.filter(
     (i) => !DEFAULT_EXCLUDE_STATUSES.includes(i.status ?? "")
   );
   logger.debug(`Issues: ${allIssues.length} total, ${activeIssues.length} active`);
 
   // 3. Detect merged PRs for In Progress / Review issues
-  const preflightIssues: PreflightIssue[] = activeIssues.map((issue) => {
+  const preflightIssues: PreflightIssue[] = [];
+  for (const issue of activeIssues) {
     let hasMergedPr = false;
     if (issue.status === "In Progress" || issue.status === "Review") {
-      const mergedPr = findMergedPrForIssue(owner, repo, issue.number, logger);
+      const mergedPr = await findMergedPrForIssue(owner, repo, issue.number, logger);
       hasMergedPr = mergedPr !== null;
     }
-    return {
+    preflightIssues.push({
       number: issue.number,
       title: issue.title,
       status: issue.status,
       hasMergedPr,
       labels: issue.labels,
       priority: issue.priority,
-    };
-  });
+    });
+  }
 
   // 4. Open PRs (flat JSON)
-  const openPRs = fetchOpenPRs(owner, repo);
+  const openPRs = await fetchOpenPRs(owner, repo);
   const preflightPrs: PreflightPr[] = openPRs.map((pr) => ({
     number: pr.number,
     title: pr.title,
@@ -1259,17 +1229,17 @@ async function cmdStartTeam(
   logger.debug("Team dashboard mode");
 
   // 1. Fetch all team handovers (latest per author)
-  const categoryId = getHandoversCategoryId(owner, repo, categoryName);
+  const categoryId = await getHandoversCategoryId(owner, repo, categoryName);
   let teamHandovers: HandoverData[] = [];
   if (categoryId) {
-    teamHandovers = fetchTeamHandovers(owner, repo, categoryId);
+    teamHandovers = await fetchTeamHandovers(owner, repo, categoryId);
     logger.debug(`Team handovers: ${teamHandovers.length} members`);
   } else {
     logger.debug(`Category '${categoryName}' not found, skipping handovers`);
   }
 
   // 2. Fetch active issues with project fields
-  const allIssues = fetchActiveIssues(owner, repo, limit);
+  const allIssues = await fetchActiveIssues(owner, repo, limit);
   const activeIssues = allIssues.filter(
     (i) => !DEFAULT_EXCLUDE_STATUSES.includes(i.status ?? "")
   );
@@ -1278,7 +1248,7 @@ async function cmdStartTeam(
   const issuesByAssignee = groupIssuesByAssignee(activeIssues);
 
   // 4. Fetch open PRs
-  const openPRs = fetchOpenPRs(owner, repo);
+  const openPRs = await fetchOpenPRs(owner, repo);
 
   // 5. Build team dashboard output
   const issueColumns = ["number", "title", "status", "priority", "size"];
@@ -1370,7 +1340,7 @@ async function cmdEnd(
   const owner = options.owner || repoOwner;
 
   // Check for uncommitted changes and warn
-  const git = getGitState(logger);
+  const git = await getGitState(logger);
   const endWarnings: string[] = [];
   if (git.hasUncommittedChanges) {
     endWarnings.push(
@@ -1391,7 +1361,7 @@ async function cmdEnd(
   // Format: "YYYY-MM-DD - summary" → "YYYY-MM-DD [username] - summary"
   let title = options.title;
   if (/^\d{4}-\d{2}-\d{2} - /.test(title) && !title.includes("[")) {
-    const username = getCurrentUsername();
+    const username = await getCurrentUsername();
     if (username) {
       title = title.replace(/^(\d{4}-\d{2}-\d{2}) - /, `$1 [${username}] - `);
       logger.debug(`Title updated with username: ${title}`);
@@ -1419,7 +1389,7 @@ async function cmdEnd(
   if (doneNumbers.length > 0 || reviewNumbers.length > 0) {
     // Fetch issues to get project item IDs
     const limit = getDefaultLimit(config);
-    const issues = fetchActiveIssues(owner, repo, limit);
+    const issues = await fetchActiveIssues(owner, repo, limit);
 
     // Get project fields once
     const projectIds = new Set<string>();
@@ -1430,7 +1400,7 @@ async function cmdEnd(
     // Cache project fields per project
     const fieldsCache: Record<string, Record<string, ProjectField>> = {};
     for (const pid of projectIds) {
-      fieldsCache[pid] = getProjectFields(pid);
+      fieldsCache[pid] = await getProjectFields(pid);
     }
 
     // OPEN list に見つからない番号の closed 状態を一括確認 (#557)
@@ -1438,7 +1408,7 @@ async function cmdEnd(
     const missingNumbers = allTargetNumbers.filter(n => !issues.find(i => i.number === n));
     const closedCache = new Map<number, boolean>();
     for (const num of missingNumbers) {
-      closedCache.set(num, isIssueClosed(owner, repo, num));
+      closedCache.set(num, await isIssueClosed(owner, repo, num));
     }
 
     // Update Done issues
@@ -1455,14 +1425,14 @@ async function cmdEnd(
 
       const fields = fieldsCache[issue.projectId] ?? {};
       // updateIssueStatus → updateProjectStatus が autoSetTimestamps を呼ぶ (#676)
-      if (updateIssueStatus(issue.projectId, issue.projectItemId, "Done", fields, logger)) {
+      if (await updateIssueStatus(issue.projectId, issue.projectItemId, "Done", fields, logger)) {
         updatedIssues.push({ number: num, status: "Done" });
         logger.success(`Issue #${num} → Done`);
 
         // Close the issue (COMPLETED) to keep Issue state consistent with Project Status (#838)
-        const issueId = getIssueId(owner, repo, num);
+        const issueId = await getIssueId(owner, repo, num);
         if (issueId) {
-          if (closeIssueById(issueId)) {
+          if (await closeIssueById(issueId)) {
             logger.success(`Issue #${num}: closed (COMPLETED)`);
           } else {
             logger.warn(`Issue #${num}: failed to close (session check --fix can recover)`);
@@ -1488,11 +1458,11 @@ async function cmdEnd(
       const fields = fieldsCache[issue.projectId] ?? {};
 
       // Check if a merged PR exists for this issue (#220)
-      const mergedPr = findMergedPrForIssue(owner, repo, num, logger);
+      const mergedPr = await findMergedPrForIssue(owner, repo, num, logger);
       const targetStatus = mergedPr ? "Done" : "Review";
 
       // updateIssueStatus → updateProjectStatus が autoSetTimestamps を呼ぶ (#676)
-      if (updateIssueStatus(issue.projectId, issue.projectItemId, targetStatus, fields, logger)) {
+      if (await updateIssueStatus(issue.projectId, issue.projectItemId, targetStatus, fields, logger)) {
         updatedIssues.push({ number: num, status: targetStatus });
         if (mergedPr) {
           logger.success(`Issue #${num} → Done (PR #${mergedPr} merged)`);
@@ -1505,12 +1475,12 @@ async function cmdEnd(
 
   // 2. Create handover discussion
   const categoryName = getDefaultCategory(config);
-  const categoryId = getHandoversCategoryId(owner, repo, categoryName);
+  const categoryId = await getHandoversCategoryId(owner, repo, categoryName);
 
   let handoverOutput: { number: number; title: string; url: string } | null = null;
 
   if (categoryId) {
-    const repoId = getRepoId(owner, repo);
+    const repoId = await getRepoId(owner, repo);
     if (!repoId) {
       logger.error("Could not get repository ID");
       return 1;
@@ -1529,7 +1499,7 @@ async function cmdEnd(
       };
     }
 
-    const result = runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_DISCUSSION, {
+    const result = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_DISCUSSION, {
       repositoryId: repoId,
       categoryId: categoryId,
       title: title,
@@ -1608,9 +1578,9 @@ query($projectId: ID!, $first: Int!) {
  * Batch-fetch Text field values for all items in a project.
  * Returns map: itemId → { fieldName → textValue }
  */
-function fetchItemTextFieldValues(
+async function fetchItemTextFieldValues(
   projectId: string
-): Record<string, Record<string, string>> {
+): Promise<Record<string, Record<string, string>>> {
   interface TextValueNode {
     text?: string;
     field?: { name?: string };
@@ -1633,7 +1603,7 @@ function fetchItemTextFieldValues(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_PROJECT_ITEM_TEXT_VALUES, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_PROJECT_ITEM_TEXT_VALUES, {
     projectId,
     first: 100,
   });
@@ -1735,8 +1705,8 @@ export function classifyMetricsInconsistencies(
 // session check - Integrity check
 // =============================================================================
 
-function closeIssueById(issueId: string): boolean {
-  const result = runGraphQL(GRAPHQL_MUTATION_CLOSE_ISSUE, {
+async function closeIssueById(issueId: string): Promise<boolean> {
+  const result = await runGraphQL(GRAPHQL_MUTATION_CLOSE_ISSUE, {
     issueId,
     stateReason: "COMPLETED",
   });
@@ -1756,7 +1726,7 @@ async function cmdCheck(
 ): Promise<number> {
   // --setup mode: validate GitHub manual setup items (#345)
   if (options.setup) {
-    const setupResult = validateGitHubSetup(logger);
+    const setupResult = await validateGitHubSetup(logger);
     if (!setupResult) return 1;
 
     printSetupCheckResults(setupResult, logger);
@@ -1779,7 +1749,7 @@ async function cmdCheck(
   logger.debug(`Repository: ${owner}/${repo}`);
 
   // 1. Fetch both OPEN and CLOSED issues in a single query
-  const allIssues = fetchActiveIssues(owner, repo, limit, ["OPEN", "CLOSED"]);
+  const allIssues = await fetchActiveIssues(owner, repo, limit, ["OPEN", "CLOSED"]);
   logger.debug(`Issues fetched: ${allIssues.length}`);
 
   // 2. Classify inconsistencies (pure function)
@@ -1800,7 +1770,7 @@ async function cmdCheck(
         // OPEN + Done/Released → close the issue
         logger.info(`Closing #${item.number}: ${item.description}`);
 
-        const issueId = getIssueId(owner, repo, item.number);
+        const issueId = await getIssueId(owner, repo, item.number);
         if (!issueId) {
           fixes.push({
             number: item.number,
@@ -1811,7 +1781,7 @@ async function cmdCheck(
           continue;
         }
 
-        const success = closeIssueById(issueId);
+        const success = await closeIssueById(issueId);
         fixes.push({
           number: item.number,
           action: "close",
@@ -1841,11 +1811,11 @@ async function cmdCheck(
 
         // Cache project fields per project
         if (!projectFieldsCache[issueData.projectId]) {
-          projectFieldsCache[issueData.projectId] = getProjectFields(issueData.projectId);
+          projectFieldsCache[issueData.projectId] = await getProjectFields(issueData.projectId);
         }
         const fields = projectFieldsCache[issueData.projectId];
 
-        const success = updateIssueStatus(
+        const success = await updateIssueStatus(
           issueData.projectId,
           issueData.projectItemId,
           "Done",
@@ -1882,7 +1852,7 @@ async function cmdCheck(
 
     let allTextFieldValues: Record<string, Record<string, string>> = {};
     for (const pid of projectIds) {
-      const values = fetchItemTextFieldValues(pid);
+      const values = await fetchItemTextFieldValues(pid);
       allTextFieldValues = { ...allTextFieldValues, ...values };
     }
 
@@ -1910,13 +1880,13 @@ async function cmdCheck(
         const completedAtField = mapping["Done"];
         if (!completedAtField) continue;
 
-        const pf = getProjectFields(issueData.projectId);
+        const pf = await getProjectFields(issueData.projectId);
         const fieldInfo = pf[completedAtField];
         if (!fieldInfo || fieldInfo.type !== "TEXT") continue;
 
         // Use closedAt if available, otherwise current timestamp
         const ts = issueData.closedAt ?? generateTimestamp();
-        const success = updateTextField(
+        const success = await updateTextField(
           issueData.projectId,
           issueData.projectItemId,
           fieldInfo.id,
@@ -1941,9 +1911,9 @@ async function cmdCheck(
 
   // 4. Check automation status (#250)
   let automationStatus: AutomationStatus | undefined;
-  const projectId = getProjectId(owner);
+  const projectId = await getProjectId(owner);
   if (projectId) {
-    const workflows = fetchWorkflows(projectId);
+    const workflows = await fetchWorkflows(projectId);
     if (workflows.length > 0) {
       const workflowSummary = workflows.map((w: ProjectWorkflow) => ({
         name: w.name,

@@ -24,11 +24,11 @@ pnpm add -g @shirokuma-library/shirokuma-docs
 
 ## はじめかた
 
-> **前提**: git リポジトリ + GitHub リモート + `gh auth login` 済み。詳細は [Getting Started ガイド](docs/guide/getting-started.md) を参照。
+> **前提**: git リポジトリ + GitHub リモート + `GITHUB_TOKEN` 環境変数（または `gh auth login` 済み）。詳細は [Getting Started ガイド](docs/guide/getting-started.md) を参照。
 
 ```bash
-# 0. GitHub Projects V2 に必要なスコープを追加
-gh auth refresh -s read:project,project
+# 0. GITHUB_TOKEN を設定（Projects V2 のスコープ含む）
+export GITHUB_TOKEN="ghp_xxxxx"  # repo, read:project, project スコープ必要
 
 # 1. 初期化（スキル・ルール付き）
 cd /path/to/your/project
@@ -66,7 +66,7 @@ shirokuma-docs generate
 
 - **Node.js**: 20.0.0 以上
 - **Claude Code**: スキル・ルール連携に必要
-- **gh CLI**: GitHub コマンドに必要（`gh auth login` 要）
+- **GITHUB_TOKEN**: GitHub コマンドに必要（`gh auth login` でも可）
 
 ## ドキュメント
 

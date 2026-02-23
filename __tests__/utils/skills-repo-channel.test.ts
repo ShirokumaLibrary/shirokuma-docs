@@ -70,7 +70,7 @@ describe("resolveVersionByChannel", () => {
   /**
    * @testdoc alpha チャンネルは全てのバージョン（alpha, beta, rc, stable）から最新を返す
    */
-  it("should return latest version from all tags for alpha channel", () => {
+  it("should return latest version from all tags for alpha channel", async () => {
     const repoDir = createGitRepoWithTags([
       "v0.2.0-alpha.15",
       "v0.2.0-alpha.16",
@@ -79,14 +79,14 @@ describe("resolveVersionByChannel", () => {
       "v0.1.0-rc.1",
     ]);
 
-    const result = resolveVersionByChannel("alpha", repoDir);
+    const result = await resolveVersionByChannel("alpha", repoDir);
     expect(result).toBe("v0.2.0-alpha.16");
   });
 
   /**
    * @testdoc stable チャンネルはプレリリース識別子なしのバージョンのみ返す
    */
-  it("should return only stable versions for stable channel", () => {
+  it("should return only stable versions for stable channel", async () => {
     const repoDir = createGitRepoWithTags([
       "v0.2.0-alpha.16",
       "v0.1.0",
@@ -94,14 +94,14 @@ describe("resolveVersionByChannel", () => {
       "v1.0.0",
     ]);
 
-    const result = resolveVersionByChannel("stable", repoDir);
+    const result = await resolveVersionByChannel("stable", repoDir);
     expect(result).toBe("v1.0.0");
   });
 
   /**
    * @testdoc beta チャンネルは beta, rc, stable を含み alpha を除外する
    */
-  it("should include beta, rc, and stable for beta channel", () => {
+  it("should include beta, rc, and stable for beta channel", async () => {
     const repoDir = createGitRepoWithTags([
       "v0.2.0-alpha.16",
       "v0.2.0-beta.1",
@@ -109,14 +109,14 @@ describe("resolveVersionByChannel", () => {
       "v0.1.0",
     ]);
 
-    const result = resolveVersionByChannel("beta", repoDir);
+    const result = await resolveVersionByChannel("beta", repoDir);
     expect(result).toBe("v0.2.0-beta.1");
   });
 
   /**
    * @testdoc rc チャンネルは rc と stable のみ含む
    */
-  it("should include only rc and stable for rc channel", () => {
+  it("should include only rc and stable for rc channel", async () => {
     const repoDir = createGitRepoWithTags([
       "v0.2.0-alpha.16",
       "v0.2.0-beta.1",
@@ -124,71 +124,71 @@ describe("resolveVersionByChannel", () => {
       "v0.1.0",
     ]);
 
-    const result = resolveVersionByChannel("rc", repoDir);
+    const result = await resolveVersionByChannel("rc", repoDir);
     expect(result).toBe("v0.2.0-rc.1");
   });
 
   /**
    * @testdoc タグがない場合は null を返す
    */
-  it("should return null when no tags exist", () => {
+  it("should return null when no tags exist", async () => {
     const repoDir = createGitRepoWithTags([]);
 
-    const result = resolveVersionByChannel("alpha", repoDir);
+    const result = await resolveVersionByChannel("alpha", repoDir);
     expect(result).toBeNull();
   });
 
   /**
    * @testdoc 合致するタグがない場合は null を返す
    */
-  it("should return null when no matching tags exist", () => {
+  it("should return null when no matching tags exist", async () => {
     const repoDir = createGitRepoWithTags([
       "v0.2.0-alpha.16",
       "v0.2.0-alpha.17",
     ]);
 
-    const result = resolveVersionByChannel("stable", repoDir);
+    const result = await resolveVersionByChannel("stable", repoDir);
     expect(result).toBeNull();
   });
 
   /**
    * @testdoc プレリリースのみ存在する場合に alpha チャンネルで解決する
    */
-  it("should resolve when only prerelease tags exist with alpha channel", () => {
+  it("should resolve when only prerelease tags exist with alpha channel", async () => {
     const repoDir = createGitRepoWithTags([
       "v0.2.0-alpha.14",
       "v0.2.0-alpha.15",
       "v0.2.0-alpha.16",
     ]);
 
-    const result = resolveVersionByChannel("alpha", repoDir);
+    const result = await resolveVersionByChannel("alpha", repoDir);
     expect(result).toBe("v0.2.0-alpha.16");
   });
 
   /**
    * @testdoc v プレフィックスなしのタグも処理する
    */
-  it("should handle tags without v prefix", () => {
+  it("should handle tags without v prefix", async () => {
     const repoDir = createGitRepoWithTags([
       "0.2.0-alpha.16",
       "0.1.0",
     ]);
 
-    const result = resolveVersionByChannel("alpha", repoDir);
+    const result = await resolveVersionByChannel("alpha", repoDir);
     expect(result).toBe("0.2.0-alpha.16");
   });
 
   /**
    * @testdoc バージョンタグでないタグは無視する
    */
-  it("should ignore non-version tags", () => {
+  it("should ignore non-version tags", async () => {
     const repoDir = createGitRepoWithTags([
       "v0.1.0",
       "release-notes",
       "latest",
     ]);
 
-    const result = resolveVersionByChannel("stable", repoDir);
+    const result = await resolveVersionByChannel("stable", repoDir);
     expect(result).toBe("v0.1.0");
   });
 });
@@ -201,7 +201,7 @@ describe("withMarketplaceVersion", () => {
   /**
    * @testdoc 指定タグにチェックアウトして関数を実行し、main に復帰する
    */
-  it("should checkout tag, execute fn, and restore to main", () => {
+  it("should checkout tag, execute fn, and restore to main", async () => {
     const repoDir = createGitRepoWithTags(["v0.1.0"]);
 
     // main ブランチにいることを確認
@@ -210,7 +210,7 @@ describe("withMarketplaceVersion", () => {
     }).trim();
 
     let tagDuringExec = "";
-    withMarketplaceVersion(repoDir, "v0.1.0", () => {
+    await withMarketplaceVersion(repoDir, "v0.1.0", () => {
       // タグにチェックアウトされているか確認（detached HEAD）
       const describe = execFileSync("git", ["-C", repoDir, "describe", "--tags", "--exact-match"], {
         encoding: "utf-8",
@@ -230,10 +230,10 @@ describe("withMarketplaceVersion", () => {
   /**
    * @testdoc 関数の戻り値を返す
    */
-  it("should return the value from fn", () => {
+  it("should return the value from fn", async () => {
     const repoDir = createGitRepoWithTags(["v0.1.0"]);
 
-    const result = withMarketplaceVersion(repoDir, "v0.1.0", () => {
+    const result = await withMarketplaceVersion(repoDir, "v0.1.0", () => {
       return 42;
     });
 
@@ -243,14 +243,14 @@ describe("withMarketplaceVersion", () => {
   /**
    * @testdoc 関数がエラーをスローしても main に復帰する
    */
-  it("should restore to main even if fn throws", () => {
+  it("should restore to main even if fn throws", async () => {
     const repoDir = createGitRepoWithTags(["v0.1.0"]);
 
-    expect(() => {
-      withMarketplaceVersion(repoDir, "v0.1.0", () => {
+    await expect(async () => {
+      await withMarketplaceVersion(repoDir, "v0.1.0", () => {
         throw new Error("test error");
       });
-    }).toThrow("test error");
+    }).rejects.toThrow("test error");
 
     // main に復帰しているか確認
     const afterBranch = execFileSync("git", ["-C", repoDir, "rev-parse", "--abbrev-ref", "HEAD"], {
@@ -262,13 +262,13 @@ describe("withMarketplaceVersion", () => {
   /**
    * @testdoc 存在しないタグを指定するとエラーをスローする
    */
-  it("should throw when tag does not exist", () => {
+  it("should throw when tag does not exist", async () => {
     const repoDir = createGitRepoWithTags(["v0.1.0"]);
 
-    expect(() => {
-      withMarketplaceVersion(repoDir, "v99.99.99", () => {
+    await expect(async () => {
+      await withMarketplaceVersion(repoDir, "v99.99.99", () => {
         return "should not reach";
       });
-    }).toThrow();
+    }).rejects.toThrow();
   });
 });

@@ -102,7 +102,7 @@ mutation($projectId: ID!, $contentId: ID!) {
 /**
  * Get project field definitions (SingleSelect + Text fields).
  */
-export function getProjectFields(projectId: string): Record<string, ProjectField> {
+export async function getProjectFields(projectId: string): Promise<Record<string, ProjectField>> {
   interface FieldNode {
     id?: string;
     name?: string;
@@ -118,7 +118,7 @@ export function getProjectFields(projectId: string): Record<string, ProjectField
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_FIELDS, { projectId });
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_FIELDS, { projectId });
   if (!result.success) return {};
 
   const fields: Record<string, ProjectField> = {};
@@ -158,14 +158,14 @@ function formatGraphQLErrors(errors: GraphQLError[]): string {
  * Update project item SingleSelect field.
  * Logs GraphQL errors as warnings if present.
  */
-export function updateSelectField(
+export async function updateSelectField(
   projectId: string,
   itemId: string,
   fieldId: string,
   optionId: string,
   logger?: Logger
-): boolean {
-  const result = runGraphQL(GRAPHQL_MUTATION_UPDATE_FIELD, {
+): Promise<boolean> {
+  const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_FIELD, {
     projectId,
     itemId,
     fieldId,
@@ -181,14 +181,14 @@ export function updateSelectField(
  * Update project item Text field.
  * Logs GraphQL errors as warnings if present.
  */
-export function updateTextField(
+export async function updateTextField(
   projectId: string,
   itemId: string,
   fieldId: string,
   text: string,
   logger?: Logger
-): boolean {
-  const result = runGraphQL(GRAPHQL_MUTATION_UPDATE_TEXT_FIELD, {
+): Promise<boolean> {
+  const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_TEXT_FIELD, {
     projectId,
     itemId,
     fieldId,
@@ -204,11 +204,11 @@ export function updateTextField(
  * Add an item to a project by content ID (Issue/PR GraphQL ID).
  * Returns the project item ID on success, or null on failure.
  */
-export function addItemToProject(
+export async function addItemToProject(
   projectId: string,
   contentId: string,
   logger?: Logger
-): string | null {
+): Promise<string | null> {
   interface AddResult {
     data?: {
       addProjectV2ItemById?: {
@@ -217,7 +217,7 @@ export function addItemToProject(
     };
   }
 
-  const result = runGraphQL<AddResult>(GRAPHQL_MUTATION_ADD_TO_PROJECT, {
+  const result = await runGraphQL<AddResult>(GRAPHQL_MUTATION_ADD_TO_PROJECT, {
     projectId,
     contentId,
   });
@@ -275,17 +275,17 @@ function resolveOptionId(
  *
  * @param currentStatus - Current Status value for transition validation (optional, #382)
  */
-export function setItemFields(
+export async function setItemFields(
   projectId: string,
   itemId: string,
   fields: Record<string, string>,
   logger?: Logger,
   cachedFields?: Record<string, ProjectField>,
   currentStatus?: string
-): number {
+): Promise<number> {
   if (Object.keys(fields).length === 0) return 0;
 
-  const projectFields = cachedFields ?? getProjectFields(projectId);
+  const projectFields = cachedFields ?? await getProjectFields(projectId);
   let updatedCount = 0;
   const failedFields: string[] = [];
 
@@ -309,7 +309,7 @@ export function setItemFields(
 
     if (fieldInfo.type === "TEXT") {
       // Text field: set value directly
-      if (updateTextField(projectId, itemId, fieldInfo.id, value, logger)) {
+      if (await updateTextField(projectId, itemId, fieldInfo.id, value, logger)) {
         updatedCount++;
       } else {
         failedFields.push(fieldName);
@@ -318,7 +318,7 @@ export function setItemFields(
       // SingleSelect field: resolve option ID with case-insensitive fallback
       const optionId = resolveOptionId(fieldName, value, fieldInfo.options, logger);
       if (optionId) {
-        if (updateSelectField(projectId, itemId, fieldInfo.id, optionId, logger)) {
+        if (await updateSelectField(projectId, itemId, fieldInfo.id, optionId, logger)) {
           updatedCount++;
         } else {
           failedFields.push(fieldName);
@@ -372,14 +372,14 @@ export function generateTimestamp(): string {
  *
  * #380: Logs warning on timestamp update failure instead of silently failing.
  */
-export function autoSetTimestamps(
+export async function autoSetTimestamps(
   projectId: string,
   itemId: string,
   statusValue: string,
   projectFields: Record<string, ProjectField>,
   logger?: Logger,
   timestamp?: string
-): void {
+): Promise<void> {
   const metricsConfig = getMetricsConfig();
   if (!metricsConfig.enabled) return;
 
@@ -398,7 +398,7 @@ export function autoSetTimestamps(
   }
 
   const ts = timestamp ?? generateTimestamp();
-  if (updateTextField(projectId, itemId, fieldInfo.id, ts, logger)) {
+  if (await updateTextField(projectId, itemId, fieldInfo.id, ts, logger)) {
     logger?.info(`Metrics: ${textFieldName} = ${ts}`);
   } else {
     logger?.warn(`Metrics: Failed to set ${textFieldName} for item`);

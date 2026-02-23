@@ -11,6 +11,7 @@ import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync, readdirSync
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { homedir } from "node:os";
+import { simpleGit } from "simple-git";
 import { createLogger } from "./logger.js";
 
 // ========================================
@@ -685,7 +686,7 @@ export const MARKETPLACE_REPO = "ShirokumaLibrary/shirokuma-plugins";
  *
  * @returns true: 更新成功、false: 更新失敗（呼び出し元は続行可能）
  */
-export function refreshMarketplaceClone(): boolean {
+export async function refreshMarketplaceClone(): Promise<boolean> {
   const logger = createLogger(false);
   const knownPath = join(homedir(), ".claude", "plugins", "known_marketplaces.json");
 
@@ -711,17 +712,10 @@ export function refreshMarketplaceClone(): boolean {
   }
 
   try {
+    const git = simpleGit(installLocation);
     // タグを確実に取得（チャンネル解決に必要 #961）
-    execFileSync(
-      "git",
-      ["-C", installLocation, "fetch", "--tags"],
-      { encoding: "utf-8", timeout: 15000, stdio: "pipe" },
-    );
-    execFileSync(
-      "git",
-      ["-C", installLocation, "pull", "--ff-only"],
-      { encoding: "utf-8", timeout: 15000, stdio: "pipe" },
-    );
+    await git.fetch(["--tags"]);
+    await git.pull(["--ff-only"]);
     return true;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -742,7 +736,7 @@ export function refreshMarketplaceClone(): boolean {
  *
  * @returns true: 登録済みまたは登録成功、false: 登録失敗
  */
-export function ensureMarketplace(): boolean {
+export async function ensureMarketplace(): Promise<boolean> {
   let needsReRegister = false;
 
   try {
@@ -763,7 +757,7 @@ export function ensureMarketplace(): boolean {
       }
       if (!needsReRegister) {
         // ローカルクローンを最新に更新してから返す (#805)
-        refreshMarketplaceClone();
+        await refreshMarketplaceClone();
         return true;
       }
     }
@@ -897,14 +891,11 @@ export function getMarketplaceClonePath(): string | null {
  * @param clonePath - marketplace クローンのローカルパス
  * @returns 合致する最新バージョンタグ（"v" プレフィックス付き）、見つからない場合は null
  */
-export function resolveVersionByChannel(channel: PluginChannel, clonePath: string): string | null {
+export async function resolveVersionByChannel(channel: PluginChannel, clonePath: string): Promise<string | null> {
   let tagsOutput: string;
   try {
-    tagsOutput = execFileSync(
-      "git",
-      ["-C", clonePath, "tag", "-l"],
-      { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
-    );
+    const git = simpleGit(clonePath);
+    tagsOutput = await git.raw(["tag", "-l"]);
   } catch {
     return null;
   }
@@ -948,32 +939,21 @@ export function resolveVersionByChannel(channel: PluginChannel, clonePath: strin
  * @param tag - チェックアウトするタグ
  * @param fn - タグチェックアウト中に実行する関数
  */
-export function withMarketplaceVersion<T>(clonePath: string, tag: string, fn: () => T): T {
+export async function withMarketplaceVersion<T>(clonePath: string, tag: string, fn: () => T): Promise<T> {
+  const git = simpleGit(clonePath);
   // 指定タグにチェックアウト
-  execFileSync(
-    "git",
-    ["-C", clonePath, "checkout", tag],
-    { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
-  );
+  await git.checkout(tag);
 
   try {
     return fn();
   } finally {
     // main ブランチに復帰
     try {
-      execFileSync(
-        "git",
-        ["-C", clonePath, "checkout", "main"],
-        { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
-      );
+      await git.checkout("main");
     } catch {
       // main 復帰失敗時は強制復帰を試行
       try {
-        execFileSync(
-          "git",
-          ["-C", clonePath, "checkout", "-f", "main"],
-          { encoding: "utf-8", timeout: 10000, stdio: "pipe" },
-        );
+        await git.checkout(["-f", "main"]);
       } catch {
         // 強制復帰も失敗 — ログのみ（呼び出し元のエラーを優先）
       }

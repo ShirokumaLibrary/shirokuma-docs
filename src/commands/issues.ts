@@ -21,7 +21,6 @@
 
 import { createLogger, Logger } from "../utils/logger.js";
 import {
-  runGhCommand,
   runGraphQL,
   getOwner,
   getRepoName,
@@ -33,6 +32,7 @@ import {
   GhResult,
   GhVariableValue,
 } from "../utils/github.js";
+import { getOctokit } from "../utils/octokit-client.js";
 import {
   cmdPrComments,
   cmdPrList,
@@ -75,7 +75,7 @@ import {
   type ProjectField,
   type ProjectFieldType,
 } from "../utils/project-fields.js";
-import { getProjectId } from "./projects.js";
+import { getProjectId } from "../utils/project-utils.js";
 import {
   GRAPHQL_QUERY_ISSUE_DETAIL as ISSUE_DETAIL_QUERY,
   getIssueDetail,
@@ -129,6 +129,8 @@ export interface IssuesOptions {
   repo?: string;
   fromPublic?: string;
   syncPublic?: boolean;
+  // Internal: sub-issue target (set by index.ts action)
+  _subTarget?: string;
 }
 
 interface IssueWithProjects {
@@ -151,7 +153,7 @@ interface IssueWithProjects {
 // GraphQL Queries
 // =============================================================================
 
-// Note: We don't use $states variable because gh CLI has issues with GraphQL enum arrays
+// Note: We don't use $states variable because GitHub GraphQL API has issues with enum arrays
 // Instead, we filter by state client-side
 const GRAPHQL_QUERY_ISSUES_WITH_PROJECTS = `
 query($owner: String!, $name: String!, $first: Int!, $cursor: String) {
@@ -353,12 +355,12 @@ export function buildUpdateIssueVariables(params: {
 /**
  * Get issue GraphQL ID by number
  */
-export function getIssueId(owner: string, repo: string, number: number): string | null {
+export async function getIssueId(owner: string, repo: string, number: number): Promise<string | null> {
   interface QueryResult {
     data?: { repository?: { issue?: { id?: string } } };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_ID, { owner, name: repo, number });
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_ID, { owner, name: repo, number });
   if (!result.success) return null;
   return result.data?.data?.repository?.issue?.id ?? null;
 }
@@ -366,12 +368,12 @@ export function getIssueId(owner: string, repo: string, number: number): string 
 /**
  * Get pull request GraphQL ID by number
  */
-export function getPullRequestId(owner: string, repo: string, number: number): string | null {
+export async function getPullRequestId(owner: string, repo: string, number: number): Promise<string | null> {
   interface QueryResult {
     data?: { repository?: { pullRequest?: { id?: string } } };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_PR_ID, { owner, name: repo, number });
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_PR_ID, { owner, name: repo, number });
   if (!result.success) return null;
   return result.data?.data?.repository?.pullRequest?.id ?? null;
 }
@@ -379,7 +381,7 @@ export function getPullRequestId(owner: string, repo: string, number: number): s
 /**
  * Get repository labels
  */
-function getLabels(owner: string, repo: string): Record<string, string> {
+async function getLabels(owner: string, repo: string): Promise<Record<string, string>> {
   interface QueryResult {
     data?: {
       repository?: {
@@ -388,7 +390,7 @@ function getLabels(owner: string, repo: string): Record<string, string> {
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_LABELS, { owner, name: repo });
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_LABELS, { owner, name: repo });
   if (!result.success) return {};
 
   const labels: Record<string, string> = {};
@@ -414,7 +416,7 @@ query($login: String!) {
 }
 `;
 
-export function getOrganizationIssueTypes(owner: string): Record<string, string> {
+export async function getOrganizationIssueTypes(owner: string): Promise<Record<string, string>> {
   interface QueryResult {
     data?: {
       organization?: {
@@ -423,7 +425,7 @@ export function getOrganizationIssueTypes(owner: string): Record<string, string>
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ORGANIZATION_ISSUE_TYPES, { login: owner });
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ORGANIZATION_ISSUE_TYPES, { login: owner });
   if (!result.success) return {};
 
   const types: Record<string, string> = {};
@@ -440,12 +442,12 @@ export function getOrganizationIssueTypes(owner: string): Record<string, string>
  * Issue Type 名を ID に解決する。
  * 解決成功時は ID 文字列、スキップ時は null、エラー時は false を返す。
  */
-function resolveIssueTypeId(
+async function resolveIssueTypeId(
   owner: string,
   typeName: string,
   logger: Logger
-): string | null | false {
-  const issueTypes = getOrganizationIssueTypes(owner);
+): Promise<string | null | false> {
+  const issueTypes = await getOrganizationIssueTypes(owner);
   const id = issueTypes[typeName] ?? null;
   if (id) return id;
 
@@ -516,7 +518,7 @@ async function cmdSearch(
     };
   }
 
-  const result = runGraphQL<SearchResult>(GRAPHQL_QUERY_SEARCH_ISSUES, {
+  const result = await runGraphQL<SearchResult>(GRAPHQL_QUERY_SEARCH_ISSUES, {
     searchQuery,
     first: Math.min(limit, 100),
   });
@@ -619,7 +621,7 @@ async function cmdList(
     const remaining = limit - allIssues.length;
     const fetchCount = Math.min(remaining, 50);
 
-    const result: GhResult<QueryResult> = runGraphQL<QueryResult>(
+    const result: GhResult<QueryResult> = await runGraphQL<QueryResult>(
       GRAPHQL_QUERY_ISSUES_WITH_PROJECTS,
       {
         owner,
@@ -766,7 +768,7 @@ async function cmdGet(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
     owner,
     name: repo,
     number: issueNumber,
@@ -846,7 +848,7 @@ async function cmdCreate(
   const { owner, name: repo } = repoInfo;
 
   // Get repository ID
-  const repoId = getRepoId(owner, repo);
+  const repoId = await getRepoId(owner, repo);
   if (!repoId) {
     logger.error("Could not get repository ID");
     return 1;
@@ -855,7 +857,7 @@ async function cmdCreate(
   // Resolve label names to IDs
   let labelIds: string[] | null = null;
   if (options.labels && options.labels.length > 0) {
-    const allLabels = getLabels(owner, repo);
+    const allLabels = await getLabels(owner, repo);
     labelIds = [];
     for (const labelName of options.labels) {
       if (allLabels[labelName]) {
@@ -869,7 +871,7 @@ async function cmdCreate(
   // Resolve issue type name to ID
   let issueTypeId: string | null = null;
   if (options.issueType) {
-    const resolved = resolveIssueTypeId(owner, options.issueType, logger);
+    const resolved = await resolveIssueTypeId(owner, options.issueType, logger);
     if (resolved === false) return 1;
     issueTypeId = resolved;
   }
@@ -883,7 +885,7 @@ async function cmdCreate(
     };
   }
 
-  const createResult = runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_ISSUE, {
+  const createResult = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_ISSUE, {
     repositoryId: repoId,
     title: options.title,
     body: options.body ?? "",
@@ -909,11 +911,11 @@ async function cmdCreate(
 
   let projectItemId: string | null = null;
 
-  const projectId = getProjectId(owner, repo);
+  const projectId = await getProjectId(owner, repo);
   if (!projectId) {
     logger.warn("No project found. Issue created but not added to project.");
   } else {
-    projectItemId = addItemToProject(projectId, issue.id, logger);
+    projectItemId = await addItemToProject(projectId, issue.id, logger);
     if (projectItemId) {
       logger.success("Added to project");
 
@@ -924,7 +926,7 @@ async function cmdCreate(
       if (options.size) fields["Size"] = options.size;
 
       if (Object.keys(fields).length > 0) {
-        const fieldCount = setItemFields(projectId, projectItemId, fields, logger);
+        const fieldCount = await setItemFields(projectId, projectItemId, fields, logger);
         if (fieldCount === 0) {
           logger.warn("Failed to set project fields on created issue");
         }
@@ -951,19 +953,18 @@ async function cmdCreate(
   if (options.parent) {
     parentNumber = options.parent;
     const { getIssueInternalId } = await import("./issues-sub.js");
-    const childInternalId = getIssueInternalId(owner, repo, issue.number!);
+    const childInternalId = await getIssueInternalId(owner, repo, issue.number!);
     if (childInternalId) {
-      const subAddResult = runGhCommand(
-        [
-          "api", "-X", "POST",
-          `repos/${owner}/${repo}/issues/${parentNumber}/sub_issues`,
-          "-F", `sub_issue_id=${childInternalId}`,
-        ],
-        { silent: true }
-      );
-      if (subAddResult.success) {
+      try {
+        const octokit = getOctokit();
+        await octokit.request("POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues", {
+          owner,
+          repo,
+          issue_number: parentNumber,
+          sub_issue_id: childInternalId,
+        });
         logger.success(`Linked as sub-issue of #${parentNumber}`);
-      } else {
+      } catch {
         logger.warn(`Failed to link as sub-issue of #${parentNumber}`);
       }
     } else {
@@ -1029,7 +1030,7 @@ async function cmdUpdate(
     };
   }
 
-  const getResult = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
+  const getResult = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
     owner,
     name: repo,
     number: issueNumber,
@@ -1050,14 +1051,14 @@ async function cmdUpdate(
   // Resolve issue type name to ID
   let issueTypeId: string | null = null;
   if (options.issueType) {
-    const resolved = resolveIssueTypeId(owner, options.issueType, logger);
+    const resolved = await resolveIssueTypeId(owner, options.issueType, logger);
     if (resolved === false) return 1;
     issueTypeId = resolved;
   }
 
   // Update issue fields (title, body, issueType)
   if (options.title !== undefined || options.body !== undefined || issueTypeId) {
-    const issueId = getIssueId(owner, repo, issueNumber);
+    const issueId = await getIssueId(owner, repo, issueNumber);
     if (issueId) {
       const updateVars = buildUpdateIssueVariables({
         issueId,
@@ -1066,7 +1067,7 @@ async function cmdUpdate(
         issueType: options.issueType,
         issueTypeId,
       });
-      const updateResult = runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, updateVars);
+      const updateResult = await runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, updateVars);
       if (updateResult.success) {
         updated = true;
         if (options.issueType) {
@@ -1088,9 +1089,9 @@ async function cmdUpdate(
     (options.addLabel && options.addLabel.length > 0) ||
     (options.removeLabel && options.removeLabel.length > 0)
   ) {
-    const issueId = getIssueId(owner, repo, issueNumber);
+    const issueId = await getIssueId(owner, repo, issueNumber);
     if (issueId) {
-      const allLabels = getLabels(owner, repo);
+      const allLabels = await getLabels(owner, repo);
 
       // Add labels
       if (options.addLabel && options.addLabel.length > 0) {
@@ -1105,7 +1106,7 @@ async function cmdUpdate(
           }
         }
         if (addIds.length > 0) {
-          const addResult = runGraphQL(GRAPHQL_MUTATION_ADD_LABELS, {
+          const addResult = await runGraphQL(GRAPHQL_MUTATION_ADD_LABELS, {
             labelableId: issueId,
             labelIds: addIds,
           });
@@ -1130,7 +1131,7 @@ async function cmdUpdate(
           }
         }
         if (removeIds.length > 0) {
-          const removeResult = runGraphQL(GRAPHQL_MUTATION_REMOVE_LABELS, {
+          const removeResult = await runGraphQL(GRAPHQL_MUTATION_REMOVE_LABELS, {
             labelableId: issueId,
             labelIds: removeIds,
           });
@@ -1155,34 +1156,34 @@ async function cmdUpdate(
     if (matchingItem?.id && matchingItem?.project?.id) {
       const pId = matchingItem.project.id;
       const iId = matchingItem.id;
-      const pf = getProjectFields(pId);
-      const count = setItemFields(pId, iId, fields, logger, pf);
+      const pf = await getProjectFields(pId);
+      const count = await setItemFields(pId, iId, fields, logger, pf);
       if (count > 0) {
         updated = true;
         logger.success(`Updated ${count} project field(s)`);
       }
       // Auto-set timestamp when Status changes (#342) - reuse fetched fields
       if (statusValue) {
-        autoSetTimestamps(pId, iId, statusValue, pf, logger);
+        await autoSetTimestamps(pId, iId, statusValue, pf, logger);
       }
     } else {
       // Issue not in project, add it first
-      const projectId = getProjectId(owner, repo);
+      const projectId = await getProjectId(owner, repo);
       if (projectId) {
-        const issueId = getIssueId(owner, repo, issueNumber);
+        const issueId = await getIssueId(owner, repo, issueNumber);
         if (issueId) {
-          const itemId = addItemToProject(projectId, issueId, logger);
+          const itemId = await addItemToProject(projectId, issueId, logger);
           if (itemId) {
             logger.success("Added to project");
-            const pf = getProjectFields(projectId);
-            const count = setItemFields(projectId, itemId, fields, logger, pf);
+            const pf = await getProjectFields(projectId);
+            const count = await setItemFields(projectId, itemId, fields, logger, pf);
             if (count > 0) {
               updated = true;
               logger.success(`Updated ${count} project field(s)`);
             }
             // Auto-set timestamp when Status changes (#342) - reuse fetched fields
             if (statusValue) {
-              autoSetTimestamps(projectId, itemId, statusValue, pf, logger);
+              await autoSetTimestamps(projectId, itemId, statusValue, pf, logger);
             }
           }
         }
@@ -1204,7 +1205,7 @@ async function cmdUpdate(
       return 1;
     }
 
-    const issueId = getIssueId(owner, repo, issueNumber);
+    const issueId = await getIssueId(owner, repo, issueNumber);
     if (!issueId) {
       logger.error(`Issue #${issueNumber} not found`);
       return 1;
@@ -1222,7 +1223,7 @@ async function cmdUpdate(
         };
       }
 
-      const closeResult = runGraphQL<CloseResult>(GRAPHQL_MUTATION_CLOSE_ISSUE, {
+      const closeResult = await runGraphQL<CloseResult>(GRAPHQL_MUTATION_CLOSE_ISSUE, {
         issueId,
         stateReason,
       });
@@ -1237,8 +1238,8 @@ async function cmdUpdate(
           const targetStatus = stateReason === "NOT_PLANNED" ? "Not Planned" : "Done";
           let statusResult;
           if (matchingItem?.id && matchingItem?.project?.id) {
-            const pf = getProjectFields(matchingItem.project.id);
-            statusResult = updateProjectStatus({
+            const pf = await getProjectFields(matchingItem.project.id);
+            statusResult = await updateProjectStatus({
               projectId: matchingItem.project.id,
               itemId: matchingItem.id,
               statusValue: targetStatus,
@@ -1246,7 +1247,7 @@ async function cmdUpdate(
               logger,
             });
           } else {
-            statusResult = resolveAndUpdateStatus(owner, repo, issueNumber, targetStatus, logger);
+            statusResult = await resolveAndUpdateStatus(owner, repo, issueNumber, targetStatus, logger);
           }
           if (statusResult.success) {
             autoSetStatus = targetStatus;
@@ -1267,7 +1268,7 @@ async function cmdUpdate(
         };
       }
 
-      const reopenResult = runGraphQL<ReopenResult>(GRAPHQL_MUTATION_REOPEN_ISSUE, {
+      const reopenResult = await runGraphQL<ReopenResult>(GRAPHQL_MUTATION_REOPEN_ISSUE, {
         issueId,
       });
 
@@ -1334,11 +1335,11 @@ async function cmdComment(
   const number = parseIssueNumber(issueNumberStr);
 
   // Try Issue first, then fallback to PR (#353)
-  let subjectId = getIssueId(owner, repo, number);
+  let subjectId = await getIssueId(owner, repo, number);
   let targetType: "issue" | "pull_request" = "issue";
 
   if (!subjectId) {
-    subjectId = getPullRequestId(owner, repo, number);
+    subjectId = await getPullRequestId(owner, repo, number);
     targetType = "pull_request";
   }
 
@@ -1358,7 +1359,7 @@ async function cmdComment(
     };
   }
 
-  const result = runGraphQL<CommentResult>(GRAPHQL_MUTATION_ADD_COMMENT, {
+  const result = await runGraphQL<CommentResult>(GRAPHQL_MUTATION_ADD_COMMENT, {
     subjectId,
     body: options.body,
   });
@@ -1424,7 +1425,7 @@ async function cmdComments(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_COMMENTS, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_COMMENTS, {
     owner,
     name: repo,
     number,
@@ -1486,13 +1487,16 @@ async function cmdCommentEdit(
     return 1;
   }
 
-  // REST API PATCH to edit comment
-  const result = runGhCommand<{ html_url?: string }>(
-    ["api", "-X", "PATCH", `repos/${owner}/${repo}/issues/comments/${commentId}`, "-f", `body=${options.body}`],
-    { silent: true }
-  );
-
-  if (!result.success) {
+  // REST API PATCH to edit comment (octokit)
+  try {
+    const octokit = getOctokit();
+    await octokit.rest.issues.updateComment({
+      owner,
+      repo,
+      comment_id: commentId,
+      body: options.body,
+    });
+  } catch {
     logger.error(`Failed to edit comment ${commentId}`);
     return 1;
   }
@@ -1535,7 +1539,7 @@ async function cmdClose(
   const issueNumber = parseIssueNumber(issueNumberStr);
 
   // Get issue ID
-  const issueId = getIssueId(owner, repo, issueNumber);
+  const issueId = await getIssueId(owner, repo, issueNumber);
   if (!issueId) {
     logger.error(`Issue #${issueNumber} not found`);
     return 1;
@@ -1543,7 +1547,7 @@ async function cmdClose(
 
   // Add closing comment if --body is provided
   if (options.body) {
-    const commentResult = runGraphQL<{
+    const commentResult = await runGraphQL<{
       data?: {
         addComment?: { commentEdge?: { node?: { id?: string } } };
       };
@@ -1570,7 +1574,7 @@ async function cmdClose(
     };
   }
 
-  const result = runGraphQL<CloseResult>(GRAPHQL_MUTATION_CLOSE_ISSUE, {
+  const result = await runGraphQL<CloseResult>(GRAPHQL_MUTATION_CLOSE_ISSUE, {
     issueId,
     stateReason,
   });
@@ -1590,7 +1594,7 @@ async function cmdClose(
     ? "Not Planned"
     : "Done";
 
-  const statusResult = resolveAndUpdateStatus(owner, repo, issueNumber, targetStatus, logger);
+  const statusResult = await resolveAndUpdateStatus(owner, repo, issueNumber, targetStatus, logger);
   const statusUpdated = statusResult.success;
   if (statusUpdated) {
     logger.success(`Issue #${issueNumber} → ${targetStatus}`);
@@ -1626,7 +1630,7 @@ async function cmdReopen(
   const { owner, name: repo } = repoInfo;
   const issueNumber = parseIssueNumber(issueNumberStr);
 
-  const issueId = getIssueId(owner, repo, issueNumber);
+  const issueId = await getIssueId(owner, repo, issueNumber);
   if (!issueId) {
     logger.error(`Issue #${issueNumber} not found`);
     return 1;
@@ -1640,7 +1644,7 @@ async function cmdReopen(
     };
   }
 
-  const result = runGraphQL<ReopenResult>(GRAPHQL_MUTATION_REOPEN_ISSUE, {
+  const result = await runGraphQL<ReopenResult>(GRAPHQL_MUTATION_REOPEN_ISSUE, {
     issueId,
   });
 
@@ -1726,7 +1730,7 @@ async function cmdImport(
     };
   }
 
-  const fetchResult = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
+  const fetchResult = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
     owner: publicRepoParsed.owner,
     name: publicRepoParsed.name,
     number: publicIssueNumber,
@@ -1751,7 +1755,7 @@ async function cmdImport(
   ].join("\n");
 
   const { owner, name: repo } = privateRepo;
-  const repoId = getRepoId(owner, repo);
+  const repoId = await getRepoId(owner, repo);
   if (!repoId) {
     logger.error("Could not get repository ID for private repo");
     return 1;
@@ -1765,7 +1769,7 @@ async function cmdImport(
     };
   }
 
-  const createResult = runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_ISSUE, {
+  const createResult = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_ISSUE, {
     repositoryId: repoId,
     title: importTitle,
     body: importBody,
@@ -1787,9 +1791,9 @@ async function cmdImport(
 
   // Always add imported issue to project with default Status
   const importStatusValue = options.fieldStatus ?? getDefaultStatus();
-  const projectId = getProjectId(owner, repo);
+  const projectId = await getProjectId(owner, repo);
   if (projectId && privateIssue.id) {
-    const itemId = addItemToProject(projectId, privateIssue.id, logger);
+    const itemId = await addItemToProject(projectId, privateIssue.id, logger);
     if (itemId) {
       logger.success("Added to project");
       const fields: Record<string, string> = {};
@@ -1797,16 +1801,16 @@ async function cmdImport(
       if (options.priority) fields["Priority"] = options.priority;
       if (options.size) fields["Size"] = options.size;
       if (Object.keys(fields).length > 0) {
-        setItemFields(projectId, itemId, fields, logger);
+        await setItemFields(projectId, itemId, fields, logger);
       }
     }
   }
 
   // Comment on public issue to note internal tracking
-  const publicIssueId = getIssueId(publicRepoParsed.owner, publicRepoParsed.name, publicIssueNumber);
+  const publicIssueId = await getIssueId(publicRepoParsed.owner, publicRepoParsed.name, publicIssueNumber);
   if (publicIssueId) {
     const commentBody = `This issue is being tracked internally. Thank you for the report.`;
-    runGraphQL(GRAPHQL_MUTATION_ADD_COMMENT, {
+    await runGraphQL(GRAPHQL_MUTATION_ADD_COMMENT, {
       subjectId: publicIssueId,
       body: commentBody,
     });
@@ -1848,13 +1852,13 @@ async function cmdFields(
     return 1;
   }
 
-  const projectId = getProjectId(owner, repoName ?? undefined);
+  const projectId = await getProjectId(owner, repoName ?? undefined);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
   }
 
-  const fields = getProjectFields(projectId);
+  const fields = await getProjectFields(projectId);
   console.log(JSON.stringify(fields, null, 2));
   return 0;
 }
@@ -1887,7 +1891,7 @@ async function cmdRemove(
     return 1;
   }
 
-  const projectId = getProjectId(owner, repo);
+  const projectId = await getProjectId(owner, repo);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
@@ -1896,7 +1900,7 @@ async function cmdRemove(
   // Find project item for this issue
 
   // Fetch the issue to find its project item ID
-  const issueResult = getIssueDetail(owner, repo, issueNumber);
+  const issueResult = await getIssueDetail(owner, repo, issueNumber);
   if (!issueResult) {
     logger.error(`Issue #${issueNumber} not found`);
     return 1;
@@ -1909,7 +1913,7 @@ async function cmdRemove(
   }
 
   // Remove from project
-  const result = runGraphQL(GRAPHQL_MUTATION_DELETE_ITEM, {
+  const result = await runGraphQL(GRAPHQL_MUTATION_DELETE_ITEM, {
     projectId,
     itemId: projectItemId,
   });
@@ -2157,7 +2161,7 @@ export async function issuesCommand(
         exitCode = 1;
       } else {
         // target = parent, options._subTarget = child (set in index.ts action)
-        exitCode = await cmdSubAdd(target, (options as IssuesOptions & { _subTarget?: string })._subTarget, options, logger);
+        exitCode = await cmdSubAdd(target, options._subTarget, options, logger);
       }
       break;
 
@@ -2167,7 +2171,7 @@ export async function issuesCommand(
         logger.info("Usage: shirokuma-docs issues sub-remove <parent> <child>");
         exitCode = 1;
       } else {
-        exitCode = await cmdSubRemove(target, (options as IssuesOptions & { _subTarget?: string })._subTarget, options, logger);
+        exitCode = await cmdSubRemove(target, options._subTarget, options, logger);
       }
       break;
 

@@ -18,7 +18,7 @@ import {
   autoSetTimestamps,
   type ProjectField,
 } from "./project-fields.js";
-import { getProjectId } from "../commands/projects.js";
+import { getProjectId } from "./project-utils.js";
 
 // =============================================================================
 // GraphQL Query
@@ -108,11 +108,11 @@ export interface FullStatusUpdateResult {
 /**
  * Issue の projectItemId と projectId を GraphQL で取得する
  */
-export function getIssueDetail(
+export async function getIssueDetail(
   owner: string,
   repo: string,
   issueNumber: number
-): IssueDetail | null {
+): Promise<IssueDetail | null> {
   interface IssueNode {
     number?: number;
     projectItems?: {
@@ -131,7 +131,7 @@ export function getIssueDetail(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_DETAIL, {
     owner,
     name: repo,
     number: issueNumber,
@@ -164,16 +164,16 @@ export function getIssueDetail(
  * @param options.projectFields - キャッシュ済みフィールド定義
  * @param options.logger - ロガー
  */
-export function updateProjectStatus(options: {
+export async function updateProjectStatus(options: {
   projectId: string;
   itemId: string;
   statusValue: string;
   projectFields: Record<string, ProjectField>;
   logger: Logger;
-}): UpdateProjectStatusResult {
+}): Promise<UpdateProjectStatusResult> {
   const { projectId, itemId, statusValue, projectFields, logger } = options;
 
-  const count = setItemFields(
+  const count = await setItemFields(
     projectId,
     itemId,
     { Status: statusValue },
@@ -183,7 +183,7 @@ export function updateProjectStatus(options: {
 
   if (count > 0) {
     // 常に autoSetTimestamps を呼び出す（mapping なしなら silent skip）
-    autoSetTimestamps(projectId, itemId, statusValue, projectFields, logger);
+    await autoSetTimestamps(projectId, itemId, statusValue, projectFields, logger);
     return { success: true };
   }
 
@@ -203,26 +203,26 @@ export function updateProjectStatus(options: {
  * @param logger - ロガー
  * @param projectName - プロジェクト名（省略時はリポジトリ名）
  */
-export function resolveProjectItem(
+export async function resolveProjectItem(
   owner: string,
   repo: string,
   issueNumber: number,
   logger: Logger,
   projectName?: string
-): ResolvedProjectItem | null {
-  const projectId = getProjectId(owner, projectName);
+): Promise<ResolvedProjectItem | null> {
+  const projectId = await getProjectId(owner, projectName);
   if (!projectId) {
     logger.warn("No project found");
     return null;
   }
 
-  const detail = getIssueDetail(owner, repo, issueNumber);
+  const detail = await getIssueDetail(owner, repo, issueNumber);
   if (!detail?.projectItemId) {
     logger.warn(`Issue #${issueNumber}: not found in project`);
     return null;
   }
 
-  const fields = getProjectFields(projectId);
+  const fields = await getProjectFields(projectId);
   return {
     projectId,
     projectItemId: detail.projectItemId,
@@ -245,20 +245,20 @@ export function resolveProjectItem(
  * @param logger - ロガー
  * @param projectName - プロジェクト名（省略時はリポジトリ名）
  */
-export function resolveAndUpdateStatus(
+export async function resolveAndUpdateStatus(
   owner: string,
   repo: string,
   issueNumber: number,
   statusValue: string,
   logger: Logger,
   projectName?: string
-): FullStatusUpdateResult {
-  const resolved = resolveProjectItem(owner, repo, issueNumber, logger, projectName);
+): Promise<FullStatusUpdateResult> {
+  const resolved = await resolveProjectItem(owner, repo, issueNumber, logger, projectName);
   if (!resolved) {
     return { success: false, reason: "no-item" };
   }
 
-  return updateProjectStatus({
+  return await updateProjectStatus({
     projectId: resolved.projectId,
     itemId: resolved.projectItemId,
     statusValue,

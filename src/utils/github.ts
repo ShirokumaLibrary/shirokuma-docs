@@ -1,15 +1,14 @@
 /**
- * GitHub CLI utilities for shirokuma-docs
+ * GitHub utilities for shirokuma-docs
  *
  * Shared utilities for projects, issues, discussions commands.
- * Uses gh CLI under the hood for authentication and API access.
+ * Uses octokit for GraphQL and REST API access.
  */
 
-import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-
-/** Default timeout for subprocess calls (ms) */
-const SUBPROCESS_TIMEOUT = 30_000;
+import { getOctokit } from "./octokit-client.js";
+import { GraphqlResponseError } from "@octokit/graphql";
+import { getGitRemoteUrl, isInsideGitRepo, getGitRemotes } from "./git-local.js";
 
 /** Input validation limits */
 export const MAX_TITLE_LENGTH = 256;
@@ -37,291 +36,143 @@ export type GhResult<T> =
   | { success: true; data: T; graphqlErrors?: GraphQLError[] }
   | { success: false; error: string };
 
-/**
- * Run a gh CLI command and return parsed JSON output.
- */
-export function runGhCommand<T = unknown>(
-  args: string[],
-  options: { silent?: boolean; timeout?: number } = {}
-): GhResult<T> {
-  const { silent = false, timeout = SUBPROCESS_TIMEOUT } = options;
-
-  try {
-    const result = spawnSync("gh", args, {
-      encoding: "utf-8",
-      timeout,
-      maxBuffer: 10 * 1024 * 1024, // 10MB
-    });
-
-    if (result.error) {
-      if (!silent) {
-        console.error(`Error: ${result.error.message}`);
-      }
-      return { success: false, error: result.error.message };
-    }
-
-    if (result.status !== 0) {
-      const errorMsg = result.stderr?.trim() || "Command failed";
-      if (!silent) {
-        console.error(`Error: ${errorMsg}`);
-      }
-      return { success: false, error: errorMsg };
-    }
-
-    const stdout = result.stdout?.trim();
-    if (!stdout) {
-      return { success: true, data: null as T };
-    }
-
-    try {
-      return { success: true, data: JSON.parse(stdout) as T };
-    } catch {
-      return { success: false, error: `JSON parse error: ${stdout.slice(0, 100)}` };
-    }
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    if (!silent) {
-      console.error(`Error: ${errorMsg}`);
-    }
-    return { success: false, error: errorMsg };
-  }
-}
-
-/**
- * Run a gh CLI command and return raw stdout (no JSON parsing).
- * Useful for commands that don't return JSON (e.g., gh pr merge).
- */
-export function runGhCommandRaw(
-  args: string[],
-  options: { silent?: boolean; timeout?: number } = {}
-): GhResult<string> {
-  const { silent = false, timeout = SUBPROCESS_TIMEOUT } = options;
-
-  try {
-    const result = spawnSync("gh", args, {
-      encoding: "utf-8",
-      timeout,
-      maxBuffer: 10 * 1024 * 1024,
-    });
-
-    if (result.error) {
-      if (!silent) console.error(`Error: ${result.error.message}`);
-      return { success: false, error: result.error.message };
-    }
-
-    if (result.status !== 0) {
-      const errorMsg = result.stderr?.trim() || "Command failed";
-      if (!silent) console.error(`Error: ${errorMsg}`);
-      return { success: false, error: errorMsg };
-    }
-
-    return { success: true, data: result.stdout?.trim() ?? "" };
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    if (!silent) console.error(`Error: ${errorMsg}`);
-    return { success: false, error: errorMsg };
-  }
-}
-
 /** Variable value type for GraphQL */
 export type GhVariableValue = string | number | boolean | null | string[];
 
 /**
- * Check if variables contain complex types (arrays) that require --input mode
+ * Convert GhVariableValue record to octokit-compatible variables.
+ * null は除外（octokit は undefined で省略）。
  */
-function hasComplexVariables(
+function convertVariables(
   variables: Record<string, GhVariableValue>
-): boolean {
-  return Object.values(variables).some((v) => Array.isArray(v));
+): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(variables)) {
+    if (value !== null) {
+      result[key] = value;
+    }
+  }
+  return result;
 }
 
 /**
- * Run a GraphQL query via gh api graphql
+ * Run a GraphQL query via octokit.graphql()
  *
- * For simple variables (strings, numbers, booleans, null), uses -f/-F flags.
- * - `-f` for strings (raw string, no type inference)
- * - `-F` for numbers, booleans, null (type-aware)
- * For complex variables (arrays), uses --input stdin to avoid gh CLI array parsing issues.
- *
- * Note: Variable name "query" is reserved by gh CLI for the GraphQL query body.
- * Using "query" as a variable name will cause "unexpected override" errors.
+ * 後方互換ラッパー: octokit は { data: ... } ラッパーを自動除去して返すが、
+ * 既存の呼び出し元は result.data.data.xxx でアクセスしているため、
+ * { data: ... } で再ラップして互換性を維持する。
  */
-export function runGraphQL<T = unknown>(
+export async function runGraphQL<T = unknown>(
   query: string,
   variables: Record<string, GhVariableValue>,
   options: { silent?: boolean; headers?: Record<string, string> } = {}
-): GhResult<T> {
-  // Guard: "query" is reserved by gh CLI for the GraphQL query body (#585)
+): Promise<GhResult<T>> {
+  // Guard: "query" は octokit でもクエリパラメータとして予約されている (#585)
   if ("query" in variables) {
     return {
       success: false,
-      error: 'Variable name "query" is reserved by gh CLI. Use a different name (e.g., "searchQuery").',
+      error: 'Variable name "query" is reserved. Use a different name (e.g., "searchQuery").',
     };
   }
 
-  // If variables contain arrays, use --input mode for reliable JSON serialization
-  if (hasComplexVariables(variables)) {
-    return runGraphQLWithInput<T>(query, variables, options);
-  }
-
-  const args = ["api", "graphql"];
-
-  // カスタムヘッダーの追加（例: GraphQL-Features: sub_issues）
-  if (options.headers) {
-    for (const [headerKey, headerValue] of Object.entries(options.headers)) {
-      args.push("-H", `${headerKey}: ${headerValue}`);
-    }
-  }
-
-  args.push("-f", `query=${query}`);
-
-  for (const [key, value] of Object.entries(variables)) {
-    if (value === null) {
-      args.push("-F", `${key}=null`);
-    } else if (typeof value === "number" || typeof value === "boolean") {
-      args.push("-F", `${key}=${value}`);
-    } else {
-      // Use -f for strings to prevent numeric-only values from being
-      // interpreted as integers (e.g., option ID "70524841") (#584)
-      args.push("-f", `${key}=${value}`);
-    }
-  }
-
-  const result = runGhCommand<T>(args, options);
-  return checkGraphQLErrors(result);
-}
-
-/**
- * Run a GraphQL query using --input stdin for reliable complex variable support
- */
-function runGraphQLWithInput<T = unknown>(
-  query: string,
-  variables: Record<string, GhVariableValue>,
-  options: { silent?: boolean; timeout?: number; headers?: Record<string, string> } = {}
-): GhResult<T> {
-  const { silent = false, timeout = SUBPROCESS_TIMEOUT } = options;
-
-  // Build clean variables object (replace null with undefined for JSON)
-  const cleanVars: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(variables)) {
-    if (value !== null) {
-      cleanVars[key] = value;
-    }
-  }
-
-  const requestBody = JSON.stringify({
-    query,
-    variables: cleanVars,
-  });
-
-  const args = ["api", "graphql"];
-
-  // カスタムヘッダーの追加
-  if (options.headers) {
-    for (const [headerKey, headerValue] of Object.entries(options.headers)) {
-      args.push("-H", `${headerKey}: ${headerValue}`);
-    }
-  }
-
-  args.push("--input", "-");
+  const { silent = false } = options;
 
   try {
-    const result = spawnSync("gh", args, {
-      encoding: "utf-8",
-      input: requestBody,
-      timeout,
-      maxBuffer: 10 * 1024 * 1024,
+    const octokit = getOctokit();
+    const convertedVars = convertVariables(variables);
+
+    const data = await octokit.graphql(query, {
+      ...convertedVars,
+      ...(options.headers ? { headers: options.headers } : {}),
     });
 
-    if (result.error) {
-      if (!silent) console.error(`Error: ${result.error.message}`);
-      return { success: false, error: result.error.message };
+    // 後方互換: { data: <response> } でラップ
+    return { success: true, data: { data } as unknown as T };
+  } catch (error) {
+    if (error instanceof GraphqlResponseError) {
+      // 部分成功: data と errors が両方ある場合
+      if (error.data !== undefined && error.data !== null) {
+        const graphqlErrors: GraphQLError[] = (error.errors ?? []).map((e) => ({
+          message: e.message,
+          type: (e as Record<string, unknown>).type as string | undefined,
+          path: (e as Record<string, unknown>).path as string[] | undefined,
+        }));
+        return {
+          success: true,
+          data: { data: error.data } as unknown as T,
+          graphqlErrors,
+        };
+      }
+
+      // 完全失敗: data なし
+      const msg = (error.errors ?? []).map((e) => e.message).filter(Boolean).join("; ") || "Unknown GraphQL error";
+      if (!silent) console.error(`GraphQL error: ${msg}`);
+      return { success: false, error: `GraphQL error: ${msg}` };
     }
 
-    if (result.status !== 0) {
-      const errorMsg = result.stderr?.trim() || "Command failed";
-      if (!silent) console.error(`Error: ${errorMsg}`);
-      return { success: false, error: errorMsg };
-    }
-
-    const stdout = result.stdout?.trim();
-    if (!stdout) return { success: true, data: null as T };
-
-    try {
-      const parsed: GhResult<T> = { success: true, data: JSON.parse(stdout) as T };
-      return checkGraphQLErrors(parsed);
-    } catch {
-      return {
-        success: false,
-        error: `JSON parse error: ${stdout.slice(0, 100)}`,
-      };
-    }
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
+    const errorMsg = error instanceof Error ? error.message : String(error);
     if (!silent) console.error(`Error: ${errorMsg}`);
     return { success: false, error: errorMsg };
   }
 }
 
+// =============================================================================
+// Git remote parsing (no API calls needed)
+// =============================================================================
+
 /**
- * Check for GraphQL-level errors in a successful response.
- * GitHub API may return { data: ..., errors: [...] } for partial failures,
- * or { errors: [...] } for complete failures.
+ * git remote の origin URL から owner/repo を抽出（SSH/HTTPS 両対応）。
+ * API 呼び出し不要で高速。認証前でも動作する。
  */
-function checkGraphQLErrors<T>(result: GhResult<T>): GhResult<T> {
-  if (!result.success) return result;
-
-  const responseData = result.data as Record<string, unknown> | null;
-  if (!responseData) return result;
-
-  const errors = responseData.errors as GraphQLError[] | undefined;
-  if (!errors || errors.length === 0) return result;
-
-  // Check if we have actual data alongside errors (partial success)
-  if (responseData.data !== undefined && responseData.data !== null) {
-    return { success: true, data: result.data, graphqlErrors: errors };
+export function parseGitRemoteUrl(url: string): { owner: string; name: string } | null {
+  // SSH: git@github.com:owner/repo.git
+  const sshMatch = url.match(/git@github\.com:([^/]+)\/([^/\s]+?)(?:\.git)?$/);
+  if (sshMatch) {
+    return { owner: sshMatch[1], name: sshMatch[2] };
   }
 
-  // No data, only errors — complete failure
-  const msg = errors.map((e) => e.message).join("; ");
-  return { success: false, error: `GraphQL error: ${msg}` };
+  // HTTPS: https://github.com/owner/repo.git
+  const httpsMatch = url.match(/https?:\/\/github\.com\/([^/]+)\/([^/\s]+?)(?:\.git)?$/);
+  if (httpsMatch) {
+    return { owner: httpsMatch[1], name: httpsMatch[2] };
+  }
+
+  return null;
 }
 
 /**
- * Get repository owner from current repo
+ * .git/config から origin リモート URL を取得する。
+ * git-local.ts による直接ファイル読み取り。同期関数。
+ */
+function getGitRemoteOriginUrl(): string | null {
+  return getGitRemoteUrl("origin");
+}
+
+/**
+ * Get repository owner from current repo (git remote URL parsing)
  */
 export function getOwner(): string | null {
-  const result = runGhCommand<{ owner: { login: string } }>(
-    ["repo", "view", "--json", "owner"],
-    { silent: true }
-  );
-
-  if (!result.success) return null;
-  return result.data?.owner?.login ?? null;
+  const url = getGitRemoteOriginUrl();
+  if (!url) return null;
+  return parseGitRemoteUrl(url)?.owner ?? null;
 }
 
 /**
- * Get repository name from current repo
+ * Get repository name from current repo (git remote URL parsing)
  */
 export function getRepoName(): string | null {
-  const result = runGhCommand<{ name: string }>(
-    ["repo", "view", "--json", "name"],
-    { silent: true }
-  );
-
-  if (!result.success) return null;
-  return result.data?.name ?? null;
+  const url = getGitRemoteOriginUrl();
+  if (!url) return null;
+  return parseGitRemoteUrl(url)?.name ?? null;
 }
 
 /**
- * Get full repo info (owner/name)
+ * Get full repo info (owner/name) via git remote URL parsing
  */
 export function getRepoInfo(): { owner: string; name: string } | null {
-  const owner = getOwner();
-  const name = getRepoName();
-
-  if (!owner || !name) return null;
-  return { owner, name };
+  const url = getGitRemoteOriginUrl();
+  if (!url) return null;
+  return parseGitRemoteUrl(url);
 }
 
 /**
@@ -329,52 +180,45 @@ export function getRepoInfo(): { owner: string; name: string } | null {
  * getOwner() / getRepoName() / getRepoInfo() が null を返した後に呼び出す。
  * コストの低いチェックから順に実行し、最初にヒットした原因を返す。
  */
-export function diagnoseRepoFailure(): { cause: string; suggestion: string } {
-  // (1) git リポジトリ内かチェック（サブディレクトリからの実行にも対応）
-  const revParseResult = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], {
-    encoding: "utf-8",
-    timeout: 5000,
-  });
-  if (revParseResult.status !== 0) {
+export async function diagnoseRepoFailure(): Promise<{ cause: string; suggestion: string }> {
+  // (1) git リポジトリ内かチェック（.git ファイル直接読み取り）
+  if (!isInsideGitRepo()) {
     return {
       cause: "Not inside a git repository",
       suggestion: "Run this command from a git repository root, or run: git init",
     };
   }
 
-  // (2) git remote に GitHub URL が含まれるかチェック
-  const remoteResult = spawnSync("git", ["remote", "-v"], {
-    encoding: "utf-8",
-    timeout: 5000,
-  });
+  // (2) git remote に GitHub URL が含まれるかチェック（.git/config 直接読み取り）
+  const remotes = getGitRemotes();
 
-  if (remoteResult.status !== 0 || !remoteResult.stdout?.trim()) {
+  if (remotes.length === 0) {
     return {
       cause: "No git remote configured",
       suggestion: "Add a GitHub remote: git remote add origin https://github.com/OWNER/REPO.git",
     };
   }
 
-  if (!remoteResult.stdout.includes("github.com")) {
+  if (!remotes.some(r => r.url.includes("github.com"))) {
     return {
       cause: "No GitHub remote found (remotes exist but none point to github.com)",
       suggestion: "Add a GitHub remote: git remote add origin https://github.com/OWNER/REPO.git",
     };
   }
 
-  // (3) gh CLI の認証状態チェック（既存の checkGhCli() を再利用）
-  const ghCheck = checkGhCli();
+  // (3) octokit で認証チェック
+  const ghCheck = await checkGitHubAuth();
   if (!ghCheck.success) {
     return {
-      cause: "GitHub CLI is not authenticated",
-      suggestion: "Run: gh auth login",
+      cause: "GitHub API is not authenticated",
+      suggestion: "Set GITHUB_TOKEN environment variable, or run: gh auth login",
     };
   }
 
-  // (4) フォールバック: 上記すべてパスしたが gh repo view が失敗する場合
+  // (4) フォールバック: 上記すべてパスしたが取得できない場合
   return {
     cause: "Could not resolve repository (multiple remotes or no default set)",
-    suggestion: "Run: gh repo set-default, or use the --owner option",
+    suggestion: "Use the --owner option to specify the repository owner",
   };
 }
 
@@ -429,39 +273,28 @@ export function parseIssueNumber(value: string): number {
 }
 
 /**
- * Check if gh CLI is available and authenticated
+ * Check if GitHub API is accessible and authenticated.
+ * Uses octokit REST API (GITHUB_TOKEN or gh auth token fallback).
  */
-export function checkGhCli(): GhResult<{ authenticated: boolean; user: string }> {
-  const result = runGhCommand<{ login: string }>(
-    ["api", "user", "--jq", ".login"],
-    { silent: true }
-  );
-
-  if (!result.success) {
-    // Try to get more specific error
-    const authResult = spawnSync("gh", ["auth", "status"], {
-      encoding: "utf-8",
-      timeout: 5000,
-    });
-
-    if (authResult.status !== 0) {
-      return {
-        success: false,
-        error: "Not authenticated. Run: gh auth login",
-      };
-    }
+export async function checkGitHubAuth(): Promise<GhResult<{ authenticated: boolean; user: string }>> {
+  try {
+    const octokit = getOctokit();
+    const { data } = await octokit.rest.users.getAuthenticated();
 
     return {
+      success: true,
+      data: {
+        authenticated: true,
+        user: data.login,
+      },
+    };
+  } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    return {
       success: false,
-      error: result.error,
+      error: errorMsg.includes("401")
+        ? "Not authenticated. Set GITHUB_TOKEN, or run: gh auth login"
+        : errorMsg,
     };
   }
-
-  return {
-    success: true,
-    data: {
-      authenticated: true,
-      user: typeof result.data === "string" ? result.data : String(result.data),
-    },
-  };
 }

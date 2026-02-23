@@ -8,7 +8,6 @@
 
 import { createLogger, Logger } from "../utils/logger.js";
 import {
-  runGhCommand,
   runGraphQL,
   getRepoInfo,
   GhResult,
@@ -152,7 +151,7 @@ async function cmdInfo(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_INFO, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_INFO, {
     owner,
     name: repo,
   });
@@ -209,7 +208,7 @@ async function cmdLabels(
 
   // Create label if --create is specified
   if (options.create) {
-    const repoId = getRepoId(owner, repo);
+    const repoId = await getRepoId(owner, repo);
     if (!repoId) {
       logger.error("Could not get repository ID");
       return 1;
@@ -238,7 +237,7 @@ async function cmdLabels(
       };
     }
 
-    const result = runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_LABEL, {
+    const result = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_LABEL, {
       repositoryId: repoId,
       name: options.create,
       color: color,
@@ -292,7 +291,7 @@ async function cmdLabels(
   let cursor: string | null = null;
 
   while (true) {
-    const result: GhResult<QueryResult> = runGraphQL<QueryResult>(
+    const result: GhResult<QueryResult> = await runGraphQL<QueryResult>(
       GRAPHQL_QUERY_LABELS,
       {
         owner,

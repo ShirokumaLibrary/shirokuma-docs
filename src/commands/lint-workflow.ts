@@ -133,7 +133,7 @@ export async function lintWorkflowCommand(
       lintWorkflowConfig.rules?.["main-protection"]?.severity ?? "error";
     const protectedBranches =
       lintWorkflowConfig.rules?.["main-protection"]?.branches ?? undefined;
-    const issues = checkMainProtection(mainProtSeverity, protectedBranches);
+    const issues = await checkMainProtection(mainProtSeverity, protectedBranches);
     ruleResults.push({
       rule: "main-protection",
       description: "Protected branch and commit conventions",
@@ -148,7 +148,7 @@ export async function lintWorkflowCommand(
         lintWorkflowConfig.rules?.["commit-format"]?.severity ?? "warning";
       const commitTypes =
         lintWorkflowConfig.rules?.["commit-format"]?.types ?? undefined;
-      const commitIssues = checkCommitFormat(commitSeverity, commitTypes);
+      const commitIssues = await checkCommitFormat(commitSeverity, commitTypes);
       ruleResults.push({
         rule: "commit-format",
         description: "Conventional Commits format ({type}: {description})",

@@ -24,7 +24,7 @@ pnpm add -g @shirokuma-library/shirokuma-docs
 
 ## Getting Started
 
-> **Prerequisites**: git repository + GitHub remote + `gh auth login` completed. See [Getting Started Guide](docs/guide/getting-started.md) for details.
+> **Prerequisites**: git repository + GitHub remote + `GITHUB_TOKEN` environment variable (or `gh auth login` completed). See [Getting Started Guide](docs/guide/getting-started.md) for details.
 
 ```bash
 # 1. Initialize (with skills and rules)
@@ -63,7 +63,7 @@ See [Command Reference](docs/guide/commands/) for all commands and [Plugin Manag
 
 - **Node.js**: 20.0.0+
 - **Claude Code**: For skills/rules integration
-- **gh CLI**: For GitHub commands (`gh auth login` required)
+- **GITHUB_TOKEN**: For GitHub commands (`gh auth login` also works as fallback)
 
 ## Documentation
 

@@ -15,7 +15,7 @@ import {
   fetchWorkflows,
   RECOMMENDED_WORKFLOWS,
   type ProjectWorkflow,
-} from "../commands/projects.js";
+} from "./project-utils.js";
 import { getProjectFields, resolveFieldName } from "./project-fields.js";
 import type { Logger } from "./logger.js";
 
@@ -110,10 +110,10 @@ query($owner: String!, $name: String!) {
 // Check Functions
 // =============================================================================
 
-function checkDiscussionCategories(
+async function checkDiscussionCategories(
   owner: string,
   repo: string
-): SetupCheckItem[] {
+): Promise<SetupCheckItem[]> {
   interface CategoryNode {
     id?: string;
     name?: string;
@@ -132,7 +132,7 @@ function checkDiscussionCategories(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_CATEGORIES, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_CATEGORIES, {
     owner,
     name: repo,
   });
@@ -169,8 +169,8 @@ function checkProjectExists(projectId: string | null): SetupCheckItem[] {
   }];
 }
 
-function checkProjectFields(projectId: string): SetupCheckItem[] {
-  const fields = getProjectFields(projectId);
+async function checkProjectFields(projectId: string): Promise<SetupCheckItem[]> {
+  const fields = await getProjectFields(projectId);
 
   return REQUIRED_PROJECT_FIELDS.map((fieldName) => {
     const resolved = resolveFieldName(fieldName, fields);
@@ -186,8 +186,8 @@ function checkProjectFields(projectId: string): SetupCheckItem[] {
   });
 }
 
-function checkWorkflows(projectId: string): SetupCheckItem[] {
-  const workflows = fetchWorkflows(projectId);
+async function checkWorkflows(projectId: string): Promise<SetupCheckItem[]> {
+  const workflows = await fetchWorkflows(projectId);
   if (workflows.length === 0) return [];
 
   return RECOMMENDED_WORKFLOWS.map((name) => {
@@ -204,13 +204,13 @@ function checkWorkflows(projectId: string): SetupCheckItem[] {
   });
 }
 
-function checkMetricsFields(
+async function checkMetricsFields(
   projectId: string,
   metricsConfig: MetricsConfig
-): SetupCheckItem[] {
+): Promise<SetupCheckItem[]> {
   if (!metricsConfig.enabled) return [];
 
-  const fields = getProjectFields(projectId);
+  const fields = await getProjectFields(projectId);
   const mapping = metricsConfig.statusToDateMapping ?? {};
 
   return Object.values(mapping).map((fieldName) => ({
@@ -231,7 +231,7 @@ function checkMetricsFields(
 /**
  * Validate GitHub setup and return results
  */
-export function validateGitHubSetup(logger: Logger): SetupCheckResult | null {
+export async function validateGitHubSetup(logger: Logger): Promise<SetupCheckResult | null> {
   const repoInfo = getRepoInfo();
   if (!repoInfo) {
     logger.error("Could not determine repository");
@@ -240,19 +240,19 @@ export function validateGitHubSetup(logger: Logger): SetupCheckResult | null {
 
   const { owner: repoOwner, name: repo } = repoInfo;
   const config = loadGhConfig();
-  const projectId = getProjectId(repoOwner);
+  const projectId = await getProjectId(repoOwner);
 
   const items: SetupCheckItem[] = [
-    ...checkDiscussionCategories(repoOwner, repo),
+    ...await checkDiscussionCategories(repoOwner, repo),
     ...checkProjectExists(projectId),
   ];
 
   // Project 依存のチェック: projectId がない場合はスキップ
   if (projectId) {
     items.push(
-      ...checkProjectFields(projectId),
-      ...checkWorkflows(projectId),
-      ...checkMetricsFields(projectId, getMetricsConfig(config)),
+      ...await checkProjectFields(projectId),
+      ...await checkWorkflows(projectId),
+      ...await checkMetricsFields(projectId, getMetricsConfig(config)),
     );
   }
 

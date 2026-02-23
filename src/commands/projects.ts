@@ -15,8 +15,6 @@
 
 import { createLogger, Logger } from "../utils/logger.js";
 import {
-  runGhCommand,
-  runGhCommandRaw,
   runGraphQL,
   getOwner,
   getRepoName,
@@ -28,6 +26,7 @@ import {
   parseIssueNumber,
   GhResult,
 } from "../utils/github.js";
+import { getOctokit } from "../utils/octokit-client.js";
 import { loadGhConfig, getMetricsConfig } from "../utils/gh-config.js";
 import {
   formatOutput,
@@ -48,7 +47,15 @@ import {
 } from "../utils/project-fields.js";
 import {
   GRAPHQL_MUTATION_DELETE_ITEM,
+  getRepoId,
 } from "../utils/graphql-queries.js";
+import {
+  getProjectId,
+  getOwnerNodeId,
+  fetchWorkflows,
+  RECOMMENDED_WORKFLOWS,
+  type ProjectWorkflow,
+} from "../utils/project-utils.js";
 
 /** Default statuses to exclude when listing (typically completed items) */
 const DEFAULT_EXCLUDE_STATUSES = ["Done", "Released"];
@@ -97,43 +104,13 @@ interface ProjectItem {
 
 // ProjectFieldType and ProjectField imported from ../utils/project-fields.ts
 
-// =============================================================================
-// Workflow types (built-in automations)
-// =============================================================================
-
-/** ワークフロー情報 */
-export interface ProjectWorkflow {
-  id: string;
-  name: string;
-  number: number;
-  enabled: boolean;
-}
-
-/** #250 推奨ワークフロー: 有効にすべき自動化 */
-export const RECOMMENDED_WORKFLOWS = ["Item closed", "Pull request merged"];
-
-// =============================================================================
-// GraphQL Queries
-// =============================================================================
-
-/** プロジェクトのワークフロー一覧を取得 */
-const GRAPHQL_QUERY_WORKFLOWS = `
-query($projectId: ID!) {
-  node(id: $projectId) {
-    ... on ProjectV2 {
-      title
-      workflows(first: 20) {
-        nodes {
-          id
-          name
-          number
-          enabled
-        }
-      }
-    }
-  }
-}
-`;
+// Re-export from project-utils (extracted for cross-file sharing)
+export {
+  getProjectId,
+  fetchWorkflows,
+  RECOMMENDED_WORKFLOWS,
+  type ProjectWorkflow,
+} from "../utils/project-utils.js";
 
 const GRAPHQL_QUERY_LIST = `
 query($projectId: ID!, $cursor: String) {
@@ -231,40 +208,11 @@ query($owner: String!, $name: String!, $number: Int!) {
 // =============================================================================
 
 /**
- * Get project ID by name (defaults to repository name)
- */
-export function getProjectId(owner: string, projectName?: string): string | null {
-  const targetName = projectName || getRepoName();
-  if (!targetName) return null;
-
-  const result = runGhCommand<{ projects: Array<{ id: string; title: string }> }>(
-    ["project", "list", "--owner", owner, "--format", "json"],
-    { silent: true }
-  );
-
-  if (!result.success || !result.data?.projects) return null;
-
-  // Find project by name (repository name convention)
-  for (const project of result.data.projects) {
-    if (project.title === targetName) {
-      return project.id;
-    }
-  }
-
-  // Fallback to first project if no match (#382: warn about fallback)
-  const fallbackId = result.data.projects[0]?.id ?? null;
-  if (fallbackId) {
-    console.error(`warn: No project named '${targetName}'. Using first project as fallback.`);
-  }
-  return fallbackId;
-}
-
-/**
  * Fetch all project items with pagination
  */
-function fetchAllItems(
+async function fetchAllItems(
   projectId: string
-): { title: string; items: ProjectItem[] } {
+): Promise<{ title: string; items: ProjectItem[] }> {
   interface ItemNode {
     id?: string;
     status?: { name?: string };
@@ -290,7 +238,7 @@ function fetchAllItems(
   let projectTitle = "";
 
   while (true) {
-    const result: GhResult<QueryResult> = runGraphQL<QueryResult>(GRAPHQL_QUERY_LIST, {
+    const result: GhResult<QueryResult> = await runGraphQL<QueryResult>(GRAPHQL_QUERY_LIST, {
       projectId,
       cursor: cursor ?? "null",
     });
@@ -326,7 +274,7 @@ function fetchAllItems(
 /**
  * Fetch a single project item by ID with full details
  */
-function fetchItem(itemId: string): ProjectItem | null {
+async function fetchItem(itemId: string): Promise<ProjectItem | null> {
   interface ItemNode {
     id?: string;
     status?: { name?: string; optionId?: string };
@@ -348,7 +296,7 @@ function fetchItem(itemId: string): ProjectItem | null {
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ITEM, { itemId });
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ITEM, { itemId });
   if (!result.success || !result.data?.data?.node) return null;
 
   const node = result.data.data.node;
@@ -375,11 +323,11 @@ function fetchItem(itemId: string): ProjectItem | null {
 /**
  * Find project item by issue number
  */
-function findItemByIssueNumber(
+async function findItemByIssueNumber(
   projectId: string,
   issueNumber: number
-): { id: string } | null {
-  const { items } = fetchAllItems(projectId);
+): Promise<{ id: string } | null> {
+  const { items } = await fetchAllItems(projectId);
   for (const item of items) {
     if (item.issueNumber === issueNumber) {
       return { id: item.id };
@@ -391,11 +339,11 @@ function findItemByIssueNumber(
 /**
  * Get issue by number
  */
-function getIssueByNumber(
+async function getIssueByNumber(
   owner: string,
   repo: string,
   number: number
-): { id: string; number: number; title: string; body: string; url: string } | null {
+): Promise<{ id: string; number: number; title: string; body: string; url: string } | null> {
   interface QueryResult {
     data?: {
       repository?: {
@@ -410,7 +358,7 @@ function getIssueByNumber(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_BY_NUMBER, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_ISSUE_BY_NUMBER, {
     owner,
     name: repo,
     number,
@@ -449,13 +397,13 @@ async function cmdList(
     return 1;
   }
 
-  const projectId = getProjectId(owner);
+  const projectId = await getProjectId(owner);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
   }
 
-  const { title: projectTitle, items } = fetchAllItems(projectId);
+  const { title: projectTitle, items } = await fetchAllItems(projectId);
 
   // Apply status filter
   // Default: exclude Done/Released unless --all or --status specified
@@ -508,13 +456,13 @@ async function cmdGet(
       return 1;
     }
 
-    const projectId = getProjectId(owner);
+    const projectId = await getProjectId(owner);
     if (!projectId) {
       logger.error(`No project found for owner '${owner}'`);
       return 1;
     }
 
-    const found = findItemByIssueNumber(projectId, issueNumber);
+    const found = await findItemByIssueNumber(projectId, issueNumber);
     if (!found) {
       logger.error(`No project item found for Issue #${issueNumber}`);
       return 1;
@@ -522,7 +470,7 @@ async function cmdGet(
     itemId = found.id;
   }
 
-  const item = fetchItem(itemId);
+  const item = await fetchItem(itemId);
   if (!item) {
     logger.error(`Item '${itemIdOrNumber}' not found`);
     return 1;
@@ -562,13 +510,13 @@ async function cmdFields(
     return 1;
   }
 
-  const projectId = getProjectId(owner);
+  const projectId = await getProjectId(owner);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
   }
 
-  const fields = getProjectFields(projectId);
+  const fields = await getProjectFields(projectId);
   console.log(JSON.stringify(fields, null, 2));
   return 0;
 }
@@ -604,7 +552,7 @@ async function cmdCreate(
     return 1;
   }
 
-  const projectId = getProjectId(owner);
+  const projectId = await getProjectId(owner);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
@@ -619,7 +567,7 @@ async function cmdCreate(
     };
   }
 
-  const result = runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE, {
+  const result = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE, {
     projectId,
     title: options.title,
     body: options.body ?? "",
@@ -643,10 +591,10 @@ async function cmdCreate(
   if (options.size) fields["Size"] = options.size;
 
   if (Object.keys(fields).length > 0) {
-    setItemFields(projectId, itemId, fields, logger);
+    await setItemFields(projectId, itemId, fields, logger);
   }
 
-  const item = fetchItem(itemId);
+  const item = await fetchItem(itemId);
   if (item) {
     const output = {
       id: item.id,
@@ -691,13 +639,13 @@ async function cmdUpdate(
       return 1;
     }
 
-    const projectId = getProjectId(owner);
+    const projectId = await getProjectId(owner);
     if (!projectId) {
       logger.error(`No project found for owner '${owner}'`);
       return 1;
     }
 
-    const found = findItemByIssueNumber(projectId, issueNumber);
+    const found = await findItemByIssueNumber(projectId, issueNumber);
     if (!found) {
       logger.error(`No project item found for Issue #${issueNumber}`);
       return 1;
@@ -705,7 +653,7 @@ async function cmdUpdate(
     itemId = found.id;
   }
 
-  let item = fetchItem(itemId);
+  let item = await fetchItem(itemId);
   if (!item) {
     logger.error(`Item '${itemIdOrNumber}' not found`);
     return 1;
@@ -723,22 +671,22 @@ async function cmdUpdate(
   if (options.priority) fields["Priority"] = options.priority;
   if (options.size) fields["Size"] = options.size;
 
-  let updated = setItemFields(projectId, itemId, fields, logger) > 0;
+  let updated = await setItemFields(projectId, itemId, fields, logger) > 0;
 
   // Update body if provided
   if (options.body !== undefined) {
     if (item.draftIssueId) {
       // DraftIssue body update
-      const result = runGraphQL(GRAPHQL_MUTATION_UPDATE_BODY, {
+      const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_BODY, {
         draftIssueId: item.draftIssueId,
         body: options.body,
       });
       if (result.success) updated = true;
     } else if (item.issueNumber && owner && repo) {
       // Issue body update
-      const issueData = getIssueByNumber(owner, repo, item.issueNumber);
+      const issueData = await getIssueByNumber(owner, repo, item.issueNumber);
       if (issueData?.id) {
-        const result = runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, {
+        const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, {
           id: issueData.id,
           body: options.body,
         });
@@ -752,7 +700,7 @@ async function cmdUpdate(
   }
 
   if (updated) {
-    item = fetchItem(itemId);
+    item = await fetchItem(itemId);
   }
 
   if (item) {
@@ -792,13 +740,13 @@ async function cmdDelete(
       return 1;
     }
 
-    const projectId = getProjectId(owner);
+    const projectId = await getProjectId(owner);
     if (!projectId) {
       logger.error(`No project found for owner '${owner}'`);
       return 1;
     }
 
-    const found = findItemByIssueNumber(projectId, issueNumber);
+    const found = await findItemByIssueNumber(projectId, issueNumber);
     if (!found) {
       logger.error(`No project item found for Issue #${issueNumber}`);
       return 1;
@@ -806,7 +754,7 @@ async function cmdDelete(
     itemId = found.id;
   }
 
-  const item = fetchItem(itemId);
+  const item = await fetchItem(itemId);
   if (!item) {
     logger.error(`Item '${itemIdOrNumber}' not found`);
     return 1;
@@ -836,7 +784,7 @@ async function cmdDelete(
   }
 
   // Delete from project
-  const result = runGraphQL(GRAPHQL_MUTATION_DELETE_ITEM, { projectId, itemId });
+  const result = await runGraphQL(GRAPHQL_MUTATION_DELETE_ITEM, { projectId, itemId });
 
   if (result.success) {
     const output: Record<string, unknown> = {
@@ -871,7 +819,7 @@ async function cmdAddIssue(
     return 1;
   }
 
-  const projectId = getProjectId(owner);
+  const projectId = await getProjectId(owner);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
@@ -880,17 +828,17 @@ async function cmdAddIssue(
   const issueNumber = parseIssueNumber(issueNumberStr);
 
   // Get Issue details
-  const issue = getIssueByNumber(owner, repo, issueNumber);
+  const issue = await getIssueByNumber(owner, repo, issueNumber);
   if (!issue) {
     logger.error(`Issue #${issueNumber} not found`);
     return 1;
   }
 
   // Check if already in project
-  const existing = findItemByIssueNumber(projectId, issueNumber);
+  const existing = await findItemByIssueNumber(projectId, issueNumber);
   if (existing) {
     logger.info(`Issue #${issueNumber} is already in the project`);
-    const item = fetchItem(existing.id);
+    const item = await fetchItem(existing.id);
     if (item) {
       const output = {
         id: item.id,
@@ -915,7 +863,7 @@ async function cmdAddIssue(
     };
   }
 
-  const result = runGraphQL<AddResult>(GRAPHQL_MUTATION_ADD_TO_PROJECT, {
+  const result = await runGraphQL<AddResult>(GRAPHQL_MUTATION_ADD_TO_PROJECT, {
     projectId,
     contentId: issue.id,
   });
@@ -938,10 +886,10 @@ async function cmdAddIssue(
   if (options.size) fields["Size"] = options.size;
 
   if (Object.keys(fields).length > 0) {
-    setItemFields(projectId, itemId, fields, logger);
+    await setItemFields(projectId, itemId, fields, logger);
   }
 
-  const item = fetchItem(itemId);
+  const item = await fetchItem(itemId);
   if (item) {
     const output = {
       id: item.id,
@@ -959,46 +907,9 @@ async function cmdAddIssue(
 }
 
 // =============================================================================
-// Workflow helpers (#250)
+// Workflow helpers (#250) — fetchWorkflows/RECOMMENDED_WORKFLOWS は
+// ../utils/project-utils.ts に移動。re-export 経由でアクセス可能。
 // =============================================================================
-
-/**
- * プロジェクトのワークフロー一覧を取得する。
- * GitHub Projects V2 のビルトイン自動化を確認するために使用。
- *
- * @returns ワークフロー配列。取得失敗時は空配列
- */
-export function fetchWorkflows(projectId: string): ProjectWorkflow[] {
-  interface WorkflowNode {
-    id?: string;
-    name?: string;
-    number?: number;
-    enabled?: boolean;
-  }
-
-  interface QueryResult {
-    data?: {
-      node?: {
-        workflows?: {
-          nodes?: WorkflowNode[];
-        };
-      };
-    };
-  }
-
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_WORKFLOWS, { projectId });
-  if (!result.success) return [];
-
-  const nodes = result.data?.data?.node?.workflows?.nodes ?? [];
-  return nodes
-    .filter((n): n is Required<WorkflowNode> => !!n?.id && !!n?.name && n.number !== undefined)
-    .map((n) => ({
-      id: n.id,
-      name: n.name,
-      number: n.number,
-      enabled: n.enabled ?? false,
-    }));
-}
 
 /**
  * workflows subcommand - ビルトイン自動化の状態を表示
@@ -1013,13 +924,13 @@ async function cmdWorkflows(
     return 1;
   }
 
-  const projectId = getProjectId(owner);
+  const projectId = await getProjectId(owner);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
   }
 
-  const workflows = fetchWorkflows(projectId);
+  const workflows = await fetchWorkflows(projectId);
   if (workflows.length === 0) {
     logger.warn("No workflows found or failed to fetch");
     return 1;
@@ -1091,14 +1002,14 @@ async function cmdSetupMetrics(
     return 1;
   }
 
-  const projectId = getProjectId(owner);
+  const projectId = await getProjectId(owner);
   if (!projectId) {
     logger.error(`No project found for owner '${owner}'`);
     return 1;
   }
 
   // Get existing fields
-  const existingFields = getProjectFields(projectId);
+  const existingFields = await getProjectFields(projectId);
 
   // Determine which text fields to create
   const dateFields = metricsConfig.dateFields ?? {};
@@ -1122,7 +1033,7 @@ async function cmdSetupMetrics(
     }
 
     // Create text field
-    const result = runGraphQL(GRAPHQL_MUTATION_CREATE_FIELD, {
+    const result = await runGraphQL(GRAPHQL_MUTATION_CREATE_FIELD, {
       projectId,
       name: fieldName,
       dataType: "TEXT",
@@ -1275,7 +1186,7 @@ async function cmdSetup(
       logger.error("Could not determine repository owner. Use --owner or --project-id.");
       return 1;
     }
-    projectId = getProjectId(owner);
+    projectId = await getProjectId(owner);
     if (!projectId) {
       logger.error(`No project found for owner '${owner}'. Use --project-id.`);
       return 1;
@@ -1283,7 +1194,7 @@ async function cmdSetup(
   }
 
   // 全フィールドを1回取得して共有する
-  const allFields = projectId ? getProjectFields(projectId) : {};
+  const allFields = projectId ? await getProjectFields(projectId) : {};
 
   // Status フィールド ID を解決（--field-id 優先、なければ自動検出）
   let fieldId = options.fieldId ?? null;
@@ -1333,7 +1244,7 @@ async function cmdSetup(
       } else {
         const statusOptions = buildSingleSelectOptions(FIELD_COLORS.status, locale.status);
         const query = `mutation { updateProjectV2Field(input: { fieldId: "${fieldId}", name: "Status", singleSelectOptions: ${statusOptions} }) { projectV2Field { ... on ProjectV2SingleSelectField { name options { name description } } } } }`;
-        const result = runGraphQL(query, {});
+        const result = await runGraphQL(query, {});
         if (result.success) {
           logger.success("  Status updated");
         } else {
@@ -1359,7 +1270,7 @@ async function cmdSetup(
         logger.info(`\n[${fieldName}] Creating field...`);
         const fieldOptions = buildSingleSelectOptions(FIELD_COLORS[fieldKey], locale[fieldKey]);
         const createQuery = `mutation { createProjectV2Field(input: { projectId: "${projectId}", dataType: SINGLE_SELECT, name: "${fieldName}", singleSelectOptions: ${fieldOptions} }) { projectV2Field { ... on ProjectV2SingleSelectField { name options { name } } } } }`;
-        const result = runGraphQL(createQuery, {});
+        const result = await runGraphQL(createQuery, {});
         if (result.success) {
           logger.success(`  ${fieldName} created`);
         } else {
@@ -1380,7 +1291,7 @@ async function cmdSetup(
       } else {
         logger.info(`\n[${fieldName}] Creating text field...`);
         const textQuery = `mutation { createProjectV2Field(input: { projectId: "${projectId}", dataType: TEXT, name: "${fieldName}" }) { projectV2Field { ... on ProjectV2Field { name } } } }`;
-        const result = runGraphQL(textQuery, {});
+        const result = await runGraphQL(textQuery, {});
         if (result.success) {
           logger.success(`  ${fieldName} created`);
         } else {
@@ -1428,36 +1339,88 @@ async function cmdCreateProject(
   const owner = options.owner || getOwner();
   const repo = getRepoName();
   if (!owner || !repo) {
-    const diagnosis = diagnoseRepoFailure();
+    const diagnosis = await diagnoseRepoFailure();
     logger.error(`Could not determine repository owner/name: ${diagnosis.cause}`);
     logger.info(`  ${diagnosis.suggestion}`);
     return 1;
   }
 
-  // ステップ 1: Project 作成
+  // ステップ 1: Project 作成 (GraphQL mutation: createProjectV2)
   logger.info(`[1/4] Creating project "${options.title}"...`);
-  const createResult = runGhCommand<{ number: number; id: string; url: string }>(
-    ["project", "create", "--owner", owner, "--title", options.title, "--format", "json"],
-  );
+
+  const ownerId = await getOwnerNodeId(owner);
+  if (!ownerId) {
+    logger.error(`Could not resolve owner ID for '${owner}'`);
+    return 1;
+  }
+
+  const GRAPHQL_MUTATION_CREATE_PROJECT = `
+    mutation($ownerId: ID!, $title: String!) {
+      createProjectV2(input: {ownerId: $ownerId, title: $title}) {
+        projectV2 {
+          id
+          number
+          url
+        }
+      }
+    }
+  `;
+
+  interface CreateProjectResult {
+    data?: {
+      createProjectV2?: {
+        projectV2?: {
+          id?: string;
+          number?: number;
+          url?: string;
+        };
+      };
+    };
+  }
+
+  const createResult = await runGraphQL<CreateProjectResult>(GRAPHQL_MUTATION_CREATE_PROJECT, {
+    ownerId,
+    title: options.title,
+  });
 
   if (!createResult.success) {
     logger.error(`Failed to create project: ${createResult.error}`);
     return 1;
   }
 
-  const projectNumber = createResult.data?.number;
-  const projectUrl = createResult.data?.url;
+  const createdProject = createResult.data?.data?.createProjectV2?.projectV2;
+  const projectNumber = createdProject?.number;
+  const projectUrl = createdProject?.url;
   if (projectNumber === undefined) {
     logger.error("Failed to get project number from creation response");
     return 1;
   }
   logger.success(`  Project created: #${projectNumber} ${projectUrl ?? ""}`);
 
-  // ステップ 2: リポジトリにリンク
+  // ステップ 2: リポジトリにリンク (GraphQL mutation: linkProjectV2ToRepository)
   logger.info(`[2/4] Linking project to ${owner}/${repo}...`);
-  const linkResult = runGhCommand(
-    ["project", "link", String(projectNumber), "--owner", owner, "--repo", `${owner}/${repo}`],
-  );
+
+  const repoId = await getRepoId(owner, repo);
+  const createdProjectId = createdProject?.id;
+  if (!repoId || !createdProjectId) {
+    logger.error(`Failed to link project to repository`);
+    logger.info(`  Project was created successfully (URL: ${projectUrl ?? "unknown"})`);
+    logger.info(`  Link manually: gh project link ${projectNumber} --owner ${owner} --repo ${owner}/${repo}`);
+    return 1;
+  }
+
+  const GRAPHQL_MUTATION_LINK_PROJECT = `
+    mutation($projectId: ID!, $repositoryId: ID!) {
+      linkProjectV2ToRepository(input: {projectId: $projectId, repositoryId: $repositoryId}) {
+        repository { id }
+      }
+    }
+  `;
+
+  const linkResult = await runGraphQL(GRAPHQL_MUTATION_LINK_PROJECT, {
+    projectId: createdProjectId,
+    repositoryId: repoId,
+  });
 
   if (!linkResult.success) {
     logger.error(`Failed to link project to repository`);
@@ -1468,25 +1431,26 @@ async function cmdCreateProject(
 
   logger.success("  Project linked to repository");
 
-  // ステップ 3: Discussions 有効化
+  // ステップ 3: Discussions 有効化 (octokit REST API)
   logger.info(`[3/4] Enabling Discussions for ${owner}/${repo}...`);
-  const discussionsResult = runGhCommandRaw(
-    ["api", "-X", "PATCH", `/repos/${owner}/${repo}`, "-f", "has_discussions=true"],
-    { silent: true },
-  );
-
-  if (!discussionsResult.success) {
+  try {
+    const octokit = getOctokit();
+    await octokit.rest.repos.update({
+      owner,
+      repo,
+      has_discussions: true,
+    });
+    logger.success("  Discussions enabled");
+  } catch {
     logger.warn("  Failed to enable Discussions automatically");
     logger.info(`  Enable manually: gh api -X PATCH /repos/${owner}/${repo} -f has_discussions=true`);
-  } else {
-    logger.success("  Discussions enabled");
   }
 
   // ステップ 4: フィールド設定（cmdSetup を呼び出し）
   logger.info("[4/4] Setting up project fields...");
 
   // 新しく作成した Project の ID を取得して setup に渡す
-  const projectId = getProjectId(owner, options.title);
+  const projectId = await getProjectId(owner, options.title);
   if (!projectId) {
     logger.error("Failed to resolve project ID after creation");
     logger.info("  Run 'shirokuma-docs projects setup' manually to set up fields");

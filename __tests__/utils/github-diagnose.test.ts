@@ -13,32 +13,31 @@ import { jest } from "@jest/globals";
 // Mocks (ESM: unstable_mockModule + dynamic import)
 // =============================================================================
 
-const mockSpawnSync = jest.fn<(...args: any[]) => any>();
+const mockIsInsideGitRepo = jest.fn<() => boolean>();
+const mockGetGitRemotes = jest.fn<() => Array<{ name: string; url: string }>>();
 
-jest.unstable_mockModule("node:child_process", () => ({
-  spawnSync: mockSpawnSync,
+jest.unstable_mockModule("../../src/utils/git-local.js", () => ({
+  getCurrentBranch: jest.fn(),
+  getGitRemoteUrl: jest.fn(),
+  isInsideGitRepo: mockIsInsideGitRepo,
+  getGitRemotes: mockGetGitRemotes,
 }));
 
 jest.unstable_mockModule("node:fs", () => ({
   readFileSync: jest.fn(),
 }));
 
+// octokit-client のモック
+const mockGetOctokit = jest.fn<() => any>();
+jest.unstable_mockModule("../../src/utils/octokit-client.js", () => ({
+  getOctokit: mockGetOctokit,
+  resolveAuthToken: jest.fn(() => "test-token"),
+  resetOctokit: jest.fn(),
+  setOctokit: jest.fn(),
+}));
+
 // Dynamic import（モック設定後に実行）
 const { diagnoseRepoFailure } = await import("../../src/utils/github.js");
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-/** spawnSync の成功レスポンスを生成 */
-function spawnOk(stdout: string) {
-  return { status: 0, stdout, stderr: "", pid: 0, output: [], signal: null };
-}
-
-/** spawnSync の失敗レスポンスを生成 */
-function spawnFail(stderr = "error") {
-  return { status: 1, stdout: "", stderr, pid: 0, output: [], signal: null };
-}
 
 // =============================================================================
 // Tests
@@ -52,11 +51,10 @@ describe("diagnoseRepoFailure", () => {
   /**
    * @testdoc git リポジトリ外の場合、リポジトリ外であることを報告する
    */
-  it("should detect not inside a git repository", () => {
-    // git rev-parse --is-inside-work-tree → 失敗
-    mockSpawnSync.mockReturnValueOnce(spawnFail("fatal: not a git repository"));
+  it("should detect not inside a git repository", async () => {
+    mockIsInsideGitRepo.mockReturnValue(false);
 
-    const result = diagnoseRepoFailure();
+    const result = await diagnoseRepoFailure();
 
     expect(result.cause).toContain("Not inside a git repository");
     expect(result.suggestion).toContain("git init");
@@ -65,81 +63,72 @@ describe("diagnoseRepoFailure", () => {
   /**
    * @testdoc git remote が空の場合、リモート追加を提案する
    */
-  it("should detect no git remote configured (empty stdout)", () => {
-    // git rev-parse → 成功
-    mockSpawnSync.mockReturnValueOnce(spawnOk("true"));
-    // git remote -v → 空
-    mockSpawnSync.mockReturnValueOnce(spawnOk(""));
+  it("should detect no git remote configured (empty remotes)", async () => {
+    mockIsInsideGitRepo.mockReturnValue(true);
+    mockGetGitRemotes.mockReturnValue([]);
 
-    const result = diagnoseRepoFailure();
+    const result = await diagnoseRepoFailure();
 
     expect(result.cause).toContain("No git remote configured");
     expect(result.suggestion).toContain("git remote add origin");
   });
 
   /**
-   * @testdoc git remote コマンドが失敗した場合もリモート未設定と報告する
-   */
-  it("should detect git remote failure (non-zero exit)", () => {
-    // git rev-parse → 成功
-    mockSpawnSync.mockReturnValueOnce(spawnOk("true"));
-    // git remote -v → 失敗
-    mockSpawnSync.mockReturnValueOnce({ status: 128, stdout: "", stderr: "fatal: not a git repository", pid: 0, output: [], signal: null });
-
-    const result = diagnoseRepoFailure();
-
-    expect(result.cause).toContain("No git remote configured");
-  });
-
-  /**
    * @testdoc GitHub 以外のリモートのみの場合、GitHub リモート追加を提案する
    */
-  it("should detect non-GitHub remote", () => {
-    // git rev-parse → 成功
-    mockSpawnSync.mockReturnValueOnce(spawnOk("true"));
-    // git remote -v → GitLab リモートのみ
-    mockSpawnSync.mockReturnValueOnce(spawnOk("origin\tgit@gitlab.com:user/repo.git (fetch)\n"));
+  it("should detect non-GitHub remote", async () => {
+    mockIsInsideGitRepo.mockReturnValue(true);
+    mockGetGitRemotes.mockReturnValue([
+      { name: "origin", url: "git@gitlab.com:user/repo.git" },
+    ]);
 
-    const result = diagnoseRepoFailure();
+    const result = await diagnoseRepoFailure();
 
     expect(result.cause).toContain("No GitHub remote found");
     expect(result.suggestion).toContain("git remote add origin");
   });
 
   /**
-   * @testdoc gh CLI が未認証の場合、gh auth login を提案する
+   * @testdoc GitHub API 認証失敗の場合、認証を提案する
    */
-  it("should detect unauthenticated gh CLI", () => {
-    // git rev-parse → 成功
-    mockSpawnSync.mockReturnValueOnce(spawnOk("true"));
-    // git remote -v → GitHub リモートあり
-    mockSpawnSync.mockReturnValueOnce(spawnOk("origin\tgit@github.com:user/repo.git (fetch)\n"));
-    // checkGhCli() 内: gh api user → 失敗
-    mockSpawnSync.mockReturnValueOnce(spawnFail("error"));
-    // checkGhCli() 内: gh auth status → 失敗
-    mockSpawnSync.mockReturnValueOnce(spawnFail("not logged in"));
+  it("should detect unauthenticated GitHub API", async () => {
+    mockIsInsideGitRepo.mockReturnValue(true);
+    mockGetGitRemotes.mockReturnValue([
+      { name: "origin", url: "git@github.com:user/repo.git" },
+    ]);
+    mockGetOctokit.mockReturnValue({
+      rest: {
+        users: {
+          getAuthenticated: jest.fn().mockRejectedValue(new Error("401 Unauthorized")),
+        },
+      },
+    });
 
-    const result = diagnoseRepoFailure();
+    const result = await diagnoseRepoFailure();
 
     expect(result.cause).toContain("not authenticated");
-    expect(result.suggestion).toContain("gh auth login");
+    expect(result.suggestion).toContain("GITHUB_TOKEN");
   });
 
   /**
-   * @testdoc 全チェック通過時はフォールバックメッセージを返す（gh repo set-default 案内）
+   * @testdoc 全チェック通過時はフォールバックメッセージを返す（--owner オプション案内）
    */
-  it("should return fallback when all checks pass", () => {
-    // git rev-parse → 成功
-    mockSpawnSync.mockReturnValueOnce(spawnOk("true"));
-    // git remote -v → GitHub リモートあり
-    mockSpawnSync.mockReturnValueOnce(spawnOk("origin\tgit@github.com:user/repo.git (fetch)\n"));
-    // checkGhCli() 内: gh api user → 成功
-    mockSpawnSync.mockReturnValueOnce(spawnOk(JSON.stringify({ login: "user" })));
+  it("should return fallback when all checks pass", async () => {
+    mockIsInsideGitRepo.mockReturnValue(true);
+    mockGetGitRemotes.mockReturnValue([
+      { name: "origin", url: "git@github.com:user/repo.git" },
+    ]);
+    mockGetOctokit.mockReturnValue({
+      rest: {
+        users: {
+          getAuthenticated: jest.fn().mockResolvedValue({ data: { login: "user" } }),
+        },
+      },
+    });
 
-    const result = diagnoseRepoFailure();
+    const result = await diagnoseRepoFailure();
 
     expect(result.cause).toContain("Could not resolve repository");
-    expect(result.suggestion).toContain("gh repo set-default");
     expect(result.suggestion).toContain("--owner");
   });
 });

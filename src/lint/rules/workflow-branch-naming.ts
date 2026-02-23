@@ -8,8 +8,8 @@
  * Persistent branches (main, develop) are always valid.
  */
 
-import { spawnSync } from "node:child_process";
 import type { WorkflowIssue, WorkflowIssueSeverity } from "../workflow-types.js";
+import { getCurrentBranch } from "../../utils/git-local.js";
 
 const DEFAULT_PREFIXES = ["feat", "fix", "chore", "docs", "hotfix"];
 const PERSISTENT_BRANCHES = ["main", "develop", "master"];
@@ -87,12 +87,9 @@ export function checkBranchNaming(
   allowedPrefixes: string[] = DEFAULT_PREFIXES
 ): WorkflowIssue[] {
   // Get current branch name
-  const result = spawnSync("git", ["branch", "--show-current"], {
-    encoding: "utf-8",
-    timeout: 5_000,
-  });
+  const branchName = getCurrentBranch();
 
-  if (result.status !== 0 || !result.stdout?.trim()) {
+  if (!branchName) {
     return [
       {
         type: "info",
@@ -102,6 +99,5 @@ export function checkBranchNaming(
     ];
   }
 
-  const branchName = result.stdout.trim();
   return validateBranchName(branchName, severity, allowedPrefixes);
 }

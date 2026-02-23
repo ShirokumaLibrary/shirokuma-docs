@@ -2,7 +2,7 @@
  * setup-check Utility Tests (#345, #527)
  *
  * Tests for GitHub setup validation utility.
- * Since the utility relies on external API calls (gh CLI / GraphQL),
+ * Since the utility relies on external API calls (octokit GraphQL/REST),
  * these tests focus on type validation and output structure.
  *
  * @testdoc GitHub手動設定の検証ユーティリティテスト

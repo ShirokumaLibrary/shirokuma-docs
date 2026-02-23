@@ -1,6 +1,6 @@
 {
   "name": "@shirokuma-library/shirokuma-docs",
-  "version": "0.2.0-alpha.17",
+  "version": "0.2.1-alpha.1",
   "description": "Next.js プロジェクト用ドキュメント自動生成 CLI",
   "type": "module",
   "main": "dist/index.js",
@@ -38,6 +38,9 @@
     "url": "https://github.com/ShirokumaLibrary/shirokuma-docs/issues"
   },
   "dependencies": {
+    "@octokit/plugin-retry": "^8.1.0",
+    "@octokit/plugin-throttling": "^11.0.3",
+    "@octokit/rest": "^22.0.1",
     "chalk": "^5.3.0",
     "chokidar": "^5.0.0",
     "commander": "^14.0.3",
@@ -51,6 +54,7 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-stringify": "^11.0.0",
+    "simple-git": "^3.32.2",
     "tiktoken": "^1.0.22",
     "ts-morph": "^27.0.2",
     "unified": "^11.0.5",

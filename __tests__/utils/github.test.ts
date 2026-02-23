@@ -1,10 +1,10 @@
 /**
  * GitHub Utilities Tests
  *
- * Tests for GitHub CLI utilities used by gh-* commands.
+ * Tests for GitHub utilities used by gh-* commands.
  * Focus on pure functions: validation and parsing.
  *
- * @testdoc GitHub CLI用ユーティリティ関数のテスト
+ * @testdoc GitHub ユーティリティ関数のテスト
  */
 
 import { writeFileSync, mkdirSync, rmSync } from "fs";
@@ -423,10 +423,10 @@ describe("readBodyFile", () => {
 describe("runGraphQL", () => {
   /**
    * @testdoc 変数名 "query" を使用するとエラーを返す
-   * @purpose gh CLI の予約語との衝突を防止（#585）
+   * @purpose octokit の予約語との衝突を防止（#585）
    */
-  it("should reject 'query' as variable name", () => {
-    const result = runGraphQL("query($query: String!) { viewer { login } }", {
+  it("should reject 'query' as variable name", async () => {
+    const result = await runGraphQL("query($query: String!) { viewer { login } }", {
       query: "test",
     });
     expect(result.success).toBe(false);
@@ -436,13 +436,12 @@ describe("runGraphQL", () => {
   });
 
   /**
-   * @testdoc "query" 以外の変数名は受け入れる（gh CLI へのスポーンは別途テスト）
+   * @testdoc "query" 以外の変数名は受け入れる
    * @purpose 正常な変数名が拒否されないことを確認
    */
-  it("should accept non-reserved variable names like 'searchQuery'", () => {
-    // spawnSync を呼ぶため gh CLI が必要だが、ガードだけ通過することを確認
-    // gh CLI が利用不可の環境でもガードは通過する
-    const result = runGraphQL(
+  it("should accept non-reserved variable names like 'searchQuery'", async () => {
+    // octokit が認証エラーを返しても、ガードは通過することを確認
+    const result = await runGraphQL(
       "query($searchQuery: String!) { viewer { login } }",
       { searchQuery: "test" },
       { silent: true }

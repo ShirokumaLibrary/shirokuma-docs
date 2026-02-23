@@ -8,7 +8,7 @@
  * Also checks: subject line length (max 72 chars), merge commits (skipped).
  */
 
-import { spawnSync } from "node:child_process";
+import { simpleGit } from "simple-git";
 import type { WorkflowIssue, WorkflowIssueSeverity } from "../workflow-types.js";
 
 const DEFAULT_TYPES = ["feat", "fix", "refactor", "docs", "test", "chore"];
@@ -83,21 +83,40 @@ export function validateCommitFormat(
 /**
  * Gather recent commits and validate format.
  */
-export function checkCommitFormat(
+export async function checkCommitFormat(
   severity: WorkflowIssueSeverity = "warning",
   allowedTypes: string[] = DEFAULT_TYPES,
   count: number = 20
-): WorkflowIssue[] {
-  const result = spawnSync(
-    "git",
-    ["log", "--format=%H%x00%s", `-${count}`],
-    {
-      encoding: "utf-8",
-      timeout: 5_000,
-    }
-  );
+): Promise<WorkflowIssue[]> {
+  try {
+    const git = simpleGit();
+    const result = await git.raw(["log", "--format=%H%x00%s", `-${count}`]);
 
-  if (result.status !== 0 || !result.stdout?.trim()) {
+    if (!result?.trim()) {
+      return [
+        {
+          type: "info",
+          message: "Could not read commit history. Skipping commit-format check.",
+          rule: "commit-format",
+        },
+      ];
+    }
+
+    const commits: CommitEntry[] = [];
+    const lines = result.trim().split("\n");
+
+    for (const line of lines) {
+      const sepIndex = line.indexOf("\0");
+      if (sepIndex === -1) continue;
+      const fullHash = line.substring(0, sepIndex).trim();
+      if (!fullHash) continue;
+      const hash = fullHash.substring(0, 7);
+      const subject = line.substring(sepIndex + 1);
+      commits.push({ hash, subject });
+    }
+
+    return validateCommitFormat(commits, severity, allowedTypes);
+  } catch {
     return [
       {
         type: "info",
@@ -106,19 +125,4 @@ export function checkCommitFormat(
       },
     ];
   }
-
-  const commits: CommitEntry[] = [];
-  const lines = result.stdout.trim().split("\n");
-
-  for (const line of lines) {
-    const sepIndex = line.indexOf("\0");
-    if (sepIndex === -1) continue;
-    const fullHash = line.substring(0, sepIndex).trim();
-    if (!fullHash) continue;
-    const hash = fullHash.substring(0, 7);
-    const subject = line.substring(sepIndex + 1);
-    commits.push({ hash, subject });
-  }
-
-  return validateCommitFormat(commits, severity, allowedTypes);
 }

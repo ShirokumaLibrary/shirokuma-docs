@@ -69,12 +69,12 @@ mutation($repositoryId: ID!, $name: String!, $color: String!, $description: Stri
 // =============================================================================
 
 /** リポジトリの GraphQL ID を取得 */
-export function getRepoId(owner: string, repo: string): string | null {
+export async function getRepoId(owner: string, repo: string): Promise<string | null> {
   interface QueryResult {
     data?: { repository?: { id?: string } };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_ID, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_REPO_ID, {
     owner,
     name: repo,
   });

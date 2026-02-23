@@ -16,13 +16,12 @@
 
 import { Logger } from "../utils/logger.js";
 import {
-  runGhCommand,
-  runGhCommandRaw,
   runGraphQL,
   isIssueNumber,
   parseIssueNumber,
   validateBody,
 } from "../utils/github.js";
+import { getOctokit } from "../utils/octokit-client.js";
 import { OutputFormat, formatOutput, GH_PR_LIST_COLUMNS } from "../utils/formatters.js";
 import {
   resolveTargetRepo,
@@ -276,7 +275,7 @@ export async function cmdPrComments(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_PR_REVIEW_THREADS, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_PR_REVIEW_THREADS, {
     owner,
     name: repo,
     number: prNumber,
@@ -372,7 +371,7 @@ export async function cmdMerge(
   if (prNumberStr && isIssueNumber(prNumberStr)) {
     prNumber = parseIssueNumber(prNumberStr);
   } else if (options.head) {
-    const resolved = resolvePrFromHead(options.head, owner, repo, logger);
+    const resolved = await resolvePrFromHead(options.head, owner, repo, logger);
     if (resolved === null) return 1;
     prNumber = resolved;
   } else {
@@ -386,32 +385,50 @@ export async function cmdMerge(
   const mergeMethod = parseMergeMethod(options);
   const deleteBranch = options.deleteBranch !== false; // default true
 
-  // Fetch PR body BEFORE merge to find linked issues (C2: post-merge fetch is fragile)
-  const prBodyResult = runGhCommand<{ body?: string }>(
-    ["pr", "view", String(prNumber), "--json", "body", "--repo", `${owner}/${repo}`],
-    { silent: true }
-  );
-  const linkedNumbers = prBodyResult.success
-    ? parseLinkedIssues(prBodyResult.data?.body)
-    : [];
+  // Fetch PR body + head ref BEFORE merge (C2: post-merge fetch is fragile)
+  const octokit = getOctokit();
+  let linkedNumbers: number[] = [];
+  let headRef: string | undefined;
 
-  // Build gh pr merge command
-  const mergeArgs = [
-    "pr", "merge", String(prNumber),
-    `--${mergeMethod}`,
-    "--repo", `${owner}/${repo}`,
-  ];
-
-  if (deleteBranch) {
-    mergeArgs.push("--delete-branch");
+  try {
+    const { data: prData } = await octokit.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: prNumber,
+    });
+    linkedNumbers = parseLinkedIssues(prData.body ?? undefined);
+    headRef = prData.head.ref;
+  } catch {
+    // Best-effort: if we can't get body, still try to merge
   }
 
   logger.debug(`Merging PR #${prNumber} with ${mergeMethod} method`);
 
-  const mergeResult = runGhCommandRaw(mergeArgs);
-  if (!mergeResult.success) {
-    logger.error(`Failed to merge PR #${prNumber}: ${mergeResult.error}`);
+  // Merge PR
+  try {
+    await octokit.rest.pulls.merge({
+      owner,
+      repo,
+      pull_number: prNumber,
+      merge_method: mergeMethod,
+    });
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logger.error(`Failed to merge PR #${prNumber}: ${errorMsg}`);
     return 1;
+  }
+
+  // Delete branch (best-effort)
+  if (deleteBranch && headRef) {
+    try {
+      await octokit.rest.git.deleteRef({
+        owner,
+        repo,
+        ref: `heads/${headRef}`,
+      });
+    } catch {
+      logger.warn(`Branch deletion failed for '${headRef}' (may be from a fork)`);
+    }
   }
 
   logger.success(`Merged PR #${prNumber} (${mergeMethod})`);
@@ -421,7 +438,7 @@ export async function cmdMerge(
 
   if (linkedNumbers.length > 0) {
     for (const num of linkedNumbers) {
-      const result = resolveAndUpdateStatus(owner, repo, num, "Done", logger);
+      const result = await resolveAndUpdateStatus(owner, repo, num, "Done", logger);
       if (result.success) {
         linkedIssuesUpdated.push({ number: num, status: "Done" });
         logger.success(`Issue #${num} → Done`);
@@ -489,19 +506,26 @@ export async function cmdPrReply(
   const commentId = options.replyTo;
 
   // Use REST API to reply (simpler than GraphQL which requires pullRequestReviewId)
-  interface ReplyResult {
-    id?: number;
-    html_url?: string;
-  }
+  let replyId: number | null = null;
+  let replyUrl: string | null = null;
 
-  const result = runGhCommand<ReplyResult>([
-    "api",
-    `repos/${owner}/${repo}/pulls/${prNumber}/comments/${commentId}/replies`,
-    "-f", `body=${options.body}`,
-  ]);
-
-  if (!result.success) {
-    logger.error(`Failed to reply to comment: ${result.error}`);
+  try {
+    const octokit = getOctokit();
+    const { data } = await octokit.request(
+      "POST /repos/{owner}/{repo}/pulls/{pull_number}/comments/{comment_id}/replies",
+      {
+        owner,
+        repo,
+        pull_number: prNumber,
+        comment_id: Number(commentId),
+        body: options.body,
+      }
+    );
+    replyId = data.id ?? null;
+    replyUrl = data.html_url ?? null;
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logger.error(`Failed to reply to comment: ${errorMsg}`);
     return 1;
   }
 
@@ -510,8 +534,8 @@ export async function cmdPrReply(
   const output = {
     pr_number: prNumber,
     reply_to: Number(commentId),
-    comment_id: result.data?.id ?? null,
-    comment_url: result.data?.html_url ?? null,
+    comment_id: replyId,
+    comment_url: replyUrl,
   };
 
   console.log(JSON.stringify(output, null, 2));
@@ -553,7 +577,7 @@ export async function cmdResolve(
     };
   }
 
-  const result = runGraphQL<ResolveResult>(GRAPHQL_MUTATION_RESOLVE_THREAD, {
+  const result = await runGraphQL<ResolveResult>(GRAPHQL_MUTATION_RESOLVE_THREAD, {
     threadId: options.threadId,
   });
 
@@ -588,35 +612,33 @@ export async function cmdResolve(
  * ブランチ名からオープンPRの番号を解決する。
  * 見つからない場合は null を返す。
  */
-export function resolvePrFromHead(
+export async function resolvePrFromHead(
   headBranch: string,
   owner: string,
   repo: string,
   logger: Logger
-): number | null {
-  interface PrListItem {
-    number?: number;
-    url?: string;
-  }
+): Promise<number | null> {
+  try {
+    const octokit = getOctokit();
+    const { data } = await octokit.rest.pulls.list({
+      owner,
+      repo,
+      head: `${owner}:${headBranch}`,
+      state: "open",
+    });
 
-  const result = runGhCommand<PrListItem[]>(
-    ["pr", "list", "--head", headBranch, "--json", "number,url", "--repo", `${owner}/${repo}`],
-    { silent: true }
-  );
+    if (data.length === 0) {
+      logger.error(`No open PR found for branch "${headBranch}"`);
+      return null;
+    }
 
-  if (!result.success || !result.data || result.data.length === 0) {
+    const prNumber = data[0].number;
+    logger.debug(`Resolved branch "${headBranch}" → PR #${prNumber}`);
+    return prNumber;
+  } catch {
     logger.error(`No open PR found for branch "${headBranch}"`);
     return null;
   }
-
-  const prNumber = result.data[0].number;
-  if (!prNumber) {
-    logger.error(`Could not extract PR number for branch "${headBranch}"`);
-    return null;
-  }
-
-  logger.debug(`Resolved branch "${headBranch}" → PR #${prNumber}`);
-  return prNumber;
 }
 
 // =============================================================================
@@ -675,12 +697,12 @@ export function parsePrStateFilter(
 // fetchOpenPRs (#45 - shared helper for session start)
 // =============================================================================
 
-export function fetchOpenPRs(
+export async function fetchOpenPRs(
   owner: string,
   repo: string,
   limit: number = 10
-): PrSummary[] {
-  const result = runGraphQL<PrListQueryResult>(GRAPHQL_QUERY_PR_LIST, {
+): Promise<PrSummary[]> {
+  const result = await runGraphQL<PrListQueryResult>(GRAPHQL_QUERY_PR_LIST, {
     owner,
     name: repo,
     first: limit,
@@ -727,7 +749,7 @@ export async function cmdPrList(
     return 1;
   }
 
-  const result = runGraphQL<PrListQueryResult>(GRAPHQL_QUERY_PR_LIST, {
+  const result = await runGraphQL<PrListQueryResult>(GRAPHQL_QUERY_PR_LIST, {
     owner,
     name: repo,
     first: limit,
@@ -820,7 +842,7 @@ export async function cmdPrShow(
     };
   }
 
-  const result = runGraphQL<QueryResult>(GRAPHQL_QUERY_PR_SHOW, {
+  const result = await runGraphQL<QueryResult>(GRAPHQL_QUERY_PR_SHOW, {
     owner,
     name: repo,
     number: prNumber,

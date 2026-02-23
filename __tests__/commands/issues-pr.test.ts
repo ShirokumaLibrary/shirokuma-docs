@@ -2,7 +2,7 @@
  * issues PR Commands Tests
  *
  * Tests for PR-related subcommands: pr-comments, merge, pr-reply, resolve.
- * Since these commands rely on external API calls (gh CLI),
+ * Since these commands rely on external API calls (octokit GraphQL/REST),
  * tests focus on input validation, output structure contracts,
  * and option validation logic.
  *

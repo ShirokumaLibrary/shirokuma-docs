@@ -4,7 +4,7 @@
  * Tests for the unified session management command.
  * Subcommands: start (fetch context), end (save handover), check (integrity).
  *
- * Since the command relies on external API calls (gh CLI GraphQL),
+ * Since the command relies on external API calls (octokit GraphQL/REST),
  * these tests focus on input validation, output structure contracts,
  * and status filtering logic.
  *
@@ -289,8 +289,8 @@ describe("session start - git state", () => {
    * @testdoc getGitState がGitState型のオブジェクトを返す
    * @purpose git状態取得関数の基本動作確認
    */
-  it("should return GitState object with required fields", () => {
-    const state = getGitState();
+  it("should return GitState object with required fields", async () => {
+    const state = await getGitState();
 
     expect(state).toHaveProperty("currentBranch");
     expect(state).toHaveProperty("uncommittedChanges");
@@ -303,8 +303,8 @@ describe("session start - git state", () => {
    * @testdoc getGitState がカレントブランチ名を文字列で返す
    * @purpose テスト実行時に必ずgitリポジトリ内にいることの確認
    */
-  it("should return current branch as string in a git repository", () => {
-    const state = getGitState();
+  it("should return current branch as string in a git repository", async () => {
+    const state = await getGitState();
 
     // Tests run inside the shirokuma-docs repo, so branch should be a string
     expect(typeof state.currentBranch).toBe("string");
@@ -315,8 +315,8 @@ describe("session start - git state", () => {
    * @testdoc hasUncommittedChanges がuncommittedChanges配列の長さと整合する
    * @purpose booleanフラグと配列の一貫性確認
    */
-  it("should have consistent hasUncommittedChanges flag", () => {
-    const state = getGitState();
+  it("should have consistent hasUncommittedChanges flag", async () => {
+    const state = await getGitState();
 
     if (state.uncommittedChanges.length > 0) {
       expect(state.hasUncommittedChanges).toBe(true);
@@ -1328,7 +1328,7 @@ describe("session end - PR merge auto-detection (#220)", () => {
    * @testdoc findMergedPrForIssue が存在しないIssueに対してnullを返す
    * @purpose マージ済みPRが見つからない場合のフォールバック確認
    */
-  it("should return null for non-existent issue", () => {
+  it("should return null for non-existent issue", async () => {
     const dummyLogger = {
       debug: () => {},
       info: () => {},
@@ -1338,7 +1338,7 @@ describe("session end - PR merge auto-detection (#220)", () => {
     };
 
     // Issue 999999 には対応するマージ済みPRがないはず
-    const result = findMergedPrForIssue(
+    const result = await findMergedPrForIssue(
       "ShirokumaDevelopment",
       "shirokuma-docs",
       999999,
@@ -1754,7 +1754,7 @@ describe("session check - metrics inconsistency classification (#342)", () => {
 
 // =============================================================================
 // isIssueClosed (#557)
-// Note: isIssueClosed は runGhCommand の薄いラッパー（4行）。
+// Note: isIssueClosed は octokit REST API の薄いラッパー。
 // プロジェクトのテスト方針（純粋関数のみユニットテスト、API モック不使用）に従い、
 // ユニットテストは省略。動作は session end の統合テストでカバー。
 // =============================================================================
@@ -2040,8 +2040,8 @@ describe("session preflight - getPreflightGitState (#861)", () => {
    * @testdoc getPreflightGitState が PreflightGitState 型のオブジェクトを返す
    * @purpose preflight 用の拡張 git 状態取得の基本動作確認
    */
-  it("should return PreflightGitState object with required fields", () => {
-    const state = getPreflightGitState();
+  it("should return PreflightGitState object with required fields", async () => {
+    const state = await getPreflightGitState();
 
     expect(state).toHaveProperty("branch");
     expect(state).toHaveProperty("baseBranch");
@@ -2059,8 +2059,8 @@ describe("session preflight - getPreflightGitState (#861)", () => {
    * @testdoc getPreflightGitState がカレントブランチ名を返す
    * @purpose テスト実行時に git リポジトリ内にいることの確認
    */
-  it("should return current branch as string in a git repository", () => {
-    const state = getPreflightGitState();
+  it("should return current branch as string in a git repository", async () => {
+    const state = await getPreflightGitState();
 
     expect(typeof state.branch).toBe("string");
     expect(state.branch!.length).toBeGreaterThan(0);
@@ -2070,8 +2070,8 @@ describe("session preflight - getPreflightGitState (#861)", () => {
    * @testdoc recentCommits の各要素が hash と message を持つ
    * @purpose コミット履歴の構造契約
    */
-  it("should return recentCommits with hash and message fields", () => {
-    const state = getPreflightGitState();
+  it("should return recentCommits with hash and message fields", async () => {
+    const state = await getPreflightGitState();
 
     // リポジトリにコミットがあるはず
     expect(state.recentCommits.length).toBeGreaterThan(0);
@@ -2086,8 +2086,8 @@ describe("session preflight - getPreflightGitState (#861)", () => {
    * @testdoc recentCommits の上限が 10 件
    * @purpose 最大10件のコミット履歴を返すことの確認
    */
-  it("should return at most 10 recent commits", () => {
-    const state = getPreflightGitState();
+  it("should return at most 10 recent commits", async () => {
+    const state = await getPreflightGitState();
 
     expect(state.recentCommits.length).toBeLessThanOrEqual(10);
   });
@@ -2096,8 +2096,8 @@ describe("session preflight - getPreflightGitState (#861)", () => {
    * @testdoc baseBranch が文字列または null を返す
    * @purpose ベースブランチ検出の型契約
    */
-  it("should return baseBranch as string or null", () => {
-    const state = getPreflightGitState();
+  it("should return baseBranch as string or null", async () => {
+    const state = await getPreflightGitState();
 
     expect(
       state.baseBranch === null || typeof state.baseBranch === "string"
@@ -2108,8 +2108,8 @@ describe("session preflight - getPreflightGitState (#861)", () => {
    * @testdoc unpushedCommits が数値または null を返す
    * @purpose upstream 未設定時に null を返す契約
    */
-  it("should return unpushedCommits as number or null", () => {
-    const state = getPreflightGitState();
+  it("should return unpushedCommits as number or null", async () => {
+    const state = await getPreflightGitState();
 
     expect(
       state.unpushedCommits === null || typeof state.unpushedCommits === "number"
