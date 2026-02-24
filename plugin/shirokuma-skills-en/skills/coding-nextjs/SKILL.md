@@ -64,7 +64,7 @@ Based on implementation feedback:
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Implementation] {feature-name}" \
-  --body report.md
+  --body-file report.md
 ```
 
 ### Step 5: Portal Update (for significant changes)

@@ -70,7 +70,7 @@ TodoWrite で進捗トラッカーを作成。
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Implementation] {feature-name}" \
-  --body report.md
+  --body-file report.md
 ```
 
 ### ステップ 5: ポータル更新（重要な変更の場合）

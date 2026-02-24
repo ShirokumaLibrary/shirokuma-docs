@@ -27,7 +27,7 @@ Claude Code skills produce two types of output. Route each to the appropriate de
 shirokuma-docs discussions create \
   --category Reports \
   --title "Review: {target}" \
-  --body /tmp/shirokuma-docs/report.md
+  --body-file /tmp/shirokuma-docs/report.md
 ```
 
 **Characteristics**:
@@ -85,7 +85,7 @@ When updating skills, replace local log references:
 Review results targeting a PR should be posted directly as PR comments.
 
 ```bash
-shirokuma-docs issues comment {PR#} --body - <<'EOF'
+shirokuma-docs issues comment {PR#} --body-file - <<'EOF'
 Review summary content
 EOF
 ```

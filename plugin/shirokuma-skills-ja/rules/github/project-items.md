@@ -95,7 +95,7 @@ CLI と冪等に協調動作。確認: `shirokuma-docs projects workflows`
 |------|---------|------|
 | コメント追加 | `issues comment {number}` | Issue/PR 両対応 |
 | コメント一覧 | `issues comments {number}` | JSON 出力 |
-| コメント編集 | `issues comment-edit {comment-id}` | Issue/PR 両対応、`--body` でファイル/stdin 指定 |
+| コメント編集 | `issues comment-edit {comment-id}` | Issue/PR 両対応、`--body-file` でファイル/stdin 指定 |
 
 ## 本文テンプレート
 

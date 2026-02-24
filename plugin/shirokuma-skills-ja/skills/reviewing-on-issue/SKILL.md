@@ -160,7 +160,7 @@ PR にレビューサマリーをコメントとして投稿：
 
 ```bash
 # Write ツールでファイル作成後
-shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md
+shirokuma-docs issues comment {PR#} --body-file /tmp/shirokuma-docs/{number}-review-summary.md
 ```
 
 重大な問題（severity: error）が多数（5件以上）ある場合のみ、詳細レポートを Discussion にも保存し、PR コメントに Discussion URL をリンクする。
@@ -173,7 +173,7 @@ Reports カテゴリに Discussion を作成（従来の動作）：
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Review] {role}: {target}" \
-  --body report.md
+  --body-file report.md
 ```
 
 Discussion URL をユーザーに報告。
@@ -385,7 +385,7 @@ Critical/High はスコープ外であっても `critical` に分類する。重
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Self-Review Feedback] {branch}: iteration {n}" \
-  --body /tmp/shirokuma-docs/{number}-feedback.md
+  --body-file /tmp/shirokuma-docs/{number}-feedback.md
 ```
 
 **ルール化提案**: 頻出パターン（3回以上）が検出された場合、レポート末尾に追記：

@@ -178,7 +178,7 @@ graph LR
 **Steps:**
 
 1. Detect category and invoke appropriate skill(s) (pass PR number as context)
-2. Check the Self-Review Result and verify that the review report was posted as a PR comment. If not posted, manually post via `shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md`:
+2. Check the Self-Review Result and verify that the review report was posted as a PR comment. If not posted, manually post via `shirokuma-docs issues comment {PR#} --body-file /tmp/shirokuma-docs/{number}-review-summary.md`:
    - **PASS**: End loop, proceed to out-of-scope processing (6c)
    - **FAIL + Auto-fixable: yes**: Auto-fix (critical + fixable-warning) based on findings → `git add` → `git commit` → `git push` → convergence check → re-review
    - **FAIL + Auto-fixable: no**: Stop loop, report issues requiring manual intervention, proceed to out-of-scope processing (6c)
@@ -222,25 +222,7 @@ After the self-review loop completes (PASS, loop stopped, or safety limit reache
 ```bash
 shirokuma-docs issues create \
   --title "{finding title}" \
-  --body "$(cat <<'EOF'
-## Purpose
-{purpose of the finding}
-
-## Summary
-{detailed description of the finding}
-
-## Background
-Out-of-scope finding detected during self-review (PR #{PR-number}).
-
-Refs #{main-issue-number}
-
-## Tasks
-- [ ] {fix task}
-
-## Deliverable
-{definition of done}
-EOF
-)" \
+  --body-file /tmp/shirokuma-docs/{number}-out-of-scope.md \
   --field-status "Backlog" \
   --field-priority "{AI-determined}" \
   --field-size "{AI-determined}"

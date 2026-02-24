@@ -11,7 +11,7 @@
 2. Commit and push
 3. Reply referencing the commit:
    ```bash
-   shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body - <<'EOF'
+   shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body-file - <<'EOF'
    Reply content
    EOF
    ```
@@ -21,7 +21,7 @@
 
 When a previously posted comment contains errors:
 
-1. `shirokuma-docs issues comment-edit <comment-id> --body /tmp/shirokuma-docs/{number}-updated.md`
+1. `shirokuma-docs issues comment-edit <comment-id> --body-file /tmp/shirokuma-docs/{number}-updated.md`
 2. Reply to the thread noting the correction
 3. Resolve the thread
 

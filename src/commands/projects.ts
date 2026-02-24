@@ -77,7 +77,7 @@ export interface ProjectsOptions {
   priority?: string;
   size?: string;
   title?: string;
-  body?: string;
+  bodyFile?: string;
 }
 
 interface ProjectInfo {
@@ -540,7 +540,7 @@ async function cmdCreate(
     return 1;
   }
 
-  const bodyError = validateBody(options.body);
+  const bodyError = validateBody(options.bodyFile);
   if (bodyError) {
     logger.error(bodyError);
     return 1;
@@ -570,7 +570,7 @@ async function cmdCreate(
   const result = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE, {
     projectId,
     title: options.title,
-    body: options.body ?? "",
+    body: options.bodyFile ?? "",
   });
 
   if (!result.success) {
@@ -621,7 +621,7 @@ async function cmdUpdate(
   logger: Logger
 ): Promise<number> {
   // Validation
-  const bodyError = validateBody(options.body);
+  const bodyError = validateBody(options.bodyFile);
   if (bodyError) {
     logger.error(bodyError);
     return 1;
@@ -674,12 +674,12 @@ async function cmdUpdate(
   let updated = await setItemFields(projectId, itemId, fields, logger) > 0;
 
   // Update body if provided
-  if (options.body !== undefined) {
+  if (options.bodyFile !== undefined) {
     if (item.draftIssueId) {
       // DraftIssue body update
       const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_BODY, {
         draftIssueId: item.draftIssueId,
-        body: options.body,
+        body: options.bodyFile,
       });
       if (result.success) updated = true;
     } else if (item.issueNumber && owner && repo) {
@@ -688,7 +688,7 @@ async function cmdUpdate(
       if (issueData?.id) {
         const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_ISSUE, {
           id: issueData.id,
-          body: options.body,
+          body: options.bodyFile,
         });
         if (result.success) updated = true;
       } else {

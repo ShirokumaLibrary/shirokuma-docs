@@ -105,7 +105,7 @@ If on the base branch (no feature branch), skip this step entirely.
 
 Use the Write tool to create `/tmp/shirokuma-docs/handover.md` with the handover content (use the template from the "Handover Body Format" section).
 
-Step 4 will reference this file via `--body /tmp/shirokuma-docs/handover.md`.
+Step 4 will reference this file via `--body-file /tmp/shirokuma-docs/handover.md`.
 
 ### Step 4: Save Handover + Update Statuses (Single Command)
 
@@ -114,7 +114,7 @@ Using the file created in Step 3.5, run:
 ```bash
 shirokuma-docs session end \
   --title "$(date +%Y-%m-%d) - {brief summary}" \
-  --body /tmp/shirokuma-docs/handover.md \
+  --body-file /tmp/shirokuma-docs/handover.md \
   --done {completed_issue_numbers} \
   --review {review_issue_numbers}
 ```
@@ -125,7 +125,7 @@ This single command:
 
 **Options:**
 - `--title` (required) - Handover title, typically date + summary
-- `--body` (required) - File path to handover body markdown (Write tool で作成)
+- `--body-file` (required) - File path to handover body markdown (Write tool で作成)
 - `--done <numbers...>` - Issue numbers to mark as Done
 - `--review <numbers...>` - Issue numbers to mark as Review
 

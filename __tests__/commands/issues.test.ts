@@ -236,7 +236,7 @@ describe("issues command options", () => {
     it("should support create action options", () => {
       const options = {
         title: "New Feature Request",
-        body: "Please implement this",
+        bodyFile: "Please implement this",
         fieldStatus: "Backlog",
         priority: "High",
         size: "M",
@@ -244,7 +244,7 @@ describe("issues command options", () => {
       };
 
       expect(options.title).toBe("New Feature Request");
-      expect(options.body).toBe("Please implement this");
+      expect(options.bodyFile).toBe("Please implement this");
       expect(options.fieldStatus).toBe("Backlog");
       expect(options.priority).toBe("High");
       expect(options.size).toBe("M");
@@ -253,7 +253,7 @@ describe("issues command options", () => {
     it("should support update action options", () => {
       const options = {
         title: "Updated Title",
-        body: "Updated body",
+        bodyFile: "Updated body",
         fieldStatus: "Done",
         priority: "Low",
         size: "S",
@@ -329,40 +329,40 @@ describe("issues command options", () => {
       const existingIssue = { title: "Original Title", body: "Original body" };
 
       // Case 1: --title only → body preserved
-      const titleOnlyOptions = { title: "New Title", body: undefined };
+      const titleOnlyOptions = { title: "New Title", bodyFile: undefined };
       const titleOnlyResult = {
         title: titleOnlyOptions.title,
-        body: titleOnlyOptions.body !== undefined ? titleOnlyOptions.body : existingIssue.body,
+        body: titleOnlyOptions.bodyFile !== undefined ? titleOnlyOptions.bodyFile : existingIssue.body,
       };
       expect(titleOnlyResult.title).toBe("New Title");
       expect(titleOnlyResult.body).toBe("Original body");
 
-      // Case 2: --body only → title preserved
-      const bodyOnlyOptions = { title: undefined, body: "New body" };
+      // Case 2: --body-file only → title preserved
+      const bodyOnlyOptions = { title: undefined, bodyFile: "New body" };
       const bodyOnlyResult = {
         title: bodyOnlyOptions.title !== undefined ? bodyOnlyOptions.title : existingIssue.title,
-        body: bodyOnlyOptions.body,
+        body: bodyOnlyOptions.bodyFile,
       };
       expect(bodyOnlyResult.title).toBe("Original Title");
       expect(bodyOnlyResult.body).toBe("New body");
 
       // Case 3: both specified
-      const bothOptions = { title: "New Title", body: "New body" };
+      const bothOptions = { title: "New Title", bodyFile: "New body" };
       expect(bothOptions.title).toBe("New Title");
-      expect(bothOptions.body).toBe("New body");
+      expect(bothOptions.bodyFile).toBe("New body");
 
-      // Case 4: --body "" intentional clear
-      const clearBodyOptions = { title: undefined, body: "" };
+      // Case 4: --body-file "" intentional clear
+      const clearBodyOptions = { title: undefined, bodyFile: "" };
       const clearBodyResult = {
         title: clearBodyOptions.title !== undefined ? clearBodyOptions.title : existingIssue.title,
-        body: clearBodyOptions.body !== undefined ? clearBodyOptions.body : existingIssue.body,
+        body: clearBodyOptions.bodyFile !== undefined ? clearBodyOptions.bodyFile : existingIssue.body,
       };
       expect(clearBodyResult.title).toBe("Original Title");
       expect(clearBodyResult.body).toBe("");
 
       // Case 5: neither specified (project fields only)
-      const projectOnlyOptions = { title: undefined, body: undefined };
-      const shouldUpdateIssue = projectOnlyOptions.title !== undefined || projectOnlyOptions.body !== undefined;
+      const projectOnlyOptions = { title: undefined, bodyFile: undefined };
+      const shouldUpdateIssue = projectOnlyOptions.title !== undefined || projectOnlyOptions.bodyFile !== undefined;
       expect(shouldUpdateIssue).toBe(false);
     });
 
@@ -486,18 +486,18 @@ describe("issues command actions", () => {
     });
 
     /**
-     * @testdoc commentアクションはIssueまたはPR番号と--bodyを必要とする (#353)
-     * @purpose targetとbodyオプションが必須であることを文書化
+     * @testdoc commentアクションはIssueまたはPR番号と--body-fileを必要とする (#353)
+     * @purpose targetとbodyFileオプションが必須であることを文書化
      */
-    it("comment action should require issue or PR number and --body (#353)", () => {
+    it("comment action should require issue or PR number and --body-file (#353)", () => {
       const action = "comment";
       const validTarget = "42";
-      const validOptions = { body: "This is a comment" };
-      const invalidOptions = { body: undefined };
+      const validOptions = { bodyFile: "This is a comment" };
+      const invalidOptions = { bodyFile: undefined };
 
       expect(isIssueNumber(validTarget)).toBe(true);
-      expect(validOptions.body).toBeDefined();
-      expect(invalidOptions.body).toBeUndefined();
+      expect(validOptions.bodyFile).toBeDefined();
+      expect(invalidOptions.bodyFile).toBeUndefined();
     });
 
     /**
@@ -703,19 +703,19 @@ describe("issues command actions", () => {
     });
 
     /**
-     * @testdoc comment-editアクションはコメントIDと--bodyを必要とする (#375)
-     * @purpose コメントIDとbodyオプションが必須であることを文書化
+     * @testdoc comment-editアクションはコメントIDと--body-fileを必要とする (#375)
+     * @purpose コメントIDとbodyFileオプションが必須であることを文書化
      */
-    it("comment-edit action should require comment ID and --body (#375)", () => {
+    it("comment-edit action should require comment ID and --body-file (#375)", () => {
       const action = "comment-edit";
       const validTarget = "12345678";
-      const validOptions = { body: "Updated comment" };
-      const invalidOptions = { body: undefined };
+      const validOptions = { bodyFile: "Updated comment" };
+      const invalidOptions = { bodyFile: undefined };
 
       expect(action).toBe("comment-edit");
       expect(parseInt(validTarget, 10)).toBeGreaterThan(0);
-      expect(validOptions.body).toBeDefined();
-      expect(invalidOptions.body).toBeUndefined();
+      expect(validOptions.bodyFile).toBeDefined();
+      expect(invalidOptions.bodyFile).toBeUndefined();
     });
 
     /**
@@ -752,16 +752,16 @@ describe("issues command actions", () => {
     });
 
     /**
-     * @testdoc commentsアクションは--bodyを必要としない (#537)
+     * @testdoc commentsアクションは--body-fileを必要としない (#537)
      * @purpose commentアクション（投稿）と異なり、読み取り専用であることを文書化
      */
-    it("comments action should not require --body (read-only) (#537)", () => {
+    it("comments action should not require --body-file (read-only) (#537)", () => {
       const action = "comments";
-      const options = { body: undefined };
+      const options = { bodyFile: undefined };
 
-      // comments は読み取り専用なので --body は不要
+      // comments は読み取り専用なので --body-file は不要
       expect(action).toBe("comments");
-      expect(options.body).toBeUndefined();
+      expect(options.bodyFile).toBeUndefined();
     });
   });
 });
@@ -1380,8 +1380,8 @@ describe("issues error handling", () => {
      */
     it("should document body required for comment error", () => {
       const errorCondition = {
-        cause: "--body option not provided for comment action",
-        expectedError: "--body is required for comment",
+        cause: "--body-file option not provided for comment action",
+        expectedError: "--body-file is required for comment",
         exitCode: 1,
       };
 
@@ -1408,8 +1408,8 @@ describe("issues error handling", () => {
      */
     it("should document body required for comment-edit error (#375)", () => {
       const errorCondition = {
-        cause: "--body option not provided for comment-edit action",
-        expectedError: "--body is required for comment-edit",
+        cause: "--body-file option not provided for comment-edit action",
+        expectedError: "--body-file is required for comment-edit",
         exitCode: 1,
       };
 

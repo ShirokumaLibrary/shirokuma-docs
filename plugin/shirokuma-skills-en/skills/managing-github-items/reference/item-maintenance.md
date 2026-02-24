@@ -16,10 +16,10 @@ For Issues / Discussions / PRs. Supplements the overview in the `project-items` 
 
 ```bash
 # Issues
-shirokuma-docs issues update {number} --body /tmp/shirokuma-docs/body.md
+shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/body.md
 
 # Discussions
-shirokuma-docs discussions update {number} --body /tmp/shirokuma-docs/body.md
+shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/body.md
 ```
 
 ## Workflow Order (Comment First)

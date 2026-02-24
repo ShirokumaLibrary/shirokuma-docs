@@ -146,7 +146,7 @@ Copy [templates/rule-proposal.md](../templates/rule-proposal.md)
 shirokuma-docs discussions create \
   --category Research \
   --title "[Research] Rule Discovery: ${CATEGORY}" \
-  --body /tmp/shirokuma-docs/report.md
+  --body-file /tmp/shirokuma-docs/report.md
 ```
 
 #### 6.2 Link to Future Plans (if applicable)

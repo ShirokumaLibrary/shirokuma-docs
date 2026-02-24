@@ -49,7 +49,7 @@ import { updateSkillsCommand } from "./commands/update-skills.js";
 import { sessionCommand } from "./commands/session.js";
 import { searchCommand } from "./commands/search.js";
 import { hooksEvaluateCommand } from "./commands/hooks.js";
-import { readFileSync } from "fs";
+import { readFileSync, existsSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { initI18n } from "./utils/i18n.js";
@@ -62,24 +62,53 @@ const packageJson = JSON.parse(
 );
 
 /**
- * --body オプションをファイルパスまたは stdin から解決し、内容に置換する。
- * `--body -` の場合は stdin から読み取る。
+ * --body-file オプションをファイルパスまたは stdin から解決し、内容に置換する。
+ * `--body-file -` の場合は stdin から読み取る。
  * 失敗時は process.exitCode を設定して false を返す。
  */
-function resolveBodyOption(options: Record<string, unknown>): boolean {
-  if (options.body && typeof options.body === "string") {
+function resolveBodyFileOption(options: Record<string, unknown>): boolean {
+  if (options.bodyFile && typeof options.bodyFile === "string") {
+    const source = options.bodyFile as string;
+
+    // stdin 以外はファイル存在チェック
+    if (source !== "-" && !existsSync(source)) {
+      console.error(
+        `Error: ファイルが見つかりません: ${source}\n` +
+        `--body-file にはファイルパスを指定してください（インラインテキストは不可）`
+      );
+      process.exitCode = 1;
+      return false;
+    }
+
     try {
-      const content = readBodyFile(options.body);
+      const content = readBodyFile(source);
       const bodyError = validateBody(content);
       if (bodyError) {
         console.error(`Error: ${bodyError}`);
         process.exitCode = 1;
         return false;
       }
-      options.body = content;
+      options.bodyFile = content;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error(`Error: Failed to read body file: ${msg}`);
+      const code = (err as NodeJS.ErrnoException).code;
+      let message: string;
+      switch (code) {
+        case "EACCES":
+          message = `ファイルの読み取り権限がありません: ${source}`;
+          break;
+        case "EISDIR":
+          message = `ディレクトリが指定されました。--body-file にはファイルパスを指定してください: ${source}`;
+          break;
+        case "ENAMETOOLONG":
+          message = `パスが長すぎます。--body-file にはインラインテキストではなくファイルパスを指定してください`;
+          break;
+        default: {
+          const msg = err instanceof Error ? err.message : String(err);
+          message = `Failed to read body file: ${msg}`;
+          break;
+        }
+      }
+      console.error(`Error: ${message}`);
       process.exitCode = 1;
       return false;
     }
@@ -462,7 +491,7 @@ program
   .option("--size <size>", "Set Size field (XS/S/M/L/XL)")
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Item title (for create)")
-  .option("-b, --body <file>", "Item body file path, or - for stdin (for create/update)")
+  .option("-b, --body-file <file>", "Item body file path, or - for stdin (for create/update)")
   .option("-F, --force", "Skip confirmation (delete) / Force destructive update (setup)")
   .option("--lang <lang>", "Language for field descriptions (option names stay in English): en, ja (for setup/create-project)")
   .option("--field-id <fieldId>", "Status field ID (for setup)")
@@ -471,7 +500,7 @@ program
   .option("--dry-run", "Preview changes without executing (for setup)")
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, target, options) => {
-    if (!resolveBodyOption(options)) return;
+    if (!resolveBodyFileOption(options)) return;
     // エイリアスオプションのマージ (#587)
     options.priority ??= options.fieldPriority;
     options.size ??= options.fieldSize;
@@ -499,7 +528,7 @@ program
   .option("--size <size>", "Set Projects Size field (XS/S/M/L/XL)")
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Issue title (for create)")
-  .option("-b, --body <file>", "Issue body file path, or - for stdin (for create/update/comment/close)")
+  .option("-b, --body-file <file>", "Issue body file path, or - for stdin (for create/update/comment/close)")
   .option("--issue-type <type>", "Set Issue Type (e.g., Feature, Bug, Task) (for create/update)")
   .option(
     "--state-reason <reason>",
@@ -525,7 +554,7 @@ program
   .option("--replace-parent", "Replace existing parent when adding sub-issue (for sub-add)")
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, target, subTarget, options) => {
-    if (!resolveBodyOption(options)) return;
+    if (!resolveBodyFileOption(options)) return;
     // エイリアスオプションのマージ (#587)
     options.priority ??= options.fieldPriority;
     options.size ??= options.fieldSize;
@@ -550,12 +579,12 @@ program
   .option("--limit <number>", "Max discussions to fetch (for list/search)", parseInt)
   .option("--format <format>", "Output format: json, table-json (list/search), frontmatter (show, default)")
   .option("-t, --title <title>", "Discussion title (for create/update)")
-  .option("-b, --body <file>", "Discussion body file path, or - for stdin (for create/update/comment)")
+  .option("-b, --body-file <file>", "Discussion body file path, or - for stdin (for create/update/comment)")
   .option("--public", "Target the public repository (from repoPairs config)")
   .option("--repo <alias>", "Target a cross-repo by alias (from crossRepos config)")
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, target, options) => {
-    if (!resolveBodyOption(options)) return;
+    if (!resolveBodyFileOption(options)) return;
     // For search action, treat target as query
     if (action === "search" && target) {
       options.query = target;
@@ -611,14 +640,14 @@ program
   .option("--all", "全ユーザーの引き継ぎを表示 (start用)")
   .option("--team", "チームダッシュボード: 全メンバーの引き継ぎと Issue を担当者別に表示 (start用)")
   .option("-t, --title <title>", "引き継ぎタイトル (end用)")
-  .option("-b, --body <file>", "引き継ぎ本文ファイルパス、または - で stdin (end用)")
+  .option("-b, --body-file <file>", "引き継ぎ本文ファイルパス、または - で stdin (end用)")
   .option("--done <numbers...>", "Done にする Issue 番号 (end用)")
   .option("--review <numbers...>", "Review にする Issue 番号 (end用)")
   .option("--fix", "不整合を自動修正 (check用)")
   .option("--setup", "GitHub手動設定の検証 (check用)")
   .option("-v, --verbose", "詳細ログ出力")
   .action((action, options) => {
-    if (!resolveBodyOption(options)) return;
+    if (!resolveBodyFileOption(options)) return;
     sessionCommand(action, options);
   });
 

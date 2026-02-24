@@ -186,7 +186,7 @@ NEEDS_REVISION が返された場合:
 計画の判断根拠を**一次記録**としてコメントに投稿する。本文の要約ではなく、コメントでしか残らない判断プロセスを記録する。
 
 ```bash
-shirokuma-docs issues comment {number} --body - <<'EOF'
+shirokuma-docs issues comment {number} --body-file - <<'EOF'
 ## 計画の判断根拠
 
 ### 選定アプローチ
@@ -209,7 +209,7 @@ EOF
 既存の Issue 本文の末尾に `## 計画` セクションを追加する。ステップ 3 で判定したレベルに応じたテンプレートを使用。
 
 ```bash
-shirokuma-docs issues update {number} --body /tmp/shirokuma-docs/{number}-body.md
+shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/{number}-body.md
 ```
 
 **重要**: 既存の本文（概要、タスク、成果物等）は保持し、`## 計画` セクションを**追加**する。既存の `## タスク` セクションがある場合、計画の `### タスク分解` はより具体的な実装ステップとして共存する。

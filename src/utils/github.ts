@@ -61,6 +61,24 @@ function convertVariables(
  * 後方互換ラッパー: octokit は { data: ... } ラッパーを自動除去して返すが、
  * 既存の呼び出し元は result.data.data.xxx でアクセスしているため、
  * { data: ... } で再ラップして互換性を維持する。
+ *
+ * @param query - GraphQL クエリ文字列
+ * @param variables - クエリ変数。`"query"` キーは予約済みのため使用不可
+ * @param options - オプション設定
+ * @param options.silent - `true` でエラー時の console.error を抑制する
+ * @param options.headers - 追加リクエストヘッダー
+ * @returns 成功時は `{ success: true, data, graphqlErrors? }`、失敗時は `{ success: false, error }`
+ *
+ * @example
+ * ```typescript
+ * const result = await runGraphQL<QueryResult>(
+ *   `query($owner: String!) { organization(login: $owner) { id } }`,
+ *   { owner: "my-org" }
+ * )
+ * if (result.success) console.log(result.data)
+ * ```
+ *
+ * @category GitHub API
  */
 export async function runGraphQL<T = unknown>(
   query: string,
@@ -123,6 +141,17 @@ export async function runGraphQL<T = unknown>(
 /**
  * git remote の origin URL から owner/repo を抽出（SSH/HTTPS 両対応）。
  * API 呼び出し不要で高速。認証前でも動作する。
+ *
+ * @param url - git remote URL（例: `git@github.com:owner/repo.git`, `https://github.com/owner/repo`）
+ * @returns パース成功時は `{ owner, name }`、GitHub 以外の URL やパース失敗時は `null`
+ *
+ * @example
+ * ```typescript
+ * parseGitRemoteUrl("git@github.com:octocat/hello.git")
+ * // => { owner: "octocat", name: "hello" }
+ * ```
+ *
+ * @category Git Remote
  */
 export function parseGitRemoteUrl(url: string): { owner: string; name: string } | null {
   // SSH: git@github.com:owner/repo.git
@@ -149,7 +178,16 @@ function getGitRemoteOriginUrl(): string | null {
 }
 
 /**
- * Get repository owner from current repo (git remote URL parsing)
+ * カレントリポジトリの owner を取得する（git remote URL パース）。
+ *
+ * @returns owner 名。git remote が未設定またはパース失敗時は `null`
+ *
+ * @example
+ * ```typescript
+ * const owner = getOwner() // => "octocat"
+ * ```
+ *
+ * @category Git Remote
  */
 export function getOwner(): string | null {
   const url = getGitRemoteOriginUrl();
@@ -158,7 +196,16 @@ export function getOwner(): string | null {
 }
 
 /**
- * Get repository name from current repo (git remote URL parsing)
+ * カレントリポジトリのリポジトリ名を取得する（git remote URL パース）。
+ *
+ * @returns リポジトリ名。git remote が未設定またはパース失敗時は `null`
+ *
+ * @example
+ * ```typescript
+ * const name = getRepoName() // => "shirokuma-docs"
+ * ```
+ *
+ * @category Git Remote
  */
 export function getRepoName(): string | null {
   const url = getGitRemoteOriginUrl();
@@ -167,7 +214,16 @@ export function getRepoName(): string | null {
 }
 
 /**
- * Get full repo info (owner/name) via git remote URL parsing
+ * カレントリポジトリの owner とリポジトリ名をまとめて取得する（git remote URL パース）。
+ *
+ * @returns `{ owner, name }` オブジェクト。git remote が未設定またはパース失敗時は `null`
+ *
+ * @example
+ * ```typescript
+ * const info = getRepoInfo() // => { owner: "octocat", name: "hello" }
+ * ```
+ *
+ * @category Git Remote
  */
 export function getRepoInfo(): { owner: string; name: string } | null {
   const url = getGitRemoteOriginUrl();
@@ -179,6 +235,19 @@ export function getRepoInfo(): { owner: string; name: string } | null {
  * リポジトリ情報取得の失敗原因を診断する。
  * getOwner() / getRepoName() / getRepoInfo() が null を返した後に呼び出す。
  * コストの低いチェックから順に実行し、最初にヒットした原因を返す。
+ *
+ * @returns `{ cause, suggestion }` — 検出された原因と推奨アクション
+ *
+ * @example
+ * ```typescript
+ * const info = getRepoInfo()
+ * if (!info) {
+ *   const { cause, suggestion } = await diagnoseRepoFailure()
+ *   console.error(cause, suggestion)
+ * }
+ * ```
+ *
+ * @category Git Remote
  */
 export async function diagnoseRepoFailure(): Promise<{ cause: string; suggestion: string }> {
   // (1) git リポジトリ内かチェック（.git ファイル直接読み取り）
@@ -223,7 +292,18 @@ export async function diagnoseRepoFailure(): Promise<{ cause: string; suggestion
 }
 
 /**
- * Validate title input
+ * タイトル入力をバリデーションする。
+ *
+ * @param title - 検証するタイトル文字列
+ * @returns エラーメッセージ。バリデーション通過時は `null`
+ *
+ * @example
+ * ```typescript
+ * const err = validateTitle("") // => "Title cannot be empty"
+ * const ok = validateTitle("Fix bug") // => null
+ * ```
+ *
+ * @category Validation
  */
 export function validateTitle(title: string): string | null {
   if (!title || !title.trim()) {
@@ -236,7 +316,18 @@ export function validateTitle(title: string): string | null {
 }
 
 /**
- * Validate body input
+ * 本文入力をバリデーションする。
+ *
+ * @param body - 検証する本文文字列。`undefined` の場合はバリデーション通過
+ * @returns エラーメッセージ。バリデーション通過時は `null`
+ *
+ * @example
+ * ```typescript
+ * const err = validateBody("x".repeat(70000)) // => "Body too long ..."
+ * const ok = validateBody("Hello") // => null
+ * ```
+ *
+ * @category Validation
  */
 export function validateBody(body: string | undefined): string | null {
   if (!body) return null;
@@ -248,7 +339,19 @@ export function validateBody(body: string | undefined): string | null {
 
 /**
  * ファイルパスまたは stdin から本文を読み込む。
- * `--body -` の場合は stdin、それ以外はファイルパスとして読み取る。
+ * `--body-file -` の場合は stdin、それ以外はファイルパスとして読み取る。
+ *
+ * @param source - `"-"` で stdin から読み取り、それ以外はファイルパスとして扱う
+ * @returns 読み込んだ本文の文字列
+ * @throws {Error} ファイルが存在しない、または読み取り権限がない場合
+ *
+ * @example
+ * ```typescript
+ * const body = readBodyFile("/tmp/body.md")
+ * const stdin = readBodyFile("-")
+ * ```
+ *
+ * @category Input
  */
 export function readBodyFile(source: string): string {
   if (source === "-") {
@@ -258,7 +361,18 @@ export function readBodyFile(source: string): string {
 }
 
 /**
- * Check if value looks like an Issue number (integer or #number)
+ * 値が Issue 番号のパターンに一致するか判定する（整数または `#` 付き整数）。
+ *
+ * @param value - 判定する文字列（例: `"123"`, `"#123"`）
+ * @returns Issue 番号パターンに一致する場合 `true`
+ *
+ * @example
+ * ```typescript
+ * isIssueNumber("#42")  // => true
+ * isIssueNumber("abc")  // => false
+ * ```
+ *
+ * @category Issue
  */
 export function isIssueNumber(value: string): boolean {
   const clean = value.replace(/^#/, "");
@@ -266,15 +380,37 @@ export function isIssueNumber(value: string): boolean {
 }
 
 /**
- * Parse issue number from string (handles #123 and 123)
+ * 文字列から Issue 番号を整数にパースする（`#123` と `123` の両形式に対応）。
+ *
+ * @param value - パースする文字列（例: `"#123"`, `"123"`）
+ * @returns パースされた Issue 番号（整数）。非数値の場合は `NaN`
+ *
+ * @example
+ * ```typescript
+ * parseIssueNumber("#42") // => 42
+ * parseIssueNumber("123") // => 123
+ * ```
+ *
+ * @category Issue
  */
 export function parseIssueNumber(value: string): number {
   return parseInt(value.replace(/^#/, ""), 10);
 }
 
 /**
- * Check if GitHub API is accessible and authenticated.
- * Uses octokit REST API (GITHUB_TOKEN or gh auth token fallback).
+ * GitHub API のアクセス可否と認証状態を確認する。
+ * octokit REST API を使用（GITHUB_TOKEN または gh auth token フォールバック）。
+ *
+ * @returns 成功時は `{ success: true, data: { authenticated: true, user } }`、
+ *   認証失敗時は `{ success: false, error }` を返す
+ *
+ * @example
+ * ```typescript
+ * const auth = await checkGitHubAuth()
+ * if (auth.success) console.log(`Authenticated as ${auth.data.user}`)
+ * ```
+ *
+ * @category GitHub API
  */
 export async function checkGitHubAuth(): Promise<GhResult<{ authenticated: boolean; user: string }>> {
   try {

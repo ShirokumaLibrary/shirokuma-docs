@@ -179,12 +179,12 @@ describe("discussions command options", () => {
         verbose: true,
         category: "Handovers",
         title: "Session Handover 2025-01-26",
-        body: "## Summary\n- Completed tasks\n- Next steps",
+        bodyFile: "## Summary\n- Completed tasks\n- Next steps",
       };
 
       expect(options.category).toBe("Handovers");
       expect(options.title).toBe("Session Handover 2025-01-26");
-      expect(options.body).toContain("## Summary");
+      expect(options.bodyFile).toContain("## Summary");
     });
 
     it("should support categories action options", () => {
@@ -209,14 +209,14 @@ describe("discussions command options", () => {
         category?: string;
         limit?: number;
         title?: string;
-        body?: string;
+        bodyFile?: string;
       } = {};
 
       expect(options.verbose).toBeUndefined();
       expect(options.category).toBeUndefined();
       expect(options.limit).toBeUndefined();
       expect(options.title).toBeUndefined();
-      expect(options.body).toBeUndefined();
+      expect(options.bodyFile).toBeUndefined();
     });
   });
 });
@@ -306,27 +306,27 @@ describe("discussions command actions", () => {
     });
 
     /**
-     * @testdoc createアクションは--titleと--bodyを必要とする
+     * @testdoc createアクションは--titleと--body-fileを必要とする
      * @purpose 必須オプションを文書化
      */
-    it("create action should require --title and --body", () => {
+    it("create action should require --title and --body-file", () => {
       const action = "create";
       const validOptions = {
         title: "New Discussion",
-        body: "Discussion content",
+        bodyFile: "Discussion content",
         category: "Handovers",
       };
       const invalidOptions = {
         title: undefined,
-        body: undefined,
+        bodyFile: undefined,
         category: "Handovers",
       };
 
       expect(validOptions.title).toBeDefined();
-      expect(validOptions.body).toBeDefined();
+      expect(validOptions.bodyFile).toBeDefined();
       expect(validOptions.category).toBeDefined();
       expect(invalidOptions.title).toBeUndefined();
-      expect(invalidOptions.body).toBeUndefined();
+      expect(invalidOptions.bodyFile).toBeUndefined();
     });
 
     /**
@@ -336,12 +336,12 @@ describe("discussions command actions", () => {
     it("create action should require --category (or config default)", () => {
       const optionsWithCategory = {
         title: "New Discussion",
-        body: "Content",
+        bodyFile: "Content",
         category: "Handovers",
       };
       const optionsWithoutCategory = {
         title: "New Discussion",
-        body: "Content",
+        bodyFile: "Content",
         category: undefined,
       };
 
@@ -350,37 +350,37 @@ describe("discussions command actions", () => {
     });
 
     /**
-     * @testdoc updateアクションはDiscussion番号/IDと--title/--bodyを必要とする
+     * @testdoc updateアクションはDiscussion番号/IDと--title/--body-fileを必要とする
      * @purpose 必須オプションを文書化
      */
-    it("update action should require target and at least --title or --body", () => {
+    it("update action should require target and at least --title or --body-file", () => {
       const action = "update";
       const validTarget = "30";
       const validOptions = {
         title: "Updated Title",
-        body: "Updated body content",
+        bodyFile: "Updated body content",
       };
       const titleOnlyOptions = {
         title: "Updated Title",
-        body: undefined,
+        bodyFile: undefined,
       };
       const bodyOnlyOptions = {
         title: undefined,
-        body: "Updated body content",
+        bodyFile: "Updated body content",
       };
       const invalidOptions = {
         title: undefined,
-        body: undefined,
+        bodyFile: undefined,
       };
 
       expect(action).toBe("update");
       expect(validTarget).toBeTruthy();
       expect(validOptions.title).toBeDefined();
-      expect(validOptions.body).toBeDefined();
+      expect(validOptions.bodyFile).toBeDefined();
       expect(titleOnlyOptions.title).toBeDefined();
-      expect(bodyOnlyOptions.body).toBeDefined();
+      expect(bodyOnlyOptions.bodyFile).toBeDefined();
       // At least one must be defined
-      expect(invalidOptions.title || invalidOptions.body).toBeFalsy();
+      expect(invalidOptions.title || invalidOptions.bodyFile).toBeFalsy();
     });
 
     /**
@@ -416,23 +416,23 @@ describe("discussions command actions", () => {
     });
 
     /**
-     * @testdoc commentアクションはDiscussion番号/IDと--bodyを必要とする
+     * @testdoc commentアクションはDiscussion番号/IDと--body-fileを必要とする
      * @purpose 必須オプションを文書化
      */
-    it("comment action should require target and --body", () => {
+    it("comment action should require target and --body-file", () => {
       const action = "comment";
       const validTarget = "30";
       const validOptions = {
-        body: "追加情報...",
+        bodyFile: "追加情報...",
       };
       const invalidOptions = {
-        body: undefined,
+        bodyFile: undefined,
       };
 
       expect(action).toBe("comment");
       expect(validTarget).toBeTruthy();
-      expect(validOptions.body).toBeDefined();
-      expect(invalidOptions.body).toBeUndefined();
+      expect(validOptions.bodyFile).toBeDefined();
+      expect(invalidOptions.bodyFile).toBeUndefined();
     });
   });
 });
@@ -853,8 +853,8 @@ describe("discussions error handling", () => {
      */
     it("should document body required error", () => {
       const errorCondition = {
-        cause: "--body option not provided for create action",
-        expectedError: "--body is required",
+        cause: "--body-file option not provided for create action",
+        expectedError: "--body-file is required",
         exitCode: 1,
       };
 
@@ -908,12 +908,12 @@ describe("discussions error handling", () => {
 
     /**
      * @testdoc updateアクションで更新フィールドが指定されていない場合
-     * @purpose --title も --body も指定されていない場合のエラー条件を文書化
+     * @purpose --title も --body-file も指定されていない場合のエラー条件を文書化
      */
     it("should document update requires title or body error", () => {
       const errorCondition = {
-        cause: "Neither --title nor --body provided for update action",
-        expectedError: "At least --title or --body is required for update",
+        cause: "Neither --title nor --body-file provided for update action",
+        expectedError: "At least --title or --body-file is required for update",
         exitCode: 1,
       };
 
@@ -928,7 +928,7 @@ describe("discussions error handling", () => {
       const errorCondition = {
         cause: "Discussion ID or number not provided for update action",
         expectedError: "Discussion ID or number required",
-        usage: "shirokuma-docs discussions update <id-or-number> --title ... --body ...",
+        usage: "shirokuma-docs discussions update <id-or-number> --title ... --body-file ...",
         exitCode: 1,
       };
 
@@ -958,7 +958,7 @@ describe("discussions error handling", () => {
       const errorCondition = {
         cause: "Discussion ID or number not provided for comment action",
         expectedError: "Discussion ID or number required",
-        usage: "shirokuma-docs discussions comment <id-or-number> --body ...",
+        usage: "shirokuma-docs discussions comment <id-or-number> --body-file ...",
         exitCode: 1,
       };
 
@@ -967,12 +967,12 @@ describe("discussions error handling", () => {
 
     /**
      * @testdoc commentアクションでボディが指定されていない場合
-     * @purpose --body未指定のエラー条件を文書化
+     * @purpose --body-file未指定のエラー条件を文書化
      */
     it("should document body required for comment error", () => {
       const errorCondition = {
-        cause: "--body option not provided for comment action",
-        expectedError: "--body is required for comment",
+        cause: "--body-file option not provided for comment action",
+        expectedError: "--body-file is required for comment",
         exitCode: 1,
       };
 

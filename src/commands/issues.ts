@@ -105,7 +105,7 @@ export interface IssuesOptions {
   priority?: string;
   size?: string;
   title?: string;
-  body?: string;
+  bodyFile?: string;
   issueType?: string;
   // Label management
   addLabel?: string[];
@@ -833,7 +833,7 @@ async function cmdCreate(
     return 1;
   }
 
-  const bodyError = validateBody(options.body);
+  const bodyError = validateBody(options.bodyFile);
   if (bodyError) {
     logger.error(bodyError);
     return 1;
@@ -888,7 +888,7 @@ async function cmdCreate(
   const createResult = await runGraphQL<CreateResult>(GRAPHQL_MUTATION_CREATE_ISSUE, {
     repositoryId: repoId,
     title: options.title,
-    body: options.body ?? "",
+    body: options.bodyFile ?? "",
     labelIds: labelIds ?? null,
     issueTypeId,
   });
@@ -1057,13 +1057,13 @@ async function cmdUpdate(
   }
 
   // Update issue fields (title, body, issueType)
-  if (options.title !== undefined || options.body !== undefined || issueTypeId) {
+  if (options.title !== undefined || options.bodyFile !== undefined || issueTypeId) {
     const issueId = await getIssueId(owner, repo, issueNumber);
     if (issueId) {
       const updateVars = buildUpdateIssueVariables({
         issueId,
         title: options.title !== undefined ? options.title : (issueNode.title ?? ""),
-        body: options.body !== undefined ? options.body : (issueNode.body ?? ""),
+        body: options.bodyFile !== undefined ? options.bodyFile : (issueNode.body ?? ""),
         issueType: options.issueType,
         issueTypeId,
       });
@@ -1073,7 +1073,7 @@ async function cmdUpdate(
         if (options.issueType) {
           logger.success(`Set issue type to '${options.issueType}'`);
         }
-        if (options.title !== undefined || options.body !== undefined) {
+        if (options.title !== undefined || options.bodyFile !== undefined) {
           logger.success("Updated issue");
         }
       }
@@ -1320,8 +1320,8 @@ async function cmdComment(
   options: IssuesOptions,
   logger: Logger
 ): Promise<number> {
-  if (!options.body) {
-    logger.error("--body is required for comment");
+  if (!options.bodyFile) {
+    logger.error("--body-file is required for comment");
     return 1;
   }
 
@@ -1361,7 +1361,7 @@ async function cmdComment(
 
   const result = await runGraphQL<CommentResult>(GRAPHQL_MUTATION_ADD_COMMENT, {
     subjectId,
-    body: options.body,
+    body: options.bodyFile,
   });
 
   if (!result.success) {
@@ -1468,8 +1468,8 @@ async function cmdCommentEdit(
   options: IssuesOptions,
   logger: Logger
 ): Promise<number> {
-  if (!options.body) {
-    logger.error("--body is required for comment-edit");
+  if (!options.bodyFile) {
+    logger.error("--body-file is required for comment-edit");
     return 1;
   }
 
@@ -1494,7 +1494,7 @@ async function cmdCommentEdit(
       owner,
       repo,
       comment_id: commentId,
-      body: options.body,
+      body: options.bodyFile,
     });
   } catch {
     logger.error(`Failed to edit comment ${commentId}`);
@@ -1520,7 +1520,7 @@ async function cmdCommentEdit(
  * close subcommand - Close an issue with optional comment.
  *
  * Supports:
- * - --body: Add a closing comment before closing
+ * - --body-file: Add a closing comment before closing
  * - --state-reason: COMPLETED (default) or NOT_PLANNED
  * - --repo: Cross-repo support
  */
@@ -1545,15 +1545,15 @@ async function cmdClose(
     return 1;
   }
 
-  // Add closing comment if --body is provided
-  if (options.body) {
+  // Add closing comment if --body-file is provided
+  if (options.bodyFile) {
     const commentResult = await runGraphQL<{
       data?: {
         addComment?: { commentEdge?: { node?: { id?: string } } };
       };
     }>(GRAPHQL_MUTATION_ADD_COMMENT, {
       subjectId: issueId,
-      body: options.body,
+      body: options.bodyFile,
     });
 
     if (commentResult.success) {
@@ -2003,7 +2003,7 @@ export async function issuesCommand(
     case "comment":
       if (!target) {
         logger.error("Issue or PR number required");
-        logger.info("Usage: shirokuma-docs issues comment <issue-or-pr-number> --body ...");
+        logger.info("Usage: shirokuma-docs issues comment <issue-or-pr-number> --body-file ...");
         exitCode = 1;
       } else {
         exitCode = await cmdComment(target, options, logger);
@@ -2023,7 +2023,7 @@ export async function issuesCommand(
     case "comment-edit":
       if (!target) {
         logger.error("Comment ID required");
-        logger.info("Usage: shirokuma-docs issues comment-edit <comment-id> --body ...");
+        logger.info("Usage: shirokuma-docs issues comment-edit <comment-id> --body-file ...");
         exitCode = 1;
       } else {
         exitCode = await cmdCommentEdit(target, options, logger);
@@ -2034,7 +2034,7 @@ export async function issuesCommand(
       if (!target) {
         logger.error("Issue number required");
         logger.info(
-          "Usage: shirokuma-docs issues close <number> [--body ...] [--state-reason COMPLETED|NOT_PLANNED]"
+          "Usage: shirokuma-docs issues close <number> [--body-file ...] [--state-reason COMPLETED|NOT_PLANNED]"
         );
         exitCode = 1;
       } else {
@@ -2046,7 +2046,7 @@ export async function issuesCommand(
       if (!target) {
         logger.error("Issue number required");
         logger.info(
-          "Usage: shirokuma-docs issues cancel <number> [--body ...]"
+          "Usage: shirokuma-docs issues cancel <number> [--body-file ...]"
         );
         exitCode = 1;
       } else {
@@ -2124,7 +2124,7 @@ export async function issuesCommand(
       if (!target) {
         logger.error("PR number required");
         logger.info(
-          "Usage: shirokuma-docs issues pr-reply <number> --reply-to <id> --body ..."
+          "Usage: shirokuma-docs issues pr-reply <number> --reply-to <id> --body-file ..."
         );
         exitCode = 1;
       } else {

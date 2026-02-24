@@ -107,7 +107,7 @@ EOF
 
 Write ツールで `/tmp/shirokuma-docs/handover.md` に引き継ぎ本文を作成する（「引き継ぎ本文テンプレート」セクションのテンプレートを使用）。
 
-ステップ 4 の `--body /tmp/shirokuma-docs/handover.md` でこのファイルを参照する。
+ステップ 4 の `--body-file /tmp/shirokuma-docs/handover.md` でこのファイルを参照する。
 
 ### ステップ 4: 引き継ぎ保存 + ステータス更新（単一コマンド）
 
@@ -116,7 +116,7 @@ Write ツールで `/tmp/shirokuma-docs/handover.md` に引き継ぎ本文を作
 ```bash
 shirokuma-docs session end \
   --title "$(date +%Y-%m-%d) - {サマリー}" \
-  --body /tmp/shirokuma-docs/handover.md \
+  --body-file /tmp/shirokuma-docs/handover.md \
   --done {完了issue番号} \
   --review {レビュー中issue番号}
 ```
@@ -127,7 +127,7 @@ shirokuma-docs session end \
 
 **オプション**:
 - `--title`（必須）- 引き継ぎタイトル、通常は日付 + サマリー
-- `--body`（必須）- 引き継ぎ本文の Markdown ファイルパス（Write ツールで作成）
+- `--body-file`（必須）- 引き継ぎ本文の Markdown ファイルパス（Write ツールで作成）
 - `--done <numbers...>` - Done にする Issue 番号
 - `--review <numbers...>` - Review にする Issue 番号
 

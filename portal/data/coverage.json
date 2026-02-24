@@ -1,0 +1,174 @@
+{
+  "results": [
+    {
+      "source": "portal/components/code-block.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/document/doc-params-table.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/document/doc-section.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/document/doc-table.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/drawflow-er-diagram.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/interactive-er-diagram.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/layout/app-sidebar.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/layout/er-sidebar.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/layout/global-header.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/layout/layout-content.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/markdown-content.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/mermaid-diagram.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/reactflow-er-diagram.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/search-dialog.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/shared/coverage-score-bar.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/swagger/endpoint-accordion.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/swagger/method-badge.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/swagger/params-table.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/tabs-with-hash.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/test/test-bdd-card.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/components/test/test-matrix.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/constants/test-categories.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/data-loader.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/db-schema-utils.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/format.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/hooks/use-hash-tab.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/path-utils.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/search-index-generator.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/search.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/sidebar-context.tsx",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/types.ts",
+      "testCount": 0,
+      "status": "missing"
+    },
+    {
+      "source": "portal/lib/utils.ts",
+      "testCount": 0,
+      "status": "missing"
+    }
+  ],
+  "orphans": [],
+  "summary": {
+    "totalSources": 32,
+    "coveredCount": 0,
+    "skippedCount": 0,
+    "missingCount": 32,
+    "orphanCount": 0,
+    "coveragePercent": 0
+  },
+  "passed": false
+}

@@ -45,13 +45,13 @@ shirokuma-docs issues list --all                    # クローズ含む
 shirokuma-docs issues list --status "In Progress"   # ステータスフィルタ
 shirokuma-docs issues show {number}                  # 詳細
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/shirokuma-docs/body.md \
+  --title "Title" --body-file /tmp/shirokuma-docs/body.md \
   --labels "area:cli" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
 shirokuma-docs issues update {number} --add-label "area:cli"       # ラベル追加
 shirokuma-docs issues update {number} --remove-label "area:docs"   # ラベル削除
-shirokuma-docs issues comment {number} --body - <<'EOF'
+shirokuma-docs issues comment {number} --body-file - <<'EOF'
 コメント内容
 EOF
 shirokuma-docs issues comments {number}                 # コメント一覧
@@ -67,7 +67,7 @@ shirokuma-docs issues pr-list --state merged --limit 5     # フィルタリン�
 shirokuma-docs issues pr-show {number}                      # PR 詳細（body, diff stats, linked issues）
 shirokuma-docs issues pr-comments {number}                  # レビューコメント・スレッド
 shirokuma-docs issues merge {number} --squash               # マージ + ステータス更新
-shirokuma-docs issues pr-reply {number} --reply-to {id} --body - <<'EOF'
+shirokuma-docs issues pr-reply {number} --reply-to {id} --body-file - <<'EOF'
 返信内容
 EOF
 shirokuma-docs issues resolve {number} --thread-id {id}    # スレッド解決
@@ -80,7 +80,7 @@ shirokuma-docs projects list                        # プロジェクトアイ�
 shirokuma-docs projects fields                      # フィールドオプション表示
 shirokuma-docs projects add-issue {number}          # Issue をプロジェクトに追加
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/shirokuma-docs/body.md \
+  --title "Title" --body-file /tmp/shirokuma-docs/body.md \
   --field-status "Backlog" --priority "Medium"               # DraftIssue
 shirokuma-docs projects get PVTI_xxx                # アイテム ID で取得
 shirokuma-docs projects update {number} --field-status "Done"
@@ -94,7 +94,7 @@ shirokuma-docs discussions show {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
-  --body /tmp/shirokuma-docs/body.md
+  --body-file /tmp/shirokuma-docs/body.md
 ```
 
 ### Repository
@@ -108,7 +108,7 @@ shirokuma-docs repo labels
 
 ```bash
 shirokuma-docs issues list --repo docs
-shirokuma-docs issues create --repo docs --title "Title" --body /tmp/shirokuma-docs/body.md
+shirokuma-docs issues create --repo docs --title "Title" --body-file /tmp/shirokuma-docs/body.md
 ```
 
 ### gh フォールバック（CLI 未対応の操作のみ）
@@ -126,12 +126,12 @@ gh auth login
 gh auth status
 ```
 
-## `--body` 使い分け
+## `--body-file` 使い分け
 
 | Tier | パターン | 用途 |
 |------|---------|------|
-| Tier 1 (stdin) | `--body - <<'EOF'...EOF` | コメント、返信、短い理由 |
-| Tier 2 (file) | Write → `--body /tmp/shirokuma-docs/xxx.md` | Issue/Discussion 本文、引き継ぎ |
+| Tier 1 (stdin) | `--body-file - <<'EOF'...EOF` | コメント、返信、短い理由 |
+| Tier 2 (file) | Write → `--body-file /tmp/shirokuma-docs/xxx.md` | Issue/Discussion 本文、引き継ぎ |
 
 heredoc delimiter は `<<'EOF'`（シングルクォートで変数展開防止）。
 

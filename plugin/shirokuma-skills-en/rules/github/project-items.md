@@ -198,7 +198,7 @@ Comment operation CLI commands:
 |-----------|---------|-------|
 | Add comment | `issues comment {number}` | Works for Issues and PRs |
 | List comments | `issues comments {number}` | JSON output |
-| Edit comment | `issues comment-edit {comment-id}` | Works for Issues and PRs, `--body` accepts file/stdin |
+| Edit comment | `issues comment-edit {comment-id}` | Works for Issues and PRs, `--body-file` accepts file/stdin |
 
 ## Creating Items
 

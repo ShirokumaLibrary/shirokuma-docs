@@ -48,7 +48,7 @@ export interface IssuesPrOptions {
   // reply/resolve options
   replyTo?: string;
   threadId?: string;
-  body?: string;
+  bodyFile?: string;
   // repo pair flags (pass through)
   public?: boolean;
   repo?: string;
@@ -483,13 +483,13 @@ export async function cmdPrReply(
     return 1;
   }
 
-  if (!options.body) {
-    logger.error("--body is required for pr-reply");
+  if (!options.bodyFile) {
+    logger.error("--body-file is required for pr-reply");
     return 1;
   }
 
   // H2: Validate body length
-  const bodyError = validateBody(options.body);
+  const bodyError = validateBody(options.bodyFile);
   if (bodyError) {
     logger.error(bodyError);
     return 1;
@@ -518,7 +518,7 @@ export async function cmdPrReply(
         repo,
         pull_number: prNumber,
         comment_id: Number(commentId),
-        body: options.body,
+        body: options.bodyFile,
       }
     );
     replyId = data.id ?? null;

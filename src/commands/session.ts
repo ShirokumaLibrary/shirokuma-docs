@@ -79,7 +79,7 @@ export interface SessionOptions {
   team?: boolean;
   // session end options
   title?: string;
-  body?: string;
+  bodyFile?: string;
   done?: string[];
   review?: string[];
   // session check options
@@ -1374,7 +1374,7 @@ async function cmdEnd(
     return 1;
   }
 
-  const bodyError = validateBody(options.body);
+  const bodyError = validateBody(options.bodyFile);
   if (bodyError) {
     logger.error(bodyError);
     return 1;
@@ -1503,7 +1503,7 @@ async function cmdEnd(
       repositoryId: repoId,
       categoryId: categoryId,
       title: title,
-      body: options.body ?? "",
+      body: options.bodyFile ?? "",
     });
 
     if (!result.success) {

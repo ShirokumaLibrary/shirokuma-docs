@@ -45,17 +45,17 @@ shirokuma-docs issues list --all                    # Include closed
 shirokuma-docs issues list --status "In Progress"   # Filter by status
 shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/shirokuma-docs/body.md \
+  --title "Title" --body-file /tmp/shirokuma-docs/body.md \
   --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
 shirokuma-docs issues update {number} --add-label "area:cli"       # Add label
 shirokuma-docs issues update {number} --remove-label "area:docs"   # Remove label
-shirokuma-docs issues comment {number} --body - <<'EOF'
+shirokuma-docs issues comment {number} --body-file - <<'EOF'
 Comment content
 EOF
 shirokuma-docs issues comments {number}                 # List comments
-shirokuma-docs issues comment-edit {comment-id} --body /tmp/shirokuma-docs/comment.md  # Works for Issue/PR comments
+shirokuma-docs issues comment-edit {comment-id} --body-file /tmp/shirokuma-docs/comment.md  # Works for Issue/PR comments
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
 ```
@@ -68,7 +68,7 @@ shirokuma-docs issues pr-list --state merged --limit 5     # Filtering
 shirokuma-docs issues pr-show {number}                      # PR details (body, diff stats, linked issues)
 shirokuma-docs issues pr-comments {number}                  # Review comments and threads
 shirokuma-docs issues merge {number} --squash               # Merge + status update
-shirokuma-docs issues pr-reply {number} --reply-to {id} --body - <<'EOF'
+shirokuma-docs issues pr-reply {number} --reply-to {id} --body-file - <<'EOF'
 Reply content
 EOF
 shirokuma-docs issues resolve {number} --thread-id {id}    # Resolve thread
@@ -81,7 +81,7 @@ shirokuma-docs projects list                        # Project items
 shirokuma-docs projects fields                      # Show field options
 shirokuma-docs projects add-issue {number}          # Add issue to project
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/shirokuma-docs/body.md \
+  --title "Title" --body-file /tmp/shirokuma-docs/body.md \
   --field-status "Backlog" --priority "Medium"               # DraftIssue
 shirokuma-docs projects get PVTI_xxx                # By item ID
 shirokuma-docs projects update {number} --field-status "Done"
@@ -95,7 +95,7 @@ shirokuma-docs discussions show {number}
 shirokuma-docs discussions create \
   --category Handovers \
   --title "$(date +%Y-%m-%d) - Summary" \
-  --body /tmp/shirokuma-docs/body.md
+  --body-file /tmp/shirokuma-docs/body.md
 ```
 
 ### Repository
@@ -109,7 +109,7 @@ shirokuma-docs repo labels
 
 ```bash
 shirokuma-docs issues list --repo docs
-shirokuma-docs issues create --repo docs --title "Title" --body /tmp/shirokuma-docs/body.md
+shirokuma-docs issues create --repo docs --title "Title" --body-file /tmp/shirokuma-docs/body.md
 ```
 
 ### gh Fallback (CLI unsupported only)
@@ -130,12 +130,12 @@ gh auth status
 gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```
 
-## `--body` Usage Guide
+## `--body-file` Usage Guide
 
 | Tier | Pattern | Usage |
 |------|---------|-------|
-| Tier 1 (stdin) | `--body - <<'EOF'...EOF` | Comments, replies, short reasons |
-| Tier 2 (file) | Write → `--body /tmp/shirokuma-docs/xxx.md` | Issue/Discussion body, handovers |
+| Tier 1 (stdin) | `--body-file - <<'EOF'...EOF` | Comments, replies, short reasons |
+| Tier 2 (file) | Write → `--body-file /tmp/shirokuma-docs/xxx.md` | Issue/Discussion body, handovers |
 
 Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion).
 

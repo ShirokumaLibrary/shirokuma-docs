@@ -83,8 +83,21 @@ query($login: String!, $first: Int!) {
 `;
 
 /**
- * Get project ID by name (defaults to repository name).
+ * プロジェクト名から GitHub Projects V2 の ID を取得する（デフォルトはリポジトリ名）。
  * Organization を先に試行し、失敗時に User にフォールバックする。
+ * 名前一致するプロジェクトがない場合は最初のプロジェクトをフォールバックとして使用する。
+ *
+ * @param owner - GitHub Organization または User のログイン名
+ * @param projectName - 検索するプロジェクト名。省略時はカレントリポジトリ名を使用
+ * @returns プロジェクトの GraphQL Node ID。取得失敗時は `null`
+ *
+ * @example
+ * ```typescript
+ * const projectId = await getProjectId("my-org")
+ * const namedId = await getProjectId("my-org", "my-project")
+ * ```
+ *
+ * @category Project
  */
 export async function getProjectId(owner: string, projectName?: string): Promise<string | null> {
   const targetName = projectName || getRepoName();
@@ -155,7 +168,17 @@ export async function getProjectId(owner: string, projectName?: string): Promise
 /**
  * Owner の GraphQL Node ID を取得する。
  * Organization を先に試行し、失敗時に User にフォールバック。
- * cmdCreateProject() で createProjectV2 mutation に必要。
+ * `createProjectV2` mutation に必要。
+ *
+ * @param owner - GitHub Organization または User のログイン名
+ * @returns GraphQL Node ID 文字列。Organization / User いずれも取得失敗時は `null`
+ *
+ * @example
+ * ```typescript
+ * const nodeId = await getOwnerNodeId("my-org")
+ * ```
+ *
+ * @category Project
  */
 export async function getOwnerNodeId(owner: string): Promise<string | null> {
   const octokit = getOctokit();
@@ -180,7 +203,16 @@ export async function getOwnerNodeId(owner: string): Promise<string | null> {
  * プロジェクトのワークフロー一覧を取得する。
  * GitHub Projects V2 のビルトイン自動化を確認するために使用。
  *
+ * @param projectId - プロジェクトの GraphQL Node ID
  * @returns ワークフロー配列。取得失敗時は空配列
+ *
+ * @example
+ * ```typescript
+ * const workflows = await fetchWorkflows(projectId)
+ * const enabled = workflows.filter(w => w.enabled)
+ * ```
+ *
+ * @category Project
  */
 export async function fetchWorkflows(projectId: string): Promise<ProjectWorkflow[]> {
   interface WorkflowNode {

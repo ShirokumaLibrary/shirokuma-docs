@@ -184,19 +184,19 @@ Issue 番号は GitHub が作成時に採番するため、作成前には不明
 ```bash
 # Issue（推奨 — #番号をサポート）
 shirokuma-docs issues create \
-  --title "Title" --body /tmp/shirokuma-docs/add-format-option-body.md \
+  --title "Title" --body-file /tmp/shirokuma-docs/add-format-option-body.md \
   --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
 # Sub-Issue として作成（--parent で親 Issue を指定）
 shirokuma-docs issues create \
-  --title "子タスク" --body /tmp/shirokuma-docs/body.md \
+  --title "子タスク" --body-file /tmp/shirokuma-docs/body.md \
   --parent 958 --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "S"
 
 # DraftIssue（軽量）
 shirokuma-docs projects create \
-  --title "Title" --body /tmp/shirokuma-docs/add-format-option-body.md \
+  --title "Title" --body-file /tmp/shirokuma-docs/add-format-option-body.md \
   --field-status "Backlog" --priority "Medium"
 ```
 

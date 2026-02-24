@@ -45,7 +45,7 @@ export interface DiscussionsOptions {
   // Output format
   format?: OutputFormat;
   title?: string;
-  body?: string;
+  bodyFile?: string;
   // Search query
   query?: string;
   // Repo pair flags
@@ -572,8 +572,8 @@ async function cmdCreate(
     return 1;
   }
 
-  if (!options.body) {
-    logger.error("--body is required");
+  if (!options.bodyFile) {
+    logger.error("--body-file is required");
     return 1;
   }
 
@@ -583,7 +583,7 @@ async function cmdCreate(
     return 1;
   }
 
-  const bodyError = validateBody(options.body);
+  const bodyError = validateBody(options.bodyFile);
   if (bodyError) {
     logger.error(bodyError);
     return 1;
@@ -633,7 +633,7 @@ async function cmdCreate(
     repositoryId: repoId,
     categoryId: category.id,
     title: options.title,
-    body: options.body,
+    body: options.bodyFile,
   });
 
   if (!result.success) {
@@ -677,8 +677,8 @@ async function cmdUpdate(
   const { owner, name: repo } = repoInfo;
 
   // Validate that at least one update field is provided
-  if (!options.title && !options.body) {
-    logger.error("At least --title or --body is required for update");
+  if (!options.title && !options.bodyFile) {
+    logger.error("At least --title or --body-file is required for update");
     return 1;
   }
 
@@ -692,8 +692,8 @@ async function cmdUpdate(
   }
 
   // Validate body if provided
-  if (options.body) {
-    const bodyError = validateBody(options.body);
+  if (options.bodyFile) {
+    const bodyError = validateBody(options.bodyFile);
     if (bodyError) {
       logger.error(bodyError);
       return 1;
@@ -735,7 +735,7 @@ async function cmdUpdate(
   const result = await runGraphQL<UpdateResult>(GRAPHQL_MUTATION_UPDATE_DISCUSSION, {
     discussionId,
     title: options.title ?? null,
-    body: options.body ?? null,
+    body: options.bodyFile ?? null,
   });
 
   if (!result.success) {
@@ -873,12 +873,12 @@ async function cmdComment(
   options: DiscussionsOptions,
   logger: Logger
 ): Promise<number> {
-  if (!options.body) {
-    logger.error("--body is required for comment");
+  if (!options.bodyFile) {
+    logger.error("--body-file is required for comment");
     return 1;
   }
 
-  const bodyError = validateBody(options.body);
+  const bodyError = validateBody(options.bodyFile);
   if (bodyError) {
     logger.error(bodyError);
     return 1;
@@ -925,7 +925,7 @@ async function cmdComment(
 
   const result = await runGraphQL<CommentResult>(GRAPHQL_MUTATION_ADD_DISCUSSION_COMMENT, {
     discussionId,
-    body: options.body,
+    body: options.bodyFile,
   });
 
   if (!result.success) {
@@ -1010,7 +1010,7 @@ export async function discussionsCommand(
     case "update":
       if (!target) {
         logger.error("Discussion ID or number required");
-        logger.info("Usage: shirokuma-docs discussions update <id-or-number> --title ... --body ...");
+        logger.info("Usage: shirokuma-docs discussions update <id-or-number> --title ... --body-file ...");
         exitCode = 1;
       } else {
         exitCode = await cmdUpdate(target, options, logger);
@@ -1030,7 +1030,7 @@ export async function discussionsCommand(
     case "comment":
       if (!target) {
         logger.error("Discussion ID or number required");
-        logger.info("Usage: shirokuma-docs discussions comment <id-or-number> --body ...");
+        logger.info("Usage: shirokuma-docs discussions comment <id-or-number> --body-file ...");
         exitCode = 1;
       } else {
         exitCode = await cmdComment(target, options, logger);

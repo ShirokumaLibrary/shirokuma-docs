@@ -70,6 +70,16 @@ function readGhHostsToken(): string | null {
 /**
  * 認証トークンを取得する。
  * 優先順位: GH_TOKEN > GITHUB_TOKEN > hosts.yml（gh CLI 互換順序）
+ *
+ * @returns 認証トークン文字列。いずれのソースからも取得できない場合は `null`
+ *
+ * @example
+ * ```typescript
+ * const token = resolveAuthToken()
+ * if (!token) throw new Error("No auth token found")
+ * ```
+ *
+ * @category Authentication
  */
 export function resolveAuthToken(): string | null {
   if (process.env.GH_TOKEN) return process.env.GH_TOKEN;
@@ -81,8 +91,18 @@ export function resolveAuthToken(): string | null {
 /**
  * Octokit シングルトンインスタンスを取得する。
  * 初回呼び出し時にインスタンスを生成し、以降はキャッシュを返す。
+ * throttling（レートリミット自動リトライ）と retry プラグインを含む。
  *
- * @throws 認証トークンが取得できない場合
+ * @returns Octokit インスタンス（throttling + retry プラグイン付き）
+ * @throws {Error} 認証トークンが取得できない場合
+ *
+ * @example
+ * ```typescript
+ * const octokit = getOctokit()
+ * const { data } = await octokit.rest.repos.get({ owner, repo })
+ * ```
+ *
+ * @category Authentication
  */
 export function getOctokit(): OctokitInstance {
   if (octokitInstance) return octokitInstance;
@@ -136,6 +156,14 @@ export function getOctokit(): OctokitInstance {
 
 /**
  * シングルトンインスタンスをリセットする（テスト用）。
+ * 次回 `getOctokit()` 呼び出し時に新しいインスタンスが生成される。
+ *
+ * @example
+ * ```typescript
+ * afterEach(() => resetOctokit())
+ * ```
+ *
+ * @category Testing
  */
 export function resetOctokit(): void {
   octokitInstance = null;
@@ -143,6 +171,17 @@ export function resetOctokit(): void {
 
 /**
  * テスト用: 任意の Octokit インスタンスを注入する。
+ * 注入後は `getOctokit()` がこのインスタンスを返す。
+ *
+ * @param instance - 注入する Octokit インスタンス
+ *
+ * @example
+ * ```typescript
+ * const mock = new Octokit() as OctokitInstance
+ * setOctokit(mock)
+ * ```
+ *
+ * @category Testing
  */
 export function setOctokit(instance: OctokitInstance): void {
   octokitInstance = instance;

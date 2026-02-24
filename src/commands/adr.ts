@@ -88,7 +88,7 @@ async function cmdCreate(
   await discussionsCommand("create", undefined, {
     category: ADR_CATEGORY,
     title: formattedTitle,
-    body,
+    bodyFile: body,
     verbose: options.verbose,
     repo: options.repo,
     public: options.public,

@@ -160,7 +160,7 @@ Post review summary as a PR comment:
 
 ```bash
 # Write tool でファイル作成後
-shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md
+shirokuma-docs issues comment {PR#} --body-file /tmp/shirokuma-docs/{number}-review-summary.md
 ```
 
 Only save a detailed report to Discussions when there are many critical issues (severity: error, 5 or more), and link the Discussion URL in the PR comment.
@@ -173,7 +173,7 @@ Create Discussion in Reports category (existing behavior):
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Review] {role}: {target}" \
-  --body report.md
+  --body-file report.md
 ```
 
 Report the Discussion URL to the user.
@@ -385,7 +385,7 @@ Accumulate review finding patterns from self-review to improve skills and rules.
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Self-Review Feedback] {branch}: iteration {n}" \
-  --body /tmp/shirokuma-docs/{number}-feedback.md
+  --body-file /tmp/shirokuma-docs/{number}-feedback.md
 ```
 
 **Rule proposals**: When frequent patterns (3+ occurrences) are detected, append to report:

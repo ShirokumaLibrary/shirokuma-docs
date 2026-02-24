@@ -392,7 +392,7 @@ describe("readBodyFile", () => {
   });
 
   /**
-   * @testdoc "--body -" で stdin 読み取りを試みる（fd 0）
+   * @testdoc "--body-file -" で stdin 読み取りを試みる（fd 0）
    * @purpose stdin 対応（#598）— ファイルパスではなく fd 0 から読む
    */
   it('should attempt to read from stdin when source is "-"', () => {

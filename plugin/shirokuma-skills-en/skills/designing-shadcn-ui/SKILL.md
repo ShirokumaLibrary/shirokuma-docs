@@ -69,7 +69,7 @@ pnpm --filter {app-name} build
 shirokuma-docs discussions create \
   --category Reports \
   --title "[Design] {component-name}" \
-  --body report.md
+  --body-file report.md
 ```
 
 ## Design Guidelines

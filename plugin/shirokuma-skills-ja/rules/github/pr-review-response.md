@@ -11,7 +11,7 @@
 2. コミットしてプッシュ
 3. コミットを参照して返信:
    ```bash
-   shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body - <<'EOF'
+   shirokuma-docs issues pr-reply <PR#> --reply-to <database_id> --body-file - <<'EOF'
    返信内容
    EOF
    ```
@@ -21,7 +21,7 @@
 
 以前投稿したコメントの内容に誤りがある場合:
 
-1. `shirokuma-docs issues comment-edit <comment-id> --body /tmp/shirokuma-docs/{number}-updated.md`
+1. `shirokuma-docs issues comment-edit <comment-id> --body-file /tmp/shirokuma-docs/{number}-updated.md`
 2. 修正した旨をスレッドに返信
 3. スレッドを解決
 

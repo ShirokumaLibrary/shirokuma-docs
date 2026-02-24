@@ -235,14 +235,14 @@ describe("projects command options", () => {
     it("should support create action options", () => {
       const options = {
         title: "New Draft Issue",
-        body: "Please implement this feature",
+        bodyFile: "Please implement this feature",
         fieldStatus: "Backlog",
         priority: "High",
         size: "M",
       };
 
       expect(options.title).toBe("New Draft Issue");
-      expect(options.body).toBe("Please implement this feature");
+      expect(options.bodyFile).toBe("Please implement this feature");
       expect(options.fieldStatus).toBe("Backlog");
       expect(options.priority).toBe("High");
       expect(options.size).toBe("M");
@@ -253,12 +253,12 @@ describe("projects command options", () => {
         fieldStatus: "Done",
         priority: "Low",
         size: "S",
-        body: "Updated body content",
+        bodyFile: "Updated body content",
       };
 
       expect(options.fieldStatus).toBe("Done");
       expect(options.priority).toBe("Low");
-      expect(options.body).toBe("Updated body content");
+      expect(options.bodyFile).toBe("Updated body content");
     });
 
     it("should support delete action options", () => {

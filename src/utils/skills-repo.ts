@@ -676,6 +676,30 @@ export const MARKETPLACE_NAME = "shirokuma-library";
 export const MARKETPLACE_REPO = "ShirokumaLibrary/shirokuma-plugins";
 
 /**
+ * known_marketplaces.json から MARKETPLACE_NAME の installLocation を解決する
+ *
+ * ファイル読み込み → JSON パース → エントリ取得 → パス存在確認を一括で行う。
+ * `getMarketplaceClonePath()` と `refreshMarketplaceClone()` の共通ロジック (#963)。
+ *
+ * @returns installLocation のパス、見つからない場合は null
+ */
+export function resolveMarketplaceInstallLocation(): string | null {
+  const knownPath = join(homedir(), ".claude", "plugins", "known_marketplaces.json");
+  if (!existsSync(knownPath)) return null;
+
+  try {
+    const content = readFileSync(knownPath, "utf-8");
+    const known = JSON.parse(content) as Record<string, { installLocation?: string }>;
+    const entry = known[MARKETPLACE_NAME];
+    if (!entry?.installLocation) return null;
+    if (!existsSync(entry.installLocation)) return null;
+    return entry.installLocation;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * marketplace ローカルクローンを最新に更新する
  *
  * `claude plugin install` は `~/.claude/plugins/marketplaces/` のローカルクローンから
@@ -688,28 +712,8 @@ export const MARKETPLACE_REPO = "ShirokumaLibrary/shirokuma-plugins";
  */
 export async function refreshMarketplaceClone(): Promise<boolean> {
   const logger = createLogger(false);
-  const knownPath = join(homedir(), ".claude", "plugins", "known_marketplaces.json");
-
-  if (!existsSync(knownPath)) {
-    return false;
-  }
-
-  let installLocation: string;
-  try {
-    const content = readFileSync(knownPath, "utf-8");
-    const known = JSON.parse(content) as Record<string, { installLocation?: string }>;
-    const entry = known[MARKETPLACE_NAME];
-    if (!entry?.installLocation) {
-      return false;
-    }
-    installLocation = entry.installLocation;
-  } catch {
-    return false;
-  }
-
-  if (!existsSync(installLocation)) {
-    return false;
-  }
+  const installLocation = resolveMarketplaceInstallLocation();
+  if (!installLocation) return false;
 
   try {
     const git = simpleGit(installLocation);
@@ -869,19 +873,7 @@ function getChannelMinLevel(channel: PluginChannel): number {
  * @returns クローンパス、見つからない場合は null
  */
 export function getMarketplaceClonePath(): string | null {
-  const knownPath = join(homedir(), ".claude", "plugins", "known_marketplaces.json");
-  if (!existsSync(knownPath)) return null;
-
-  try {
-    const content = readFileSync(knownPath, "utf-8");
-    const known = JSON.parse(content) as Record<string, { installLocation?: string }>;
-    const entry = known[MARKETPLACE_NAME];
-    if (!entry?.installLocation) return null;
-    if (!existsSync(entry.installLocation)) return null;
-    return entry.installLocation;
-  } catch {
-    return null;
-  }
+  return resolveMarketplaceInstallLocation();
 }
 
 /**

@@ -133,7 +133,7 @@ graph LR
 **手順:**
 
 1. カテゴリ検出して適切なスキルを起動（PR 番号をコンテキストとして渡す）
-2. レビュー結果の Self-Review Result を確認し、PR コメントとしてレビューレポートが投稿済みであることも確認する。未投稿の場合は `shirokuma-docs issues comment {PR#} --body /tmp/shirokuma-docs/{number}-review-summary.md` で手動投稿する：
+2. レビュー結果の Self-Review Result を確認し、PR コメントとしてレビューレポートが投稿済みであることも確認する。未投稿の場合は `shirokuma-docs issues comment {PR#} --body-file /tmp/shirokuma-docs/{number}-review-summary.md` で手動投稿する：
    - **PASS**: ループ終了、out-of-scope 処理（6c）へ
    - **FAIL + Auto-fixable: yes**: 指摘（critical + fixable-warning）に基づき自動修正 → `git add` → `git commit` → `git push` → 収束判定 → 再レビュー
    - **FAIL + Auto-fixable: no**: ループ停止、手動対応が必要な指摘を報告、out-of-scope 処理（6c）へ
@@ -177,25 +177,7 @@ graph LR
 ```bash
 shirokuma-docs issues create \
   --title "{指摘のタイトル}" \
-  --body "$(cat <<'EOF'
-## 目的
-{指摘の目的}
-
-## 概要
-{指摘内容の詳細}
-
-## 背景
-セルフレビュー（PR #{PR番号}）で検出された out-of-scope 指摘。
-
-Refs #{メインIssue番号}
-
-## タスク
-- [ ] {修正タスク}
-
-## 成果物
-{完了の定義}
-EOF
-)" \
+  --body-file /tmp/shirokuma-docs/{number}-out-of-scope.md \
   --field-status "Backlog" \
   --field-priority "{AI判断}" \
   --field-size "{AI判断}"

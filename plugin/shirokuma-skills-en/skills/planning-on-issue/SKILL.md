@@ -186,7 +186,7 @@ Follow the comment-first workflow (see `project-items` rule, "Workflow Order" se
 Post the planning decision rationale as a **primary record** in a comment. Record the decision process that would only exist in comments, not a summary of the body.
 
 ```bash
-shirokuma-docs issues comment {number} --body - <<'EOF'
+shirokuma-docs issues comment {number} --body-file - <<'EOF'
 ## Plan Decision Rationale
 
 ### Selected Approach
@@ -209,7 +209,7 @@ EOF
 Append a `## Plan` section to the existing issue body. Use the template from the depth level determined in Step 3.
 
 ```bash
-shirokuma-docs issues update {number} --body /tmp/shirokuma-docs/{number}-body.md
+shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/{number}-body.md
 ```
 
 **Important**: Preserve the existing body (overview, tasks, deliverables). **Append** the `## Plan` section. If an existing `## Tasks` section exists, the plan's `### Task Breakdown` coexists as more specific implementation steps.

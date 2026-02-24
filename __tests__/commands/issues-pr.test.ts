@@ -545,17 +545,17 @@ describe("pr-reply - input validation", () => {
    * @purpose reply-to未指定時のエラー条件文書化
    */
   it("should require --reply-to option", () => {
-    const options = { replyTo: undefined, body: "Fixed" };
+    const options = { replyTo: undefined, bodyFile: "Fixed" };
     expect(options.replyTo).toBeUndefined();
   });
 
   /**
-   * @testdoc --bodyオプションが必須
-   * @purpose body未指定時のエラー条件文書化
+   * @testdoc --body-fileオプションが必須
+   * @purpose body-file未指定時のエラー条件文書化
    */
-  it("should require --body option", () => {
-    const options = { replyTo: "12345678", body: undefined };
-    expect(options.body).toBeUndefined();
+  it("should require --body-file option", () => {
+    const options = { replyTo: "12345678", bodyFile: undefined };
+    expect(options.bodyFile).toBeUndefined();
   });
 
   /**
