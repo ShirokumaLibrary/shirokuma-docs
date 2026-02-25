@@ -745,7 +745,7 @@ async function cmdGet(
     createdAt?: string;
     updatedAt?: string;
     labels?: { nodes?: Array<{ name?: string }> };
-    parentIssue?: { number?: number; title?: string };
+    parent?: { number?: number; title?: string };
     subIssuesSummary?: {
       total?: number;
       completed?: number;
@@ -805,11 +805,11 @@ async function cmdGet(
     size_option_id: matchingItem?.size?.optionId,
   };
 
-  // parentIssue（親 Issue がある場合のみ表示）
-  if (node.parentIssue?.number) {
-    output.parentIssue = {
-      number: node.parentIssue.number,
-      title: node.parentIssue.title,
+  // parent（親 Issue がある場合のみ表示）
+  if (node.parent?.number) {
+    output.parent = {
+      number: node.parent.number,
+      title: node.parent.title,
     };
   }
 

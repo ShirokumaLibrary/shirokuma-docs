@@ -1010,15 +1010,15 @@ describe("issues output format", () => {
     });
 
     /**
-     * @testdoc parentIssue出力構造（サブIssueの場合のみ表示）
-     * @purpose サブIssue検出に必要なparentIssueフィールドの出力形式を文書化
+     * @testdoc parent出力構造（サブIssueの場合のみ表示）
+     * @purpose サブIssue検出に必要なparentフィールドの出力形式を文書化
      */
-    it("should document parentIssue output for sub-issues", () => {
-      // parentIssue はサブ Issue の場合のみ出力される（条件付きフィールド）
+    it("should document parent output for sub-issues", () => {
+      // parent はサブ Issue の場合のみ出力される（条件付きフィールド）
       const outputWithParent = {
         number: 52,
         title: "Sub-Issue Title",
-        parentIssue: {
+        parent: {
           number: 958,
           title: "Migrate to Octokit",
         },
@@ -1029,9 +1029,9 @@ describe("issues output format", () => {
         title: "Standalone Issue",
       };
 
-      expect(outputWithParent.parentIssue.number).toBe(958);
-      expect(outputWithParent.parentIssue.title).toBe("Migrate to Octokit");
-      expect(outputWithoutParent).not.toHaveProperty("parentIssue");
+      expect(outputWithParent.parent.number).toBe(958);
+      expect(outputWithParent.parent.title).toBe("Migrate to Octokit");
+      expect(outputWithoutParent).not.toHaveProperty("parent");
     });
   });
 

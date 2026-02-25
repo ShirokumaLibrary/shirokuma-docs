@@ -39,7 +39,7 @@ query($owner: String!, $name: String!, $number: Int!) {
       labels(first: 20) {
         nodes { name }
       }
-      parentIssue {
+      parent {
         number
         title
       }
