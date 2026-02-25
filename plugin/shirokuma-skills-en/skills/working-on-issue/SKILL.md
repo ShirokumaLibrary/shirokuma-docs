@@ -65,6 +65,20 @@ Check if issue body contains `## Plan` section (detected by `^## Plan` line pref
 | Planning + no plan | → Delegate to `planning-on-issue` |
 | Planning + plan exists | → Transition to Spec Review, ask user approval |
 
+#### Sub-Issue Detection
+
+When `shirokuma-docs issues show {number}` output contains a `parentIssue` field, the issue is a sub-issue of an epic:
+
+```
+parentIssue:
+  number: 958
+  title: "Migrate to Octokit"
+```
+
+When sub-issue is detected:
+- Record the parent issue number for base branch detection in Step 3
+- `creating-pr-on-issue` will self-detect the sub-issue via the `parentIssue` field, so explicit context passing is not required (if passed, it is used as supplementary; otherwise, self-detection is the fallback)
+
 **Text description only**: Classify using dispatch condition table (Step 4) keywords.
 
 ### Step 1a: Issue Resolution (text description only)
@@ -83,12 +97,23 @@ If issue is not already In Progress: `shirokuma-docs issues update {number} --fi
 
 ### Step 3: Ensure Feature Branch
 
-If on `develop`, create branch per `branch-workflow` rule:
+If on `develop` (or the integration branch for sub-issues), create branch per `branch-workflow` rule:
 
 ```bash
+# Normal issue
 git checkout develop && git pull origin develop
 git checkout -b {type}/{number}-{slug}
+
+# Sub-issue (branch from integration branch)
+git checkout epic/{parent-number}-{slug} && git pull origin epic/{parent-number}-{slug}
+git checkout -b {type}/{number}-{slug}
 ```
+
+**Sub-issue integration branch detection** (in order):
+
+1. Extract branch name from parent issue body: look for `### Integration Branch` (EN) / `### Integration ブランチ` (JA) heading, extract branch name from the backtick block immediately following (any prefix accepted: `epic/`, `chore/`, `feat/`, etc.)
+2. Fallback: `git branch -r --list "origin/*/{parent-number}-*"` (1 match → auto-select, multiple → AskUserQuestion, 0 → fall back to `develop`)
+3. Not found: Use `develop` as base and warn user
 
 ### Step 3b: Propose ADR (Feature M+ only)
 
@@ -148,6 +173,21 @@ After work completes, execute the chain **automatically**. No user confirmation 
   - Stop if issue count increases between iterations
 - After self-review, review-based Issue body updates follow comment-first principle (handled by `creating-pr-on-issue` Step 6c)
 - On failure: stop chain, report status, return control to user
+
+### Step 6: Evolution Signal Reminder
+
+After successful chain completion (skip on chain failure), check for accumulated Evolution signals.
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+- 0 discussions → display nothing
+- 1+ discussions → display one line:
+
+> 🧬 Evolution signals are accumulated. Run `/evolving-rules` to analyze.
+
+Do not register in TodoWrite (non-blocking display, not a work step).
 
 ## Batch Mode
 
@@ -237,6 +277,8 @@ Track files changed per issue using `git diff --name-only` before/after each imp
 | Already In Progress | Continue without status change |
 | Wrong branch | AskUserQuestion: switch or continue |
 | Chain failure | Report completed/remaining steps, return control |
+| Sub-issue with no integration branch | Use `develop` as base, warn user |
+| Epic issue selected directly | Propose working on a sub-issue instead |
 
 ## Rule References
 
@@ -244,6 +286,7 @@ Track files changed per issue using `git diff --name-only` before/after each imp
 |------|-------|
 | `branch-workflow` | Branch naming, creation from `develop` |
 | `batch-workflow` | Batch eligibility, quality standards, branch naming |
+| `epic-workflow` | Epic structure, integration branch, sub-issue workflow |
 | `project-items` | Status workflow, field requirements |
 | `git-commit-style` | Commit message format |
 | `output-language` | GitHub output language convention |

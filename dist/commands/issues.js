@@ -492,6 +492,13 @@ async function cmdGet(issueNumberStr, options, logger) {
         size: matchingItem?.size?.name,
         size_option_id: matchingItem?.size?.optionId,
     };
+    // parentIssue（親 Issue がある場合のみ表示）
+    if (node.parentIssue?.number) {
+        output.parentIssue = {
+            number: node.parentIssue.number,
+            title: node.parentIssue.title,
+        };
+    }
     // Sub-Issues summary（子 Issue がある場合のみ表示）
     const subSummary = node.subIssuesSummary;
     if (subSummary && (subSummary.total ?? 0) > 0) {

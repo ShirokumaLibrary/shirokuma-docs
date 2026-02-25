@@ -173,6 +173,24 @@ shirokuma-docs session start --team
 
 バッチオプションが選択された場合、全 Issue 番号付きで `working-on-issue` を起動（例: `#101 #102 #105`）。
 
+## 進化シグナルリマインド
+
+コンテキスト表示（ステップ 2）後、Evolution Discussion にシグナルが蓄積されているか確認する。
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+シグナルが蓄積されている場合、アクティブな Issue セクションの後に 1 行で表示:
+
+```markdown
+> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
+```
+
+- **自動実行しない** — リマインドのみ（ユーザーが起動を判断）
+- **蓄積がない場合は非表示** — ノイズを避ける
+- **ブロッキングにしない** — ステップ 3 の方向性確認に影響しない
+
 ## 注意事項
 
 - セッションヘッダーに現在時刻を表示

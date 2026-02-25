@@ -30,6 +30,9 @@ Create Issues / Discussions and manage spec Discussions.
 | [reference/github-operations.md](reference/github-operations.md) | GitHub CLI commands and status workflow | All commands |
 | [reference/create-item.md](reference/create-item.md) | Issue creation workflow and context inference | `/create-item` execution |
 | [reference/create-spec.md](reference/create-spec.md) | Spec Discussion creation workflow | `/create-spec` execution |
+| [reference/discussion-workflows.md](reference/discussion-workflows.md) | Discussion management workflows and search | Discussion operations |
+| [reference/epic-workflow.md](reference/epic-workflow.md) | Epic and sub-Issue workflow | Epic management |
+| [reference/item-maintenance.md](reference/item-maintenance.md) | Item body maintenance procedures | Issue/Discussion body updates |
 
 ## Error Handling
 

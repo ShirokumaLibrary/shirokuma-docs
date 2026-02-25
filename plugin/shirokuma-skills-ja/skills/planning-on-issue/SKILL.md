@@ -110,6 +110,41 @@ Issue の内容と調査結果から計画レベルを判定し、レベルに�
 - {破壊的変更、パフォーマンス、セキュリティ等}
 ```
 
+#### エピック計画（サブ Issue を持つ Issue の場合）
+
+`subIssuesSummary.total > 0` の Issue では、サブ Issue 構成と integration ブランチを含む拡張テンプレートを使用する:
+
+```markdown
+## 計画
+
+### アプローチ
+{全体方針}
+
+### Integration ブランチ
+`epic/{number}-{slug}`
+
+### サブ Issue 構成
+
+| # | Issue | 内容 | 依存 | サイズ |
+|---|-------|------|------|--------|
+| 1 | #{sub1} | {概要} | — | S |
+| 2 | #{sub2} | {概要} | #{sub1} | M |
+
+### 実行順序
+{依存関係に基づく推奨順序}
+
+### タスク分解
+- [ ] Integration ブランチ作成
+- [ ] #{sub1}: {タスク概要}
+- [ ] #{sub2}: {タスク概要}
+- [ ] 最終 PR: integration → develop
+
+### リスク・懸念
+- {サブ Issue 間の依存リスク}
+```
+
+詳細は `epic-workflow` リファレンス参照。
+
 ### ステップ 4: 計画レビュー（まっさらコンテキスト）
 
 計画策定と同じエージェントがレビューしても盲点に気づけない。Task ツールでまっさらなコンテキストのエージェントにレビューを委任する。
@@ -259,6 +294,19 @@ shirokuma-docs issues update {number} --field-status "Spec Review"
 修正が必要な場合はフィードバックをお願いします。
 ```
 
+#### Evolution シグナルリマインド
+
+計画完了レポートの末尾で、Evolution シグナルの蓄積を確認する。
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+- Discussion が 0 件 → 何も表示しない
+- Discussion が 1 件以上 → 計画サマリーの末尾に 1 行追記:
+
+> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
+
 ## GitHub 書き込みルール
 
 Issue のコメント・本文への書き込みは `output-language` ルールと `github-writing-style` ルールに準拠すること。
@@ -293,6 +341,7 @@ Add GitHub writing rule references to each skill...  ← 日本語設定では�
 | Issue の body が空 | 計画セクションのみで本文を作成 |
 | ステータスが既に Planning | 計画続行、ステータス更新をスキップ |
 | ステータスが既に Spec Review | 計画を更新し、ステータスはそのまま |
+| エピック Issue（サブ Issue あり） | エピック計画テンプレートを使用し、integration ブランチ名を計画に含める |
 
 ## ルール参照
 

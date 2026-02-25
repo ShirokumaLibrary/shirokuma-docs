@@ -86,9 +86,11 @@ shirokuma-docs portal -p . -o docs/portal
 
 | ドキュメント | 内容 | 読むタイミング |
 |------------|------|--------------|
+| [criteria/coding-conventions.md](criteria/coding-conventions.md) | コーディング規約 | コード記述時 |
+| [reference/tech-stack.md](reference/tech-stack.md) | 推奨技術スタック・バージョン要件 | 技術選定・バージョン確認時 |
 | [patterns/testing.md](patterns/testing.md) | テストパターン・モック設定 | テスト作成時 |
 | [patterns/code-patterns.md](patterns/code-patterns.md) | 技術パターン集 | 実装時 |
-| [patterns/coding-conventions.md](patterns/coding-conventions.md) | コーディング規約 | コード記述時 |
+| [patterns/coding-conventions.md](patterns/coding-conventions.md) | 命名・ディレクトリ規約（簡易版） | コード記述時 |
 | [patterns/better-auth.md](patterns/better-auth.md) | Better Auth 認証パターン | 認証実装時 |
 | [patterns/drizzle-orm.md](patterns/drizzle-orm.md) | Drizzle ORM パターン | DB 操作実装時 |
 | [patterns/e2e-testing.md](patterns/e2e-testing.md) | E2E テストパターン | Playwright テスト作成時 |

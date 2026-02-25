@@ -181,7 +181,7 @@ describe("init command", () => {
 
       expect(result.status).toBe(0);
       const output = extractJson<InitResult>(result.stdout);
-      expect(output.skills_installed).toHaveLength(23);
+      expect(output.skills_installed).toHaveLength(24);
 
       // スキル名リストで検証（ファイルは marketplace + cache にあるためローカルには存在しない）
       expect(output.skills_installed).toContain("managing-agents");

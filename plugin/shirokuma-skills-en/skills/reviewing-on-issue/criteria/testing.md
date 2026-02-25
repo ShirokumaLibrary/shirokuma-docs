@@ -419,6 +419,28 @@ page.locator('meta[property="article:published_time"]')
 - Test files in `__tests__/` directory
 - Describe blocks match function/component names
 
+## Skipped Test Convention
+
+Always add a `@skip-reason` annotation when skipping tests.
+
+```typescript
+/**
+ * @skip-reason External API dependency, mock not implemented
+ */
+it.skip("should do X", () => { })
+
+/**
+ * @skip-reason Flaky in CI: WebSocket timeout issue (tracked in #123)
+ */
+it.skip("should handle real-time updates", () => { })
+```
+
+### Review Checklist
+
+- [ ] `.skip` tests have a `@skip-reason` comment
+- [ ] `@skip-reason` includes reason and (if possible) tracking Issue number
+- [ ] No `.skip` without justification
+
 ## Test Commands
 
 ```bash

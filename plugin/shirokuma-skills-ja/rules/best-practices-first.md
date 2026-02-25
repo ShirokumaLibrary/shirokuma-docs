@@ -22,6 +22,7 @@
 | プロジェクトセットアップ | `setting-up-project` | Skill |
 | 探索 | `Explore` | Task (ビルトイン) |
 | アーキテクチャ | `Plan` | Task (ビルトイン) |
+| ルール・スキル進化 | `evolving-rules` | Skill |
 | 該当なし | 新しいスキルを提案 | — |
 
 ## 直接対応OK

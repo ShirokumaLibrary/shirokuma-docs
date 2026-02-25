@@ -58,6 +58,70 @@ export function parseLinkedIssues(body) {
     }
     return [...numbers];
 }
+/**
+ * Detect the PR-Issue link pattern from a mapping of issues to their linked PRs.
+ * Pure function (no API calls) — exported for testing.
+ *
+ * @param linkedIssues - Issue numbers linked by the current PR
+ * @param issueToAllPrs - Map of issue number → all PR numbers that reference it with closing keywords
+ */
+export function detectLinkPattern(linkedIssues, issueToAllPrs) {
+    if (linkedIssues.length === 0)
+        return "1:1";
+    const allPrs = new Set();
+    for (const prs of issueToAllPrs.values()) {
+        for (const pr of prs)
+            allPrs.add(pr);
+    }
+    const multipleIssues = linkedIssues.length > 1;
+    const multiplePrs = allPrs.size > 1;
+    if (!multipleIssues && !multiplePrs)
+        return "1:1";
+    if (multipleIssues && !multiplePrs)
+        return "1:N";
+    if (!multipleIssues && multiplePrs)
+        return "N:1";
+    return "N:N";
+}
+/**
+ * Build a link graph for the given PR by searching for other open PRs
+ * that also reference the same issues with closing keywords.
+ *
+ * Uses GitHub Search API to find open PRs mentioning each issue,
+ * then verifies with parseLinkedIssues for precision.
+ */
+async function buildLinkGraph(owner, repo, currentPr, linkedIssues, logger) {
+    const octokit = getOctokit();
+    const issueToAllPrs = new Map();
+    for (const issueNum of linkedIssues) {
+        try {
+            const { data } = await octokit.rest.search.issuesAndPullRequests({
+                q: `repo:${owner}/${repo} is:pr is:open "#${issueNum}"`,
+                per_page: 30,
+            });
+            // Filter: only PRs that actually have closing keywords for this issue
+            const prs = data.items
+                .filter((item) => {
+                const linked = parseLinkedIssues(item.body ?? undefined);
+                return linked.includes(issueNum);
+            })
+                .map((item) => item.number);
+            // Ensure current PR is included (it may already be in search results)
+            if (!prs.includes(currentPr)) {
+                prs.push(currentPr);
+            }
+            issueToAllPrs.set(issueNum, prs);
+        }
+        catch {
+            // Best-effort: if search fails, assume only this PR
+            logger.debug(`Search failed for issue #${issueNum}, assuming single PR`);
+            issueToAllPrs.set(issueNum, [currentPr]);
+        }
+    }
+    const pattern = detectLinkPattern(linkedIssues, issueToAllPrs);
+    const entries = [...issueToAllPrs.entries()].map(([issueNumber, linkedPrs]) => ({ issueNumber, linkedPrs }));
+    return { pattern, entries };
+}
 // =============================================================================
 // GraphQL Queries
 // =============================================================================
@@ -274,6 +338,27 @@ export async function cmdMerge(prNumberStr, options, logger) {
     }
     catch {
         // Best-effort: if we can't get body, still try to merge
+    }
+    // Link graph validation (#965): detect N:N before merging
+    if (linkedNumbers.length > 0 && !options.skipLinkCheck) {
+        const { pattern, entries } = await buildLinkGraph(owner, repo, prNumber, linkedNumbers, logger);
+        if (pattern === "N:N") {
+            const output = {
+                error: "N:N link graph detected",
+                pattern: "N:N",
+                pr_number: prNumber,
+                linked_issues: linkedNumbers,
+                link_graph: entries,
+                message: "Complex PR-Issue relationship detected. " +
+                    "Review the link graph and update issue statuses individually using " +
+                    "'shirokuma-docs issues update <number> --field-status Done'. " +
+                    "To merge without link check, use --skip-link-check.",
+            };
+            console.log(JSON.stringify(output, null, 2));
+            logger.error("N:N link graph detected - merge aborted");
+            return 1;
+        }
+        logger.debug(`Link pattern: ${pattern}`);
     }
     logger.debug(`Merging PR #${prNumber} with ${mergeMethod} method`);
     // Merge PR

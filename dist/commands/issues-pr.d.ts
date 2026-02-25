@@ -26,6 +26,7 @@ export interface IssuesPrOptions {
     rebase?: boolean;
     deleteBranch?: boolean;
     head?: string;
+    skipLinkCheck?: boolean;
     replyTo?: string;
     threadId?: string;
     bodyFile?: string;
@@ -63,6 +64,19 @@ export declare function parseMergeMethod(options: {
  * Returns deduplicated array of issue numbers.
  */
 export declare function parseLinkedIssues(body: string | undefined | null): number[];
+export type LinkPattern = "1:1" | "1:N" | "N:1" | "N:N";
+export interface LinkGraphEntry {
+    issueNumber: number;
+    linkedPrs: number[];
+}
+/**
+ * Detect the PR-Issue link pattern from a mapping of issues to their linked PRs.
+ * Pure function (no API calls) — exported for testing.
+ *
+ * @param linkedIssues - Issue numbers linked by the current PR
+ * @param issueToAllPrs - Map of issue number → all PR numbers that reference it with closing keywords
+ */
+export declare function detectLinkPattern(linkedIssues: number[], issueToAllPrs: Map<number, number[]>): LinkPattern;
 export declare function cmdPrComments(prNumberStr: string, options: IssuesPrOptions, logger: Logger): Promise<number>;
 export declare function cmdMerge(prNumberStr: string | undefined, options: IssuesPrOptions, logger: Logger): Promise<number>;
 export declare function cmdPrReply(prNumberStr: string, options: IssuesPrOptions, logger: Logger): Promise<number>;

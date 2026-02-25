@@ -30,6 +30,9 @@ Issue / Discussion の作成と仕様 Discussion の管理を行う。
 | [reference/github-operations.md](reference/github-operations.md) | GitHub CLI コマンド・ステータスワークフロー | 全コマンド共通 |
 | [reference/create-item.md](reference/create-item.md) | Issue 作成ワークフロー・コンテキスト推定 | `/create-item` 実行時 |
 | [reference/create-spec.md](reference/create-spec.md) | 仕様 Discussion 作成ワークフロー | `/create-spec` 実行時 |
+| [reference/discussion-workflows.md](reference/discussion-workflows.md) | Discussion 管理ワークフロー・検索手順 | Discussion 操作時 |
+| [reference/epic-workflow.md](reference/epic-workflow.md) | エピック・サブ Issue ワークフロー | エピック管理時 |
+| [reference/item-maintenance.md](reference/item-maintenance.md) | アイテム本文メンテナンス手順 | Issue/Discussion 本文更新時 |
 
 ## エラーハンドリング
 

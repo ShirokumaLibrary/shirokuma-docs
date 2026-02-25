@@ -18,6 +18,7 @@ import {
   validateMergeMethod,
   parseMergeMethod,
   parseLinkedIssues,
+  detectLinkPattern,
   parsePrStateFilter,
   resolvePrFromHead,
 } from "../../src/commands/issues-pr.js";
@@ -441,6 +442,87 @@ describe("merge - linked issue parsing", () => {
   it("should handle undefined body", () => {
     expect(parseLinkedIssues(undefined)).toEqual([]);
     expect(parseLinkedIssues("")).toEqual([]);
+  });
+});
+
+// =============================================================================
+// #965: PR-Issue link graph pattern detection
+// =============================================================================
+
+describe("link graph - pattern detection", () => {
+  /**
+   * @testdoc リンクIssueなしの場合1:1を返す
+   * @purpose リンクIssueがない場合のデフォルトパターン確認
+   */
+  it("should return 1:1 when no linked issues", () => {
+    expect(detectLinkPattern([], new Map())).toBe("1:1");
+  });
+
+  /**
+   * @testdoc 1PR-1Issueの場合1:1を返す
+   * @purpose 単純な1対1リンクパターンの検出確認
+   */
+  it("should return 1:1 for single PR and single issue", () => {
+    const issueToAllPrs = new Map([[42, [100]]]);
+    expect(detectLinkPattern([42], issueToAllPrs)).toBe("1:1");
+  });
+
+  /**
+   * @testdoc 1PR-複数Issueの場合1:Nを返す
+   * @purpose 1つのPRが複数Issueをクローズするパターンの検出確認
+   */
+  it("should return 1:N for single PR with multiple issues", () => {
+    const issueToAllPrs = new Map([
+      [42, [100]],
+      [43, [100]],
+    ]);
+    expect(detectLinkPattern([42, 43], issueToAllPrs)).toBe("1:N");
+  });
+
+  /**
+   * @testdoc 複数PR-1Issueの場合N:1を返す
+   * @purpose 複数PRが同一Issueをクローズするパターンの検出確認
+   */
+  it("should return N:1 for multiple PRs with single issue", () => {
+    const issueToAllPrs = new Map([[42, [100, 101]]]);
+    expect(detectLinkPattern([42], issueToAllPrs)).toBe("N:1");
+  });
+
+  /**
+   * @testdoc 複数PR-複数Issueの場合N:Nを返す
+   * @purpose 多対多の複雑なリンクグラフの検出確認
+   */
+  it("should return N:N for multiple PRs with multiple issues", () => {
+    const issueToAllPrs = new Map([
+      [42, [100, 101]],
+      [43, [100]],
+    ]);
+    expect(detectLinkPattern([42, 43], issueToAllPrs)).toBe("N:N");
+  });
+
+  /**
+   * @testdoc 全Issueが同一PRのみを参照する場合は1:Nを返す
+   * @purpose 同一PRから複数Issueへのリンクが正しく1:Nと判定される確認
+   */
+  it("should return 1:N when all issues reference only the same PR", () => {
+    const issueToAllPrs = new Map([
+      [42, [100]],
+      [43, [100]],
+      [44, [100]],
+    ]);
+    expect(detectLinkPattern([42, 43, 44], issueToAllPrs)).toBe("1:N");
+  });
+
+  /**
+   * @testdoc 異なるIssueが異なるPRを参照する場合N:Nを返す
+   * @purpose クロスリンクパターンの検出確認
+   */
+  it("should return N:N for cross-linked PRs and issues", () => {
+    const issueToAllPrs = new Map([
+      [42, [100]],
+      [43, [101]],
+    ]);
+    expect(detectLinkPattern([42, 43], issueToAllPrs)).toBe("N:N");
   });
 });
 

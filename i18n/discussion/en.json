@@ -147,6 +147,37 @@
       }
     }
   },
+  "evolution": {
+    "header": {
+      "title": "Evolution Signals",
+      "description": "Record improvement signals for rules and skills."
+    },
+    "signalType": {
+      "label": "Signal Type",
+      "description": "Type of signal",
+      "placeholder": "Rule friction | Missing pattern | Skill improvement | Lint trend | Success rate"
+    },
+    "target": {
+      "label": "Target",
+      "description": "Target rule or skill name",
+      "placeholder": "git-commit-style / reviewing-on-issue / general"
+    },
+    "context": {
+      "label": "Context",
+      "description": "Brief description of the situation",
+      "placeholder": "Ignored rule Y and manually corrected during Issue #XX work"
+    },
+    "proposal": {
+      "label": "Improvement Proposal",
+      "description": "Proposed improvement if any",
+      "placeholder": "Rule Y should add case Z"
+    },
+    "summary": {
+      "label": "Aggregated Summary",
+      "description": "Analysis summary of accumulated signals (updated by evolving-rules)",
+      "placeholder": "*Analyzing...*\n\n---\n**After analysis:**\n- Rule friction: N cases\n- Missing patterns: N cases"
+    }
+  },
   "reports": {
     "header": {
       "title": "Agent / Manual Report",

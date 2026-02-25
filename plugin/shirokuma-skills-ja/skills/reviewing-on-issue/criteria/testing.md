@@ -411,6 +411,28 @@ page.locator('meta[property="article:published_time"]')
 - テストファイルは `__tests__/` ディレクトリに配置
 - describe ブロックは関数/コンポーネント名と一致
 
+## スキップテスト規約
+
+テストをスキップする場合は必ず `@skip-reason` アノテーションを付与する。
+
+```typescript
+/**
+ * @skip-reason External API dependency, mock not implemented
+ */
+it.skip("should do X", () => { })
+
+/**
+ * @skip-reason Flaky in CI: WebSocket timeout issue (tracked in #123)
+ */
+it.skip("should handle real-time updates", () => { })
+```
+
+### レビューチェックリスト
+
+- [ ] `.skip` テストに `@skip-reason` コメントあり
+- [ ] `@skip-reason` に理由と（可能なら）追跡 Issue 番号あり
+- [ ] 無根拠の `.skip` なし
+
 ## テストコマンド
 
 ```bash

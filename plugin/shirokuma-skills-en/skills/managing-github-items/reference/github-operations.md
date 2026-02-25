@@ -137,13 +137,13 @@ gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/shiro
 | Tier 1 (stdin) | `--body-file - <<'EOF'...EOF` | Comments, replies, short reasons |
 | Tier 2 (file) | Write → `--body-file /tmp/shirokuma-docs/xxx.md` | Issue/Discussion body, handovers |
 
-Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion).
+Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion). When iteratively updating bodies via Tier 2, apply the Write/Edit pattern (initial Write → subsequent Edit for diff-only updates). See the "File-Based Body Editing" section in `item-maintenance.md` for details.
 
 ## Status Workflow
 
 ```mermaid
 graph LR
-  Icebox --> Backlog --> SpecReview[Spec Review] --> Ready --> InProgress[In Progress]
+  Icebox --> Backlog --> Planning --> SpecReview[Spec Review] --> InProgress[In Progress]
   InProgress --> Review --> Testing --> Done --> Released
   InProgress <--> Pending["Pending (blocked)"]
 ```
@@ -152,8 +152,8 @@ graph LR
 |--------|-------------|
 | Icebox | Low priority, not yet planned |
 | Backlog | Planned for future work |
+| Planning | Plan being created |
 | Spec Review | Requirements being reviewed |
-| Ready | Ready to start |
 | In Progress | Currently working on |
 | Pending | Blocked (document reason) |
 | Review | Code review |

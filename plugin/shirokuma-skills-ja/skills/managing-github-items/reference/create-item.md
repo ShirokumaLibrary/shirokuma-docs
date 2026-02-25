@@ -188,9 +188,9 @@ shirokuma-docs issues create \
   --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 
-# Sub-Issue として作成（--parent で親 Issue を指定）
+# サブ Issue として作成（--parent で親 Issue を指定）
 shirokuma-docs issues create \
-  --title "子タスク" --body-file /tmp/shirokuma-docs/body.md \
+  --title "子タスク" --body-file /tmp/shirokuma-docs/{slug}-body.md \
   --parent 958 --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "S"
 
@@ -199,6 +199,36 @@ shirokuma-docs projects create \
   --title "Title" --body-file /tmp/shirokuma-docs/add-format-option-body.md \
   --field-status "Backlog" --priority "Medium"
 ```
+
+### サブ Issue 作成ガイダンス
+
+エピック（親 Issue）のサブ Issue を作成する場合:
+
+- `--parent {親Issue番号}` で親子関係を設定する
+- サブ Issue の本文に親 Issue への参照（`Refs #{親番号}`）を含める
+- サブ Issue の Issue Type は親から継承せず、個々のタスクに適切な Type を設定する
+- サイズは個々のタスクの工数で設定（親が L/XL でもサブ Issue は S/M が一般的）
+
+**本文に含める推奨セクション**:
+
+```markdown
+## 目的
+{サブタスクの目的}
+
+## 概要
+{技術的な説明}
+
+## 親 Issue
+Refs #{親番号} — {親 Issue タイトル}
+
+## タスク
+- [ ] タスク 1
+
+## 成果物
+{完了の定義}
+```
+
+エピックのワークフロー全体像は `epic-workflow` リファレンス参照。
 
 ## ステップ 5: 結果表示と作成後レビュー
 

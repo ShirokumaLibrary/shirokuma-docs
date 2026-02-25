@@ -190,7 +190,7 @@ shirokuma-docs issues create \
 
 # Sub-Issue (--parent links to parent issue)
 shirokuma-docs issues create \
-  --title "Child task" --body-file /tmp/shirokuma-docs/body.md \
+  --title "Child task" --body-file /tmp/shirokuma-docs/{slug}-body.md \
   --parent 958 --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "S"
 
@@ -199,6 +199,36 @@ shirokuma-docs projects create \
   --title "Title" --body-file /tmp/shirokuma-docs/add-format-option-body.md \
   --field-status "Backlog" --priority "Medium"
 ```
+
+### Sub-Issue Creation Guidance
+
+When creating sub-issues of an epic (parent issue):
+
+- Use `--parent {parent-issue-number}` to set the parent-child relationship
+- Include a reference to the parent issue (`Refs #{parent-number}`) in the sub-issue body
+- Set Issue Type appropriate to the individual task, not inherited from the parent
+- Size should reflect the individual task's effort (sub-issues are typically S/M even if parent is L/XL)
+
+**Recommended body sections:**
+
+```markdown
+## Purpose
+{Sub-task purpose}
+
+## Summary
+{Technical description}
+
+## Parent Issue
+Refs #{parent-number} — {parent issue title}
+
+## Tasks
+- [ ] Task 1
+
+## Deliverable
+{Definition of done}
+```
+
+See `epic-workflow` reference for the full epic workflow.
 
 ## Step 5: Display Result and Post-Creation Review
 

@@ -137,13 +137,13 @@ gh pr create --base develop --title "feat: タイトル (#42)" --body "$(cat /tm
 | Tier 1 (stdin) | `--body-file - <<'EOF'...EOF` | コメント、返信、短い理由 |
 | Tier 2 (file) | Write → `--body-file /tmp/shirokuma-docs/xxx.md` | Issue/Discussion 本文、引き継ぎ |
 
-heredoc delimiter は `<<'EOF'`（シングルクォートで変数展開防止）。
+heredoc delimiter は `<<'EOF'`（シングルクォートで変数展開防止）。Tier 2 で本文を反復更新する場合は Write/Edit パターン（初回 Write → 以降 Edit で差分更新）を適用する。詳細は `item-maintenance.md` の「ファイルベース本文編集」セクション参照。
 
 ## ステータスワークフロー
 
 ```mermaid
 graph LR
-  Icebox --> Backlog --> SpecReview[Spec Review] --> Ready --> InProgress[In Progress]
+  Icebox --> Backlog --> Planning --> SpecReview[Spec Review] --> InProgress[In Progress]
   InProgress --> Review --> Testing --> Done --> Released
   InProgress <--> Pending["Pending（ブロック中）"]
 ```
@@ -152,8 +152,8 @@ graph LR
 |-----------|------|
 | Icebox | 低優先度、未計画 |
 | Backlog | 将来の作業として計画済み |
+| Planning | 計画策定中 |
 | Spec Review | 要件レビュー中 |
-| Ready | 開始可能 |
 | In Progress | 作業中 |
 | Pending | ブロック中（理由を記録） |
 | Review | コードレビュー中 |

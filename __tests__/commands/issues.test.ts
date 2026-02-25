@@ -1008,6 +1008,31 @@ describe("issues output format", () => {
       expect(expectedOutput.project_item_id).toBeDefined();
       expect(expectedOutput.status_option_id).toBeDefined();
     });
+
+    /**
+     * @testdoc parentIssue出力構造（サブIssueの場合のみ表示）
+     * @purpose サブIssue検出に必要なparentIssueフィールドの出力形式を文書化
+     */
+    it("should document parentIssue output for sub-issues", () => {
+      // parentIssue はサブ Issue の場合のみ出力される（条件付きフィールド）
+      const outputWithParent = {
+        number: 52,
+        title: "Sub-Issue Title",
+        parentIssue: {
+          number: 958,
+          title: "Migrate to Octokit",
+        },
+      };
+
+      const outputWithoutParent = {
+        number: 100,
+        title: "Standalone Issue",
+      };
+
+      expect(outputWithParent.parentIssue.number).toBe(958);
+      expect(outputWithParent.parentIssue.title).toBe("Migrate to Octokit");
+      expect(outputWithoutParent).not.toHaveProperty("parentIssue");
+    });
   });
 
   describe("update output structure", () => {

@@ -44,6 +44,7 @@ export interface IssuesOptions {
     rebase?: boolean;
     deleteBranch?: boolean;
     head?: string;
+    skipLinkCheck?: boolean;
     replyTo?: string;
     threadId?: string;
     parent?: number;

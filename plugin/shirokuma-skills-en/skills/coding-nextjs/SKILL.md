@@ -80,9 +80,11 @@ shirokuma-docs portal -p . -o docs/portal
 
 | Document | Content | When to Read |
 |----------|---------|-------------|
+| [criteria/coding-conventions.md](criteria/coding-conventions.md) | Coding conventions | When writing code |
+| [reference/tech-stack.md](reference/tech-stack.md) | Recommended tech stack, version requirements | Tech selection, version check |
 | [patterns/testing.md](patterns/testing.md) | Test patterns, mock setup | Test creation |
 | [patterns/code-patterns.md](patterns/code-patterns.md) | Technical patterns | Implementation |
-| [patterns/coding-conventions.md](patterns/coding-conventions.md) | Coding conventions | When writing code |
+| [patterns/coding-conventions.md](patterns/coding-conventions.md) | Naming and directory conventions (compact) | When writing code |
 | [patterns/better-auth.md](patterns/better-auth.md) | Better Auth patterns | Auth implementation |
 | [patterns/drizzle-orm.md](patterns/drizzle-orm.md) | Drizzle ORM patterns | DB operations |
 | [patterns/e2e-testing.md](patterns/e2e-testing.md) | E2E test patterns | Playwright test creation |

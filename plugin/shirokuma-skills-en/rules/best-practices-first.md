@@ -53,6 +53,7 @@ User Request → Task Analysis → Skill Selection
 | Exploration | Explore | Task tool (Built-in) |
 | Architecture | Plan | Task tool (Built-in) |
 | Claude Config | reviewing-claude-config | Skill tool |
+| Rule/Skill evolution | evolving-rules | Skill tool |
 | None match | Propose new skill | — |
 
 ### 2. Skill Selection Criteria
@@ -67,6 +68,7 @@ User Request → Task Analysis → Skill Selection
 | dashboard, show issues, project status | `showing-github` (Skill) | "show dashboard" |
 | structure, explore files | `Explore` (Built-in) | "where is auth?" |
 | design, architecture | `Plan` (Built-in) | "design auth system" |
+| evolve, evolution, rule improvement | `evolving-rules` (Skill) | "evolve rules" |
 
 ### 3. When No Skill Matches
 

@@ -65,6 +65,19 @@ Args: create-item --title "{タイトル}" --issue-type "{Type}" --labels "{area
 → またはそのまま Backlog に配置
 ```
 
+## Evolution シグナルリマインド
+
+アイテム作成完了レポートの末尾で、Evolution シグナルの蓄積を確認する。
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+- Discussion が 0 件 → 何も表示しない
+- Discussion が 1 件以上 → 完了レポートの末尾に 1 行追記:
+
+> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
+
 ## GitHub 書き込みルール
 
 Issue のタイトル・本文は `output-language` ルールと `github-writing-style` ルールに準拠すること。委任先の `managing-github-items` にもこのルールが適用される。

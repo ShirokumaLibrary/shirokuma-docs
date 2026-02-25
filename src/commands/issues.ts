@@ -118,6 +118,7 @@ export interface IssuesOptions {
   rebase?: boolean;
   deleteBranch?: boolean;
   head?: string;
+  skipLinkCheck?: boolean;
   // Reply/resolve options
   replyTo?: string;
   threadId?: string;
@@ -744,6 +745,7 @@ async function cmdGet(
     createdAt?: string;
     updatedAt?: string;
     labels?: { nodes?: Array<{ name?: string }> };
+    parentIssue?: { number?: number; title?: string };
     subIssuesSummary?: {
       total?: number;
       completed?: number;
@@ -802,6 +804,14 @@ async function cmdGet(
     size: matchingItem?.size?.name,
     size_option_id: matchingItem?.size?.optionId,
   };
+
+  // parentIssue（親 Issue がある場合のみ表示）
+  if (node.parentIssue?.number) {
+    output.parentIssue = {
+      number: node.parentIssue.number,
+      title: node.parentIssue.title,
+    };
+  }
 
   // Sub-Issues summary（子 Issue がある場合のみ表示）
   const subSummary = node.subIssuesSummary;

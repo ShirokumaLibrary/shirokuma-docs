@@ -147,6 +147,37 @@
       }
     }
   },
+  "evolution": {
+    "header": {
+      "title": "進化シグナル",
+      "description": "ルール・スキルの改善シグナルを記録します。"
+    },
+    "signalType": {
+      "label": "シグナル種別",
+      "description": "シグナルの種類",
+      "placeholder": "ルール摩擦 | 不足パターン | スキル改善 | lint 傾向 | 成功率"
+    },
+    "target": {
+      "label": "対象",
+      "description": "対象のルール名またはスキル名",
+      "placeholder": "git-commit-style / reviewing-on-issue / 一般"
+    },
+    "context": {
+      "label": "コンテキスト",
+      "description": "発生状況の簡潔な説明",
+      "placeholder": "Issue #XX の作業中にルール Y を無視して手動修正した"
+    },
+    "proposal": {
+      "label": "改善提案",
+      "description": "改善案があれば記載",
+      "placeholder": "ルール Y にケース Z を追加すべき"
+    },
+    "summary": {
+      "label": "集計サマリー",
+      "description": "蓄積シグナルの分析サマリー（evolving-rules が更新）",
+      "placeholder": "*分析中...*\n\n---\n**分析完了後:**\n- ルール摩擦: N 件\n- 不足パターン: N 件"
+    }
+  },
   "reports": {
     "header": {
       "title": "エージェント / 手動レポート",

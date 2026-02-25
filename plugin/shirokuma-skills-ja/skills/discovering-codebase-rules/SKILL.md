@@ -171,6 +171,21 @@ Discussion はルールの根拠の**ソースオブトゥルース**。ルー�
 
 現在の実装は `shirokuma-docs/src/lint/rules/` を確認。
 
+## 既存ルール不備の検出
+
+パターン発見の過程で既存ルールの不備（カバー漏れ、曖昧な記述、実態との乖離）を検出した場合、Evolution Discussion にコメントとして記録する。
+
+```bash
+shirokuma-docs discussions comment {evolution-number} --body-file - <<'EOF'
+**種別:** 不足パターン
+**対象:** {ルール名}
+**コンテキスト:** {発見時の状況}
+**提案:** {改善案}
+EOF
+```
+
+`discovering-codebase-rules` 自体は既存ルールの修正を行わない（新規提案のみ）。既存ルールの改善は `evolving-rules` スキルの責務。
+
 ## NGケース
 
 - 既存ルールと重複する提案をしない

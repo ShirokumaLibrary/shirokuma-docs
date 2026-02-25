@@ -162,6 +162,21 @@ When a pattern is recorded as Knowledge (confirmed), propose a Rule for AI consu
 
 Check `shirokuma-docs/src/lint/rules/` for current implementations.
 
+## Existing Rule Deficiency Detection
+
+When discovering patterns reveals deficiencies in existing rules (coverage gaps, ambiguous descriptions, divergence from practice), record them as comments in the Evolution Discussion.
+
+```bash
+shirokuma-docs discussions comment {evolution-number} --body-file - <<'EOF'
+**Type:** Missing pattern
+**Target:** {rule name}
+**Context:** {discovery situation}
+**Proposal:** {improvement suggestion}
+EOF
+```
+
+`discovering-codebase-rules` does not modify existing rules (new proposals only). Existing rule improvements are the responsibility of the `evolving-rules` skill.
+
 ## Anti-Patterns
 
 - Do not propose rules that duplicate existing rules

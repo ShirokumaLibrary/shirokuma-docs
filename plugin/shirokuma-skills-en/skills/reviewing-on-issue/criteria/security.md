@@ -217,6 +217,20 @@ try {
 
 All fixed in the latest Next.js. Upgrade immediately if using an older version.
 
+### CVE-2025-29927 (Next.js Middleware Auth Bypass)
+
+**Severity**: Critical (9.1)
+**Affected**: Next.js < 15.2.3
+**Issue**: Middleware authentication bypass via `x-middleware-subrequest` header
+
+**Mitigation** (if upgrade not possible):
+```nginx
+if ($http_x_middleware_subrequest) {
+    return 403;
+}
+proxy_set_header x-middleware-subrequest "";
+```
+
 ### CVE-2025-66478 / CVE-2025-55182 (React Server Components RCE)
 
 **Severity**: Critical (CVSS 10.0)

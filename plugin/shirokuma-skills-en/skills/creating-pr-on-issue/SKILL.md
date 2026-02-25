@@ -1,6 +1,6 @@
 ---
 name: creating-pr-on-issue
-description: Create a GitHub pull request for the current branch. Use when "create pull request", "create PR", "open PR".
+description: Create a GitHub pull request for the current branch to develop (or integration branch for sub-issues). Use when "create pull request", "create PR", "open PR".
 allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion
 ---
 
@@ -35,13 +35,50 @@ Ensure the branch is pushed and up to date:
 git push -u origin {branch-name}
 ```
 
+### Step 2b: Base Branch Detection
+
+Default is `develop`. When invoked with an issue number, automatically detect sub-issues and use the integration branch as base.
+
+#### Sub-Issue Auto-Detection
+
+If the `shirokuma-docs issues show {number}` output contains a `parentIssue` field, the issue is a sub-issue:
+
+```yaml
+parentIssue:
+  number: 958
+  title: "Migrate to Octokit"
+```
+
+If context was passed from `working-on-issue`, use it; otherwise, self-detect using the above (fallback structure).
+
+#### Integration Branch Extraction
+
+When a sub-issue is detected, determine the integration branch in this order:
+
+1. **Extract from parent issue body**: Fetch the parent issue with `shirokuma-docs issues show {parent-number}` and look for a `### Integration Branch` (EN) / `### Integration ブランチ` (JA) heading. Extract the branch name from the backtick block immediately following the heading (any prefix accepted: `epic/`, `chore/`, `feat/`, etc.)
+2. **Fallback (remote branch search)**: `git branch -r --list "origin/*/{parent-number}-*"`
+   - 1 match → auto-select
+   - Multiple matches → AskUserQuestion for user selection
+   - 0 matches → fall back to `develop` and warn user
+3. **Final fallback**: `develop`
+
+```bash
+# Sub-issue
+base_branch="{type}/{parent-number}-{slug}"
+
+# Normal
+base_branch="develop"
+```
+
+**Note**: For PRs targeting the integration branch, the GitHub sidebar will not display the issue link. `Closes #N` should still be included in the PR body (the CLI's `issues merge` parses it independently and works correctly).
+
 ### Step 3: Analyze Changes
 
 Review all commits on the branch to draft PR content:
 
 ```bash
-git log --oneline develop..HEAD
-git diff --stat develop..HEAD
+git log --oneline {base_branch}..HEAD
+git diff --stat {base_branch}..HEAD
 ```
 
 Understand the full scope of changes, not just the latest commit.
@@ -49,7 +86,7 @@ Understand the full scope of changes, not just the latest commit.
 ### Step 4: Create PR
 
 ```bash
-gh pr create --base develop --title "{title}" --body "$(cat <<'EOF'
+gh pr create --base {base_branch} --title "{title}" --body "$(cat <<'EOF'
 ## Summary
 - {bullet point 1}
 - {bullet point 2}
@@ -316,6 +353,10 @@ Review reports output by `reviewing-on-issue` during self-review must also follo
 | No commits ahead of base | Error: nothing to create PR for |
 | PR already exists for branch | Show existing PR URL instead |
 | Push fails | Show error, suggest `git pull --rebase` |
+| Sub-issue with no integration branch found | Use `develop` as base and warn user |
+| Integration branch PR | Include `Closes #N` in body (GitHub sidebar won't show link, but CLI handles it) |
+| Multiple branches match fallback search | AskUserQuestion for user selection |
+| Base branch was wrong after PR creation | Fix via REST API: `gh api repos/{owner}/{repo}/pulls/{pr-number} --method PATCH -f base="correct-branch"` (`gh pr edit --base` fails with Projects classic error, do not use) |
 
 ## Next Steps (Standalone Invocation Only)
 

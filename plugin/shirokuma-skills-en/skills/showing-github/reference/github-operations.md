@@ -46,7 +46,7 @@ shirokuma-docs issues list --status "In Progress"   # Filter by status
 shirokuma-docs issues show {number}                  # Details
 shirokuma-docs issues create \
   --title "Title" --body-file /tmp/shirokuma-docs/body.md \
-  --labels "area:cli" \
+  --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
 shirokuma-docs issues update {number} --add-label "area:cli"       # Add label
@@ -55,6 +55,7 @@ shirokuma-docs issues comment {number} --body-file - <<'EOF'
 Comment content
 EOF
 shirokuma-docs issues comments {number}                 # List comments
+shirokuma-docs issues comment-edit {comment-id} --body-file /tmp/shirokuma-docs/comment.md  # Works for Issue/PR comments
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
 ```
@@ -124,6 +125,9 @@ gh repo view --json nameWithOwner -q '.nameWithOwner'
 # Authentication
 gh auth login
 gh auth status
+
+# PR creation (not in shirokuma-docs CLI — single operation, gh direct use allowed)
+gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```
 
 ## `--body-file` Usage Guide
@@ -133,13 +137,13 @@ gh auth status
 | Tier 1 (stdin) | `--body-file - <<'EOF'...EOF` | Comments, replies, short reasons |
 | Tier 2 (file) | Write → `--body-file /tmp/shirokuma-docs/xxx.md` | Issue/Discussion body, handovers |
 
-Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion).
+Use `<<'EOF'` as heredoc delimiter (single quotes prevent variable expansion). When iteratively updating bodies via Tier 2, apply the Write/Edit pattern (initial Write → subsequent Edit for diff-only updates). See the "File-Based Body Editing" section in `item-maintenance.md` for details.
 
 ## Status Workflow
 
 ```mermaid
 graph LR
-  Icebox --> Backlog --> SpecReview[Spec Review] --> Ready --> InProgress[In Progress]
+  Icebox --> Backlog --> Planning --> SpecReview[Spec Review] --> InProgress[In Progress]
   InProgress --> Review --> Testing --> Done --> Released
   InProgress <--> Pending["Pending (blocked)"]
 ```
@@ -148,8 +152,8 @@ graph LR
 |--------|-------------|
 | Icebox | Low priority, not yet planned |
 | Backlog | Planned for future work |
+| Planning | Plan being created |
 | Spec Review | Requirements being reviewed |
-| Ready | Ready to start |
 | In Progress | Currently working on |
 | Pending | Blocked (document reason) |
 | Review | Code review |

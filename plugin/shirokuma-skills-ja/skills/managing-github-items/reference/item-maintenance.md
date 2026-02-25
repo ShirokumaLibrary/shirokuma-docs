@@ -16,11 +16,36 @@ Issues / Discussions / PRs 共通。`project-items` ルールの概要セクシ�
 
 ```bash
 # Issues（Write ツールでファイル作成後）
-shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/body.md
+shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/{number}-body.md
 
 # Discussions（Write ツールでファイル作成後）
-shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/body.md
+shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/{number}-body.md
 ```
+
+## ファイルベース本文編集
+
+### 一時ファイル命名規約
+
+| タイミング | パターン | 例 |
+|-----------|---------|-----|
+| 番号確定後 | `/tmp/shirokuma-docs/{number}-body.md` | `42-body.md` |
+| 番号確定後（用途別） | `/tmp/shirokuma-docs/{number}-{用途}.md` | `42-review-summary.md` |
+| 番号未確定 | `/tmp/shirokuma-docs/{slug}-body.md` | `add-format-option-body.md` |
+| Issue に紐づかない | `/tmp/shirokuma-docs/{用途}.md` | `handover.md` |
+
+### Write/Edit ワークフロー
+
+| 操作 | ツール | 条件 |
+|------|--------|------|
+| 初回作成 | Write | ファイルが存在しない |
+| 差分更新 | Read + Edit | ファイルが存在し、部分変更のみ |
+| 全面書き換え | Write | 構造が大幅に変わる |
+
+**判断基準**: 2回以上の反復更新が見込まれる場合は Read + Edit。1回のみなら Write。
+
+CLI には常にファイル名を渡す（`--body-file /tmp/shirokuma-docs/{number}-body.md`）。heredoc で毎回全文をインライン展開するパターンは Tier 2 では非推奨。
+
+> `--body-file` の Tier 使い分けは `github-operations.md` 参照。Tier 1（stdin）はコメント・返信用で反復更新なし、Tier 2（file）が本パターンの適用対象。
 
 ## ワークフロー順序（コメントファースト）
 

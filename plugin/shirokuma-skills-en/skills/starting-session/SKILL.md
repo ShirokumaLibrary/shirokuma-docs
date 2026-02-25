@@ -194,6 +194,24 @@ Options:
 
 When a batch option is selected, invoke `working-on-issue` with all issue numbers (e.g., `#101 #102 #105`).
 
+## Evolution Signal Reminder
+
+After context display (Step 2), check if signals have accumulated in the Evolution Discussion.
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+If signals are accumulated, show a single line after the Active Issues section:
+
+```markdown
+> 🧬 Evolution signals are accumulated. Run `/evolving-rules` to analyze.
+```
+
+- **No auto-execution** — reminder only (user decides whether to invoke)
+- **Hidden when empty** — avoid noise
+- **Non-blocking** — does not affect Step 3 direction selection
+
 ## Notes
 
 - Always show current time in session header

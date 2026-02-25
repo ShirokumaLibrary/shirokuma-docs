@@ -548,6 +548,7 @@ program
   .option("--delete-branch", "Delete branch after merge (default: true)", true)
   .option("--no-delete-branch", "Do not delete branch after merge")
   .option("--head <branch>", "Resolve PR from branch name (for merge)")
+  .option("--skip-link-check", "Skip N:N link graph verification (for merge)")
   .option("--reply-to <commentId>", "Reply to a review comment database ID (for pr-reply)")
   .option("--thread-id <threadId>", "Thread ID to resolve (for resolve)")
   .option("--parent <number>", "Link as sub-issue of parent (for create)", parseInt)

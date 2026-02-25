@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion
 
 # プルリクエスト作成
 
-フィーチャーブランチから `develop` への PR を作成する。
+フィーチャーブランチから `develop`（またはサブ Issue の場合は integration ブランチ）への PR を作成する。
 
 ## ワークフロー
 
@@ -31,11 +31,48 @@ git log --oneline develop..HEAD
 git push -u origin {branch-name}
 ```
 
+### ステップ 2b: ベースブランチ判定
+
+デフォルトは `develop`。Issue 番号付きで起動された場合、サブ Issue を自動検出して integration ブランチをベースにする。
+
+#### サブ Issue の自動検出
+
+`shirokuma-docs issues show {number}` の出力に `parentIssue` フィールドがあれば、その Issue はサブ Issue:
+
+```yaml
+parentIssue:
+  number: 958
+  title: "Migrate to Octokit"
+```
+
+`working-on-issue` からコンテキストが渡されている場合はそれを利用し、ない場合は上記で自力検出する（フォールバック構造）。
+
+#### Integration ブランチの抽出手順
+
+サブ Issue を検出した場合、以下の順序で integration ブランチを決定する:
+
+1. **親 Issue の本文から抽出**: `shirokuma-docs issues show {parent-number}` で親 Issue を取得し、`### Integration ブランチ`（JA）/ `### Integration Branch`（EN）ヘッディングを探す。直後のバッククォート内のブランチ名を採用（プレフィックスは `epic/`, `chore/`, `feat/` 等任意）
+2. **フォールバック（リモートブランチ検索）**: `git branch -r --list "origin/*/{parent-number}-*"` で検索
+   - 1件マッチ → 自動採用
+   - 複数マッチ → AskUserQuestion でユーザーに選択させる
+   - 0件 → `develop` をベースにし、ユーザーに警告
+3. **最終フォールバック**: `develop`
+
+```bash
+# サブ Issue の場合
+base_branch="{type}/{parent-number}-{slug}"
+
+# 通常
+base_branch="develop"
+```
+
+**注意**: integration ブランチをベースにした PR では、GitHub サイドバーに Issue リンクが表示されない制限がある。`Closes #N` は引き続き PR 本文に記載する（CLI の `issues merge` が独自に解析するため正常動作する）。
+
 ### ステップ 3: 変更分析
 
 ```bash
-git log --oneline develop..HEAD
-git diff --stat develop..HEAD
+git log --oneline {base_branch}..HEAD
+git diff --stat {base_branch}..HEAD
 ```
 
 最新コミットだけでなく全コミットを把握。
@@ -43,7 +80,7 @@ git diff --stat develop..HEAD
 ### ステップ 4: PR作成
 
 ```bash
-gh pr create --base develop --title "{title}" --body "$(cat <<'EOF'
+gh pr create --base {base_branch} --title "{title}" --body "$(cat <<'EOF'
 ## 概要
 - {箇条書き}
 
@@ -278,6 +315,10 @@ docs: update CLAUDE.md command table     ← 日本語設定では不正
 | コミットなし | PR作成不可 |
 | 既存PRあり | URL表示 |
 | プッシュ失敗 | エラー表示、`git pull --rebase` を提案 |
+| サブ Issue で integration ブランチ未検出 | `develop` をベースにし警告 |
+| integration ブランチベースの PR | `Closes #N` を記載（GitHub サイドバー非表示は受容、CLI が代替） |
+| フォールバック検索で複数ブランチがマッチ | AskUserQuestion でユーザーに選択させる |
+| PR 作成後にベースブランチの誤りが判明 | REST API で修正: `gh api repos/{owner}/{repo}/pulls/{pr-number} --method PATCH -f base="correct-branch"`（`gh pr edit --base` は Projects classic エラーで失敗するため使用不可） |
 
 ## 次のステップ（スタンドアロン起動時のみ）
 

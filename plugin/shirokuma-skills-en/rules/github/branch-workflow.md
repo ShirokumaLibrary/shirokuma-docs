@@ -10,6 +10,7 @@
 | `develop` | Integration. Default branch for PRs | `main` (initial) | `main` (release PR) | Yes | Yes |
 | `feat/*`, `fix/*`, `chore/*`, `docs/*` | Daily work | `develop` | `develop` (PR) | No | No |
 | `hotfix/*` | Urgent production fix | `main` | `main` (PR), then cherry-pick to `develop` | No | No |
+| `epic/*` | Epic integration | `develop` | `develop` (final PR) | No | No |
 | `release/X.x` | Old major maintenance (only when needed) | tag | stays on branch (tag) | Conditional | Yes |
 
 **Key principles:**
@@ -78,6 +79,27 @@ Used when processing multiple XS/S issues together. See `batch-workflow` rule fo
 chore/794-795-798-807-batch-docs-fixes
 feat/101-102-batch-button-components
 ```
+
+### Integration Branches (Epic)
+
+Integration branches are used for epics (parent issue + sub-issue structure).
+
+```
+epic/{parent-issue-number}-{slug}
+```
+
+- Branch from `develop`; sub-issue branches branch from the integration branch
+- Sub-issue PRs target the integration branch
+- After all sub-issues complete, create a final PR from integration branch to `develop`
+
+```
+develop
+  └── epic/958-octokit-migration           ← integration
+        ├── feat/953-replace-graphql-client  ← sub-issue
+        └── fix/954-update-error-handling    ← sub-issue
+```
+
+See `epic-workflow` reference for details.
 
 ### Hotfix Branches
 
@@ -266,8 +288,8 @@ Ensure branch protection rules are set for both `main` and `develop`:
 
 ## Rules
 
-1. **Always branch from develop** - Ensure `develop` is up to date before branching
-2. **One branch per issue** - Do not mix unrelated changes (exception: batch mode per `batch-workflow` rule)
+1. **Always branch from develop** - Ensure `develop` is up to date before branching (exception: sub-issues branch from the integration branch)
+2. **One branch per issue** - Do not mix unrelated changes (exception: batch mode per `batch-workflow` rule, epics per `epic-workflow` reference)
 3. **Push before session end** - Unpushed work risks being lost
 4. **PR required for merge** - No direct pushes to `develop` or `main`
 5. **Never merge without user approval** - Enforced by PreToolUse hook
@@ -333,3 +355,4 @@ The hook strips quoted strings from commands before pattern matching. Text insid
 | Conflict with develop | Rebase before PR: `git rebase develop` |
 | Default branch is still `main` | Follow Default Branch Setup section |
 | Need to fix production urgently | Use Hotfix Workflow |
+| Sub-issue with no integration branch found | Use `develop` as base and warn user |

@@ -16,11 +16,36 @@ For Issues / Discussions / PRs. Supplements the overview in the `project-items` 
 
 ```bash
 # Issues
-shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/body.md
+shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/{number}-body.md
 
 # Discussions
-shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/body.md
+shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/{number}-body.md
 ```
+
+## File-Based Body Editing
+
+### Temp File Naming Convention
+
+| Timing | Pattern | Example |
+|--------|---------|---------|
+| After number assigned | `/tmp/shirokuma-docs/{number}-body.md` | `42-body.md` |
+| After number (purpose-specific) | `/tmp/shirokuma-docs/{number}-{purpose}.md` | `42-review-summary.md` |
+| Before number assigned | `/tmp/shirokuma-docs/{slug}-body.md` | `add-format-option-body.md` |
+| Not tied to an issue | `/tmp/shirokuma-docs/{purpose}.md` | `handover.md` |
+
+### Write/Edit Workflow
+
+| Operation | Tool | Condition |
+|-----------|------|-----------|
+| Initial creation | Write | File does not exist |
+| Partial update | Read + Edit | File exists, only partial changes |
+| Full rewrite | Write | Structure changes significantly |
+
+**Decision criteria**: Use Read + Edit when 2+ iterative updates are expected. Use Write for one-time updates.
+
+Always pass the file name to the CLI (`--body-file /tmp/shirokuma-docs/{number}-body.md`). Inlining the full body via heredoc on every update is discouraged for Tier 2 operations.
+
+> See `github-operations.md` for `--body-file` tier guide. Tier 1 (stdin) is for comments/replies with no iterative updates; Tier 2 (file) is where this pattern applies.
 
 ## Workflow Order (Comment First)
 

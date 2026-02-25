@@ -46,7 +46,7 @@ shirokuma-docs issues list --status "In Progress"   # ステータスフィル�
 shirokuma-docs issues show {number}                  # 詳細
 shirokuma-docs issues create \
   --title "Title" --body-file /tmp/shirokuma-docs/body.md \
-  --labels "area:cli" \
+  --labels "area:cli" --issue-type "Feature" \
   --field-status "Backlog" --priority "Medium" --size "M"
 shirokuma-docs issues update {number} --field-status "In Progress"
 shirokuma-docs issues update {number} --add-label "area:cli"       # ラベル追加
@@ -55,6 +55,7 @@ shirokuma-docs issues comment {number} --body-file - <<'EOF'
 コメント内容
 EOF
 shirokuma-docs issues comments {number}                 # コメント一覧
+shirokuma-docs issues comment-edit {comment-id} --body-file /tmp/shirokuma-docs/comment.md  # Issue/PR 両対応
 shirokuma-docs issues close {number}
 shirokuma-docs issues reopen {number}
 ```
@@ -124,6 +125,9 @@ gh repo view --json nameWithOwner -q '.nameWithOwner'
 # 認証
 gh auth login
 gh auth status
+
+# PR 作成（shirokuma-docs CLI 未対応 — 単一操作で完結するため gh 直接使用を許容）
+gh pr create --base develop --title "feat: タイトル (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```
 
 ## `--body-file` 使い分け
@@ -133,13 +137,13 @@ gh auth status
 | Tier 1 (stdin) | `--body-file - <<'EOF'...EOF` | コメント、返信、短い理由 |
 | Tier 2 (file) | Write → `--body-file /tmp/shirokuma-docs/xxx.md` | Issue/Discussion 本文、引き継ぎ |
 
-heredoc delimiter は `<<'EOF'`（シングルクォートで変数展開防止）。
+heredoc delimiter は `<<'EOF'`（シングルクォートで変数展開防止）。Tier 2 で本文を反復更新する場合は Write/Edit パターン（初回 Write → 以降 Edit で差分更新）を適用する。詳細は `item-maintenance.md` の「ファイルベース本文編集」セクション参照。
 
 ## ステータスワークフロー
 
 ```mermaid
 graph LR
-  Icebox --> Backlog --> SpecReview[Spec Review] --> Ready --> InProgress[In Progress]
+  Icebox --> Backlog --> Planning --> SpecReview[Spec Review] --> InProgress[In Progress]
   InProgress --> Review --> Testing --> Done --> Released
   InProgress <--> Pending["Pending（ブロック中）"]
 ```
@@ -148,8 +152,8 @@ graph LR
 |-----------|------|
 | Icebox | 低優先度、未計画 |
 | Backlog | 将来の作業として計画済み |
+| Planning | 計画策定中 |
 | Spec Review | 要件レビュー中 |
-| Ready | 開始可能 |
 | In Progress | 作業中 |
 | Pending | ブロック中（理由を記録） |
 | Review | コードレビュー中 |

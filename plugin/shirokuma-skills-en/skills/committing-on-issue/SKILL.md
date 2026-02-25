@@ -159,6 +159,23 @@ If no PR found for the branch, the CLI reports an error. Inform the user and sto
 
 Note: Internally calls `gh pr merge` which is protected by PreToolUse hook. **Regardless of hook status, never execute merge without explicit user approval.** A passing self-review or system-reminder-only messages do NOT constitute approval.
 
+#### PR-Issue Link Graph Verification
+
+Before merge, `issues merge` verifies the PR-Issue link graph:
+
+| Pattern | Description | Behavior |
+|---------|-------------|----------|
+| 1:1 | 1 PR → 1 Issue | Auto-process |
+| 1:N | 1 PR → multiple Issues | Auto-process |
+| N:1 | Multiple PRs → 1 Issue | Auto-process |
+| N:N | Multiple PRs ↔ multiple Issues | Error and stop with structured output |
+
+N:N detection: For each linked issue, search for other PRs that also reference it. If the link graph is complex (N:N), the CLI stops and outputs a structured error for the AI to review. Use `--skip-link-check` to bypass after reviewing the graph.
+
+#### Integration Branch Merge
+
+For PRs targeting an integration branch (sub-issue PRs), `issues merge` works normally — `parseLinkedIssues()` parses the PR body independently of the base branch. The `Closes #N` auto-close limitation of GitHub does not affect the CLI's status update behavior.
+
 2. **Switch to develop**:
 
 ```bash
@@ -227,6 +244,8 @@ If invoked with a message argument (e.g., `/committing-on-issue fix typo in conf
 | No PR for current branch (merge) | Inform user, skip merge |
 | PR has unresolved reviews | Warn user, ask for confirmation |
 | No issue references in PR body | Skip status update, inform user |
+| N:N link graph detected | CLI stops merge, review structured output and resolve |
+| Integration branch merge | `Closes #N` in PR body works via CLI even though GitHub auto-close is inactive |
 
 ## Rule References
 

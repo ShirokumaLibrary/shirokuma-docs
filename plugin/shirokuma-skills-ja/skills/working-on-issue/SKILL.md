@@ -49,6 +49,19 @@ Issue の種類やタスク説明に基づいて、計画→実装→コミッ�
 
 **Issue 番号あり**: `shirokuma-docs issues show {number}` で取得し、title/body/labels/status/priority/size を抽出。
 
+#### サブ Issue 検出
+
+`shirokuma-docs issues show {number}` の出力に `parentIssue` フィールドがある場合、サブ Issue モードで動作する:
+
+1. 親 Issue の `## 計画` セクションを参照し、全体コンテキストを把握
+2. ベースブランチを `develop` ではなく親の integration ブランチに設定（ステップ 3 参照）
+3. PR 作成時も integration ブランチをベースにする（`creating-pr-on-issue` が `parentIssue` フィールドで自力検出するため、明示的なコンテキスト渡しは不要。渡せばそれを利用する補助的位置づけ）
+
+```bash
+# 親 Issue の確認
+shirokuma-docs issues show {parent-number}
+```
+
 #### 計画済み判定（Issue 番号ありの場合）
 
 Issue 本文に `## 計画` セクション（`^## 計画` で前方一致検出）があるか確認する。
@@ -83,12 +96,23 @@ Issue が In Progress でなければ: `shirokuma-docs issues update {number} --
 
 ### ステップ 3: フィーチャーブランチの確保
 
-`develop` にいる場合、`branch-workflow` ルールに従いブランチを作成:
+`develop` または integration ブランチにいる場合、`branch-workflow` ルールに従いブランチを作成:
 
 ```bash
+# 通常の Issue
 git checkout develop && git pull origin develop
 git checkout -b {type}/{number}-{slug}
+
+# サブ Issue（親の integration ブランチから分岐）
+git checkout epic/{parent-number}-{slug} && git pull origin epic/{parent-number}-{slug}
+git checkout -b {type}/{number}-{slug}
 ```
+
+**Integration ブランチの検出順序**（サブ Issue の場合）:
+
+1. 親 Issue の本文から `### Integration ブランチ`（JA）/ `### Integration Branch`（EN）ヘッディングを探し、直後のバッククォート内のブランチ名を抽出（プレフィックスは `epic/`, `chore/`, `feat/` 等任意）
+2. フォールバック: `git branch -r --list "origin/*/{parent-number}-*"` で検索（1件→自動採用、複数→AskUserQuestion、0件→`develop` にフォールバック）
+3. 見つからない場合: `develop` をベースにし、ユーザーに警告
 
 ### ステップ 3b: ADR 提案（Feature M+ のみ）
 
@@ -148,6 +172,21 @@ TDD 共通ワークフローの詳細は [docs/tdd-workflow.md](docs/tdd-workflo
   - イテレーション間で issue 数が増加した場合はループ停止
 - セルフレビュー完了後、レビュー結果に基づく Issue 本文の統合はコメントファースト原則に従う（`creating-pr-on-issue` ステップ 6c で処理）
 - 失敗時: チェーン停止、状況報告、ユーザーに制御を返す
+
+### ステップ 6: Evolution シグナルリマインド
+
+チェーン正常完了後（チェーン失敗時はスキップ）、Evolution シグナルの蓄積を確認する。
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+- Discussion が 0 件 → 何も表示しない
+- Discussion が 1 件以上 → 以下を 1 行表示:
+
+> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
+
+TodoWrite には登録しない（ノンブロッキング表示であり作業ステップではないため）。
 
 ## バッチモード
 
@@ -237,13 +276,16 @@ Issue ループ間で以下を保持:
 | 既に In Progress | ステータス変更なしで続行 |
 | 誤ったブランチ | AskUserQuestion: 切り替え or 続行 |
 | チェーン失敗 | 完了/残りステップ報告、制御を返す |
+| サブ Issue で integration ブランチ未検出 | `develop` をベースにし警告表示 |
+| エピック Issue を直接指定 | サブ Issue 一覧を表示し、作業対象を AskUserQuestion で確認 |
 
 ## ルール参照
 
 | ルール | 用途 |
 |--------|------|
-| `branch-workflow` | ブランチ命名、`develop` からの作成 |
+| `branch-workflow` | ブランチ命名、`develop` からの作成、integration ブランチ |
 | `batch-workflow` | バッチ適格性、品質基準、ブランチ命名 |
+| `epic-workflow` リファレンス | エピック・サブ Issue ワークフロー全体像 |
 | `project-items` | ステータスワークフロー、フィールド要件 |
 | `git-commit-style` | コミットメッセージ形式 |
 | `output-language` | GitHub 出力の言語規約 |

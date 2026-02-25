@@ -217,6 +217,20 @@ try {
 
 最新の Next.js を使用していれば対応済み。古いバージョンを使用している場合は即座にアップグレードすること。
 
+### CVE-2025-29927 (Next.js ミドルウェア認証バイパス)
+
+**深刻度**: Critical (9.1)
+**影響**: Next.js < 15.2.3
+**問題**: `x-middleware-subrequest` ヘッダーによるミドルウェア認証バイパス
+
+**緩和策**（アップグレードできない場合）:
+```nginx
+if ($http_x_middleware_subrequest) {
+    return 403;
+}
+proxy_set_header x-middleware-subrequest "";
+```
+
 ### CVE-2025-66478 / CVE-2025-55182 (React Server Components RCE)
 
 **深刻度**: Critical (CVSS 10.0)

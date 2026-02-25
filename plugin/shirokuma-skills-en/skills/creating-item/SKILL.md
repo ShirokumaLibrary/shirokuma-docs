@@ -65,6 +65,19 @@ Item created: #{number}
 → Or keep in Backlog
 ```
 
+## Evolution Signal Reminder
+
+At the end of the item creation completion report, check for accumulated Evolution signals.
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+- 0 discussions → display nothing
+- 1+ discussions → append one line to the completion report:
+
+> 🧬 Evolution signals are accumulated. Run `/evolving-rules` to analyze.
+
 ## GitHub Writing Rules
 
 Issue title and body must comply with the `output-language` rule and `github-writing-style` rule. This rule also applies to the delegated `managing-github-items` skill.

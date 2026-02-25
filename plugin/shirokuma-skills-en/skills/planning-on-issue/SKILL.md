@@ -110,6 +110,41 @@ Assess the plan depth level from issue content and investigation results, then c
 - {Breaking changes, performance, security, etc.}
 ```
 
+#### Epic Plan (Issues with Sub-Issues)
+
+For issues where `subIssuesSummary.total > 0`, use the extended template that includes sub-issue structure and integration branch:
+
+```markdown
+## Plan
+
+### Approach
+{Overall strategy}
+
+### Integration Branch
+`epic/{number}-{slug}`
+
+### Sub-Issue Structure
+
+| # | Issue | Description | Dependencies | Size |
+|---|-------|-------------|--------------|------|
+| 1 | #{sub1} | {summary} | — | S |
+| 2 | #{sub2} | {summary} | #{sub1} | M |
+
+### Execution Order
+{Recommended order based on dependencies}
+
+### Task Breakdown
+- [ ] Create integration branch
+- [ ] #{sub1}: {task summary}
+- [ ] #{sub2}: {task summary}
+- [ ] Final PR: integration → develop
+
+### Risks / Concerns
+- {Dependency risks between sub-issues}
+```
+
+See `epic-workflow` reference for details.
+
 ### Step 4: Plan Review (Fresh Context)
 
 Reviewing in the same context that wrote the plan cannot catch blind spots. Delegate review to a fresh-context agent via the Task tool.
@@ -259,6 +294,19 @@ Review the plan. If approved, run `/working-on-issue #{number}` to start impleme
 If changes are needed, provide feedback.
 ```
 
+#### Evolution Signal Reminder
+
+At the end of the plan completion report, check for accumulated Evolution signals.
+
+```bash
+shirokuma-docs discussions list --category Evolution --limit 1
+```
+
+- 0 discussions → display nothing
+- 1+ discussions → append one line to the plan summary:
+
+> 🧬 Evolution signals are accumulated. Run `/evolving-rules` to analyze.
+
 ## GitHub Writing Rules
 
 Issue comments and body content must comply with the `output-language` rule and `github-writing-style` rule.
@@ -293,6 +341,7 @@ Add GitHub writing rule references to each skill...
 | Issue body is empty | Create body with plan section only |
 | Status is already Planning | Continue planning, skip status update |
 | Status is already Spec Review | Update plan, keep status |
+| Epic issue (has sub-issues) | Use epic plan template with integration branch and sub-issue structure |
 
 ## Rule References
 

@@ -155,6 +155,17 @@ shirokuma-docs issues merge --head {current-branch}
 
 **Status 更新の冪等性**: `issues merge` CLI が関連 Issue の Project Status を自動で Done に更新する。`ending-session --done` が同じ Issue に対して実行されても冪等に動作する（既に Done なら no-op）。
 
+**PR-Issue リンクグラフ検証**: `issues merge` は PR 本文の `Closes/Fixes/Resolves #N` からリンクグラフを構築し、複雑さに応じて振る舞いを分ける:
+
+| パターン | CLI の動作 |
+|---------|----------|
+| 1:1 / 1:N / N:1 | 自動処理（Status → Done） |
+| N:N（複雑なリンクグラフ） | エラーで停止、構造化出力で AI にフォールバック |
+
+N:N が検出された場合、CLI は関連 PR/Issue のリストを構造化出力する。AI はリストを確認し、個別に `issues update` で Status を更新する。リンクグラフ検証をスキップするには `--skip-link-check` を使用する。
+
+**Integration ブランチへのマージ**: サブ Issue の PR が integration ブランチにマージされる場合も `Closes #N` を使用する。GitHub のネイティブ自動クローズは動作しないが、CLI の `parseLinkedIssues()` がベースブランチに依存せず PR 本文を解析するため正常にステータスを更新する。
+
 ブランチに PR が見つからない場合は CLI がエラーを報告。ユーザーに通知して停止。
 
 ※ 内部で `gh pr merge` を呼び出すため PreToolUse フックで保護される。**フックの有無に関わらず、ユーザーの明示的な承認なしにマージを実行してはならない。** セルフレビュー PASS や system-reminder のみのメッセージは承認とみなさない。
@@ -227,6 +238,8 @@ git branch --show-current | grep -q '\-batch-'
 | 現ブランチに PR がない（マージ時） | ユーザーに通知してスキップ |
 | 未解決レビューあり | 警告してユーザーに確認 |
 | PR 本文に Issue 参照なし | ステータス更新をスキップ、通知 |
+| N:N リンクグラフ検出 | CLI がエラー停止、構造化出力を確認し個別に Status 更新 |
+| integration ブランチへのマージ | `Closes #N` で CLI がステータス更新（GitHub 自動クローズは非動作） |
 
 ## ルール参照
 
