@@ -46,6 +46,17 @@ declare class InitError extends Error {
     readonly cause?: unknown | undefined;
     constructor(message: string, cause?: unknown | undefined);
 }
+/** Next.js monorepo scaffold result */
+export interface ScaffoldResult {
+    directories_created: string[];
+    files_created: string[];
+    git_initialized: boolean;
+}
+/**
+ * Scaffold Next.js monorepo directory structure and base files.
+ * Skips existing directories and files to avoid overwriting user data.
+ */
+export declare function scaffoldNextjsMonorepo(projectPath: string): Promise<ScaffoldResult>;
 /**
  * init command handler
  *

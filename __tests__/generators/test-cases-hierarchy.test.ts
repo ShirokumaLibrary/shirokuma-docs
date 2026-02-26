@@ -90,7 +90,7 @@ describe("generateCategoryListPage", () => {
   });
 
   /**
-   * @testdoc 完全な HTML ドキュメントを生成する
+   * @testdoc [test-cases-hierarchy] 完全な HTML ドキュメントを生成する
    */
   it("should generate a complete HTML document", () => {
     const testCases = [createTestCase()];
@@ -103,7 +103,7 @@ describe("generateCategoryListPage", () => {
   });
 
   /**
-   * @testdoc タイトルにプロジェクト名を含む
+   * @testdoc [test-cases-hierarchy] タイトルにプロジェクト名を含む
    */
   it("should include project name in title", () => {
     const testCases = [createTestCase()];
@@ -157,7 +157,7 @@ describe("generateCategoryListPage", () => {
   });
 
   /**
-   * @testdoc ポータルに戻るリンクを含む
+   * @testdoc [test-cases-hierarchy] ポータルに戻るリンクを含む
    */
   it("should include back to portal link", () => {
     const testCases = [createTestCase()];

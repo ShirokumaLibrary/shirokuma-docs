@@ -57,7 +57,7 @@ See [reference/chain-rules.md](reference/chain-rules.md) for chain decision deta
 
 ## Next Steps
 
-When invoked directly (not via `working-on-issue` chain):
+When invoked standalone (not via `working-on-issue` chain):
 
 ```
 Item created: #{number}
@@ -65,18 +65,13 @@ Item created: #{number}
 → Or keep in Backlog
 ```
 
-## Evolution Signal Reminder
+## Evolution Signal Auto-Recording
 
-At the end of the item creation completion report, check for accumulated Evolution signals.
+At the end of the item creation completion report, auto-record Evolution signals detected during the session following the "Auto-Recording Procedure at Skill Completion" in the `rule-evolution` rule.
 
-```bash
-shirokuma-docs discussions list --category Evolution --limit 1
-```
-
-- 0 discussions → display nothing
-- 1+ discussions → append one line to the completion report:
-
-> 🧬 Evolution signals are accumulated. Run `/evolving-rules` to analyze.
+1. Self-review the session using the detection checklist (see `rule-evolution` rule)
+2. Signals detected → Post comment to Evolution Issue → Display 1-line recording confirmation
+3. No signals → Check for accumulated signals → Display reminder (fallback)
 
 ## GitHub Writing Rules
 

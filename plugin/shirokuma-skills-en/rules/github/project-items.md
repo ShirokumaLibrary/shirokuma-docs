@@ -89,7 +89,7 @@ AI MUST update issue status at these points:
 
 | Trigger | Action | Owner | Command |
 |---------|--------|-------|---------|
-| Planning started | → Planning + assign | `planning-on-issue` | `issues update {n} --field-status "Planning"` + `gh issue edit {n} --add-assignee @me` |
+| Planning started | → Planning + assign | `planning-on-issue` | `issues update {n} --field-status "Planning" --add-assignee @me` |
 | Plan created | → Spec Review | `planning-on-issue` | `issues update {n} --field-status "Spec Review"` |
 | User approves plan, starts work | → In Progress + branch | `working-on-issue` | `issues update {n} --field-status "In Progress"` |
 | Self-review complete | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"` (Status MUST remain In Progress **during** self-review. Transition to Review only after self-review completes) |

@@ -63,6 +63,8 @@ shirokuma-docs issues reopen {number}
 ### Issues — Pull Requests
 
 ```bash
+shirokuma-docs issues pr-create --base develop --title "feat: タイトル (#42)" --body-file /tmp/shirokuma-docs/pr-body.md
+shirokuma-docs issues pr-create --base main --head develop --title "release: v0.2.0"  # リリースワークフロー
 shirokuma-docs issues pr-list                               # PR 一覧（デフォルト: open）
 shirokuma-docs issues pr-list --state merged --limit 5     # フィルタリング
 shirokuma-docs issues pr-show {number}                      # PR 詳細（body, diff stats, linked issues）
@@ -126,8 +128,6 @@ gh repo view --json nameWithOwner -q '.nameWithOwner'
 gh auth login
 gh auth status
 
-# PR 作成（shirokuma-docs CLI 未対応 — 単一操作で完結するため gh 直接使用を許容）
-gh pr create --base develop --title "feat: タイトル (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```
 
 ## `--body-file` 使い分け
@@ -167,7 +167,7 @@ graph LR
 
 | 仕組み | 役割 | 例 |
 |--------|------|-----|
-| Issue Types | 作業の**種類** | Feature, Bug, Chore, Docs, Research |
+| Issue Types | 作業の**種類** | Feature, Bug, Chore, Docs, Research, Evolution |
 | エリアラベル | 作業の**影響範囲** | `area:cli`, `area:plugin` |
 | 運用ラベル | トリアージ・ライフサイクル | `duplicate`, `invalid`, `wontfix` |
 

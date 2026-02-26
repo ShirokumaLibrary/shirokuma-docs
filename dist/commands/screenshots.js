@@ -19,8 +19,8 @@
  * 注意: E2Eテスト (tests/e2e/) とは別管理
  */
 import { resolve, dirname, relative } from "node:path";
-import { spawnSync } from "node:child_process";
 import { globSync } from "glob";
+import { spawnAsync } from "../utils/spawn-async.js";
 import { loadConfig, getOutputPath } from "../utils/config.js";
 import { ensureDir, writeFile, readFile, fileExists } from "../utils/file.js";
 import { createLogger } from "../utils/logger.js";
@@ -170,18 +170,17 @@ async function generateSingleAppScreenshots(screens, screenshotsConfig, projectP
     // --run オプションで即時実行
     if (options.run) {
         logger.info("Playwright テストを実行中...");
-        const result = spawnSync("npx", ["playwright", "test", testFilePath, "--reporter=list"], {
+        const result = await spawnAsync("npx", ["playwright", "test", testFilePath, "--reporter=list"], {
             cwd: projectPath,
             stdio: "inherit",
-            shell: false,
         });
-        if (result.status === 0) {
+        if (result.exitCode === 0) {
             logger.success("スクリーンショット撮影が完了しました");
         }
         else {
             logger.error("Playwright テストの実行に失敗しました");
-            if (result.error) {
-                logger.debug(String(result.error));
+            if (result.stderr) {
+                logger.debug(result.stderr);
             }
         }
     }
@@ -264,15 +263,14 @@ async function generateMultiAppScreenshots(allScreens, baseConfig, projectPath, 
         for (const testFile of generatedFiles) {
             const relativePath = relative(projectPath, testFile);
             logger.info(`  実行中: ${relativePath}`);
-            const result = spawnSync("npx", ["playwright", "test", testFile, "--reporter=list"], {
+            const result = await spawnAsync("npx", ["playwright", "test", testFile, "--reporter=list"], {
                 cwd: projectPath,
                 stdio: "inherit",
-                shell: false,
             });
-            if (result.status !== 0) {
+            if (result.exitCode !== 0) {
                 logger.error(`  エラー: ${relativePath}`);
-                if (result.error) {
-                    logger.debug(String(result.error));
+                if (result.stderr) {
+                    logger.debug(result.stderr);
                 }
             }
         }
@@ -343,7 +341,7 @@ function generateTestFileForApp(screens, config, appId, projectPath, logger) {
     // ログイン成功を確認
     await page.waitForURL(/\\/(${config.locale})?(\\/|$)/, { timeout: 15000 });
     // セッションCookieの確立を待つ
-    await page.waitForLoadState('networkidle').catch(() => {});
+    await page.waitForLoadState('networkidle').catch(() => { console.log('⚠️ networkidle タイムアウト - 続行'); });
     await page.waitForTimeout(1000);
     console.log('✅ ログイン成功');
 `
@@ -913,8 +911,8 @@ ${errorCheckCode}
     // === ${index + 1}. ${screen.name} ===
     console.log('  [${index + 1}] ${screen.name} (${isDynamic ? `' + ${gotoUrl} + '` : displayRoute})');
     await page.goto(${gotoUrl}, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('${waitFor}', { timeout: 15000 }).catch(() => {
-      console.log('    ⚠️ ${waitFor}タイムアウト - 続行');
+    await page.waitForLoadState('${waitFor}', { timeout: 15000 }).catch((e) => {
+      console.log('    ⚠️ ${waitFor}タイムアウト - 続行', e?.message ?? '');
     });
 ${waitForSelectorsCode}    await page.waitForTimeout(${delay});
     // フォント読み込み完了とレイアウト安定化を待機
@@ -1030,8 +1028,8 @@ ${errorCheckCode}
     // === ${index + 1}. ${screen.name} ===
     console.log('  [${index + 1}] ${screen.name} (${isDynamic ? `' + ${gotoUrl} + '` : displayRoute})');
     await page.goto(${gotoUrl}, { waitUntil: 'domcontentloaded' });
-    await page.waitForLoadState('${waitFor}', { timeout: 15000 }).catch(() => {
-      console.log('    ⚠️ ${waitFor}タイムアウト - 続行');
+    await page.waitForLoadState('${waitFor}', { timeout: 15000 }).catch((e) => {
+      console.log('    ⚠️ ${waitFor}タイムアウト - 続行', e?.message ?? '');
     });
 ${waitForSelectorsCode}    await page.waitForTimeout(${delay});
     // フォント読み込み完了とレイアウト安定化を待機

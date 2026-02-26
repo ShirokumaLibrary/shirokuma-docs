@@ -288,7 +288,7 @@ describe("getDetailStyles", () => {
   });
 
   /**
-   * @testdoc 未知のアクセントカラーでデフォルトの blue にフォールバックする
+   * @testdoc [details-styles/getDetailStyles] 未知のアクセントカラーでデフォルトの blue にフォールバックする
    */
   it("should fallback to blue for unknown accent color", () => {
     const result = getDetailStyles("unknown");
@@ -346,7 +346,7 @@ describe("getModuleSpecificStyles", () => {
   });
 
   /**
-   * @testdoc レスポンシブメディアクエリを含む
+   * @testdoc [details-styles/getModuleSpecificStyles] レスポンシブメディアクエリを含む
    */
   it("should include responsive media query", () => {
     const result = getModuleSpecificStyles("blue");
@@ -354,7 +354,7 @@ describe("getModuleSpecificStyles", () => {
   });
 
   /**
-   * @testdoc 未知のアクセントカラーでデフォルトの blue にフォールバックする
+   * @testdoc [details-styles/getModuleSpecificStyles] 未知のアクセントカラーでデフォルトの blue にフォールバックする
    */
   it("should fallback to blue for unknown accent color", () => {
     const result = getModuleSpecificStyles("red");

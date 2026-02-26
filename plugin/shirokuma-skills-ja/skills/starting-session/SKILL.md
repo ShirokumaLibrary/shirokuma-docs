@@ -175,10 +175,10 @@ shirokuma-docs session start --team
 
 ## 進化シグナルリマインド
 
-コンテキスト表示（ステップ 2）後、Evolution Discussion にシグナルが蓄積されているか確認する。
+コンテキスト表示（ステップ 2）後、Evolution Issue にシグナルが蓄積されているか確認する。
 
 ```bash
-shirokuma-docs discussions list --category Evolution --limit 1
+shirokuma-docs search "[Evolution]" --type issues --limit 1
 ```
 
 シグナルが蓄積されている場合、アクティブな Issue セクションの後に 1 行で表示:

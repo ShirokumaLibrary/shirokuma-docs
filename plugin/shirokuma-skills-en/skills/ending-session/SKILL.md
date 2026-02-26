@@ -16,6 +16,18 @@ Every session MUST end with a handover Discussion. This is **not optional** — 
 - If the user tries to skip the handover, explain its importance and proceed with creation
 - Empty Summary or Next Steps sections are not acceptable — always provide at least one line for each
 
+## Standalone Work Note
+
+This skill is designed for session-based workflows. When skills are invoked standalone (without `starting-session`), `ending-session` is **not required**.
+
+However, consider running `ending-session` when standalone work involves:
+
+| Standalone Scope | Recommendation |
+|-----------------|----------------|
+| Quick single-skill invocation (typo fix, item creation) | No handover needed |
+| Multiple commits or significant code changes | Run `ending-session` to preserve context |
+| Research findings or architecture investigation | Create a Discussion instead |
+
 ## Workflow
 
 ### Step 1: Gather Session Summary
@@ -78,7 +90,11 @@ git push -u origin {branch-name}
 Follow the `creating-pr-on-issue` skill workflow. Create a PR targeting `develop` (see `branch-workflow` rule):
 
 ```bash
-gh pr create --base develop --title "{title}" --body "$(cat <<'EOF'
+shirokuma-docs issues pr-create --base develop --title "{title}" --body-file /tmp/shirokuma-docs/pr-body.md
+```
+
+Where `/tmp/shirokuma-docs/pr-body.md` contains:
+```markdown
 ## Summary
 {1-3 bullet points of what was done}
 
@@ -87,8 +103,6 @@ gh pr create --base develop --title "{title}" --body "$(cat <<'EOF'
 
 ## Test plan
 - [ ] {testing checklist items}
-EOF
-)"
 ```
 
 **PR title:** Concise summary under 70 characters.
@@ -261,7 +275,7 @@ Implemented the feature...
 | No changes in session | Still save a brief handover |
 | Issue not in project | Warn and continue |
 | `git push` fails | Warn user, save handover without PR |
-| `gh pr create` fails | Warn user, include branch name in handover |
+| `issues pr-create` fails | Warn user, include branch name in handover |
 | On base branch (no feature branch) | Skip push/PR steps, save handover only |
 
 ## Notes

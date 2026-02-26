@@ -6,24 +6,24 @@ allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion, TodoWrite
 
 # Rule & Skill Evolution
 
-Analyze feedback signals accumulated in Evolution Discussions and propose improvements to project-specific rules and skills.
+Analyze feedback signals accumulated in Evolution Issues and propose improvements to project-specific rules and skills.
 
 ## Workflow
 
 ### Step 1: Collect Signals
 
-Fetch signals from Evolution Discussions.
+Fetch signals from Evolution Issues.
 
 ```bash
-# List Evolution category Discussions
-shirokuma-docs discussions list --category Evolution --limit 10
+# Search for Evolution Issues
+shirokuma-docs search "[Evolution]" --type issues --limit 10
 ```
 
-If a Discussion is found, fetch details including comments:
+If an Issue is found, fetch details including comments:
 
 ```bash
-shirokuma-docs discussions show {number}
-shirokuma-docs discussions comment {number}
+shirokuma-docs issues show {number}
+shirokuma-docs issues comments {number}
 ```
 
 **If no signals**: Report "No Evolution signals accumulated yet. Record signals during daily work." and exit.
@@ -103,11 +103,11 @@ Update both EN/JA files simultaneously.
 
 ### Step 7: Update Records
 
-Update the Evolution Discussion body as an aggregated summary:
+Update the Evolution Issue body as an aggregated summary:
 
 ```bash
 # Post comment first (comment-first principle)
-shirokuma-docs discussions comment {number} --body-file - <<'EOF'
+shirokuma-docs issues comment {number} --body-file - <<'EOF'
 ## Analysis Complete: {date}
 
 ### Applied
@@ -118,7 +118,7 @@ shirokuma-docs discussions comment {number} --body-file - <<'EOF'
 EOF
 
 # Update body as aggregated summary
-shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/evolution-summary.md
+shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/evolution-summary.md
 ```
 
 ## Completion Report
@@ -139,7 +139,7 @@ shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/evolu
 
 | Situation | Action |
 |-----------|--------|
-| No Evolution Discussion exists | Propose creating an Evolution Discussion for the project |
+| No Evolution Issue exists | Propose creating an Evolution Issue for the project |
 | Fewer than 3 signals | Report "Too few signals for analysis" |
 | Target rule/skill doesn't exist | Propose creation (delegate to `managing-rules`) |
 | Only EN or JA version exists | Propose creating/updating both |

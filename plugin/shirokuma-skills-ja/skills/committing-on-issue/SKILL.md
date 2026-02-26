@@ -257,5 +257,5 @@ git branch --show-current | grep -q '\-batch-'
 - force push 禁止
 - フィーチャーブランチではプッシュ自動、`develop` と `main` ではスキップ
 - PR チェーンは直接起動 + キーワード時のみ（`working-on-issue` オーケストレーションには干渉しない）
-- マージチェーンは単独起動（"マージして"）またはコミット/PR との連携が可能
+- マージチェーンはスタンドアロン起動（"マージして"）またはコミット/PR との連携が可能
 - マージ後は `shirokuma-docs issues merge` が関連 Issue ステータスを自動で Done に更新

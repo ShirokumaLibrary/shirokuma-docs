@@ -107,7 +107,7 @@ describe("workflow-commit-format", () => {
     });
 
     /**
-     * @testdoc severity パラメータが反映される
+     * @testdoc [commit-format] severity パラメータが反映される
      */
     it("should use provided severity", () => {
       const commits: CommitEntry[] = [

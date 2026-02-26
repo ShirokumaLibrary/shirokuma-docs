@@ -31,7 +31,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Nested braces
+     * @testdoc [test-annotations] Nested braces
      */
     it("should count nested braces", () => {
       expect(countBraces("{ { } }")).toBe(0);

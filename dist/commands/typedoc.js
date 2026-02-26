@@ -11,56 +11,35 @@ import { resolve } from "node:path";
 import { loadConfig, getOutputPath, resolvePath } from "../utils/config.js";
 import { ensureDir, fileExists, dirExists } from "../utils/file.js";
 import { createLogger } from "../utils/logger.js";
-import { spawnSync } from "node:child_process";
+import { isPackageInstalled, isLocalBinAvailable } from "../utils/package-check.js";
+import { execFileAsync } from "../utils/spawn-async.js";
 /**
- * TypeDoc がインストールされているか確認 (npx経由)
+ * TypeDoc がインストールされているか確認
  */
 function isTypedocInstalled(projectPath) {
-    const result = spawnSync("npx", ["typedoc", "--version"], {
-        cwd: projectPath,
-        stdio: "pipe",
-        encoding: "utf-8",
-    });
-    return result.status === 0;
+    return isLocalBinAvailable(projectPath, "typedoc");
 }
 /**
  * typedoc-plugin-markdown がインストールされているか確認
  */
 function checkMarkdownPluginInstalled(projectPath, logger) {
-    // pnpm の node_modules 構造に対応
-    const result = spawnSync("npm", ["ls", "typedoc-plugin-markdown", "--json"], {
-        cwd: projectPath,
-        encoding: "utf-8",
-        stdio: "pipe",
-    });
-    if (result.status !== 0 || !result.stdout) {
+    const found = isPackageInstalled(projectPath, "typedoc-plugin-markdown");
+    if (found) {
+        logger.debug("typedoc-plugin-markdown が見つかりました");
+    }
+    else {
         logger.debug("typedoc-plugin-markdown がインストールされていません");
-        return false;
     }
-    try {
-        const json = JSON.parse(result.stdout);
-        const found = json.dependencies?.["typedoc-plugin-markdown"] !== undefined;
-        if (found) {
-            logger.debug("typedoc-plugin-markdown が見つかりました");
-        }
-        else {
-            logger.debug("typedoc-plugin-markdown がインストールされていません");
-        }
-        return found;
-    }
-    catch {
-        logger.debug("typedoc-plugin-markdown がインストールされていません");
-        return false;
-    }
+    return found;
 }
 /**
  * TypeDoc を使用してドキュメントを生成 (npx経由)
  */
-function generateDocs(projectPath, entryPoints, outputDir, tsconfigPath, plugins, exclude, logger) {
+async function generateDocs(projectPath, entryPoints, outputDir, tsconfigPath, plugins, exclude, logger) {
     logger.debug(`エントリーポイント: ${entryPoints.join(", ")}`);
     logger.debug(`出力先: ${outputDir}`);
     logger.debug(`プラグイン: ${plugins.length > 0 ? plugins.join(", ") : "なし"}`);
-    // spawnSync 用の引数配列を構築
+    // 引数配列を構築
     const args = [
         "typedoc",
         ...entryPoints,
@@ -81,16 +60,14 @@ function generateDocs(projectPath, entryPoints, outputDir, tsconfigPath, plugins
         args.push("--exclude", pattern);
     }
     logger.debug(`実行: npx ${args.join(" ")}`);
-    const result = spawnSync("npx", args, {
+    const result = await execFileAsync("npx", args, {
         cwd: projectPath,
-        stdio: "pipe",
-        encoding: "utf-8",
     });
-    if (result.status === 0) {
+    if (result.exitCode === 0) {
         logger.success(`ドキュメント生成完了: ${outputDir}`);
         return true;
     }
-    logger.error(`TypeDoc 生成エラー: ${result.stderr || result.error}`);
+    logger.error(`TypeDoc 生成エラー: ${result.stderr}`);
     return false;
 }
 /**
@@ -183,7 +160,7 @@ export async function typedocCommand(options) {
         }
     }
     // ドキュメント生成
-    const success = generateDocs(projectPath, entryPoints, outputDir, tsconfigPath, plugins, exclude, logger);
+    const success = await generateDocs(projectPath, entryPoints, outputDir, tsconfigPath, plugins, exclude, logger);
     if (!success) {
         throw new Error("TypeDoc generation failed");
     }

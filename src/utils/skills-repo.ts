@@ -4,6 +4,20 @@
  * @description Constants, validators, and helpers for installing/updating
  * the bundled shirokuma-skills-en plugin. Skills and rules are bundled in
  * the plugin/ directory within the shirokuma-docs npm package.
+ *
+ * @remarks External command dependencies (9 calls via execFileSync):
+ * - `claude plugin marketplace list/remove/add` (3): Marketplace registration management.
+ *   Claude CLI is the only interface for plugin marketplace operations.
+ * - `claude plugin uninstall/install` (3): Plugin install/uninstall to global cache.
+ *   Claude CLI is the only interface for plugin cache management.
+ * - `claude --version` (1): CLI availability check.
+ * - `npm --version` (1): npm availability check for self-update.
+ * - `npm install` (1): Self-update of shirokuma-docs CLI package.
+ *
+ * These external dependencies are intentionally preserved because:
+ * 1. Claude CLI operations have no programmatic API alternative
+ * 2. npm install for self-update requires the npm CLI
+ * 3. Async conversion is deferred to a separate issue to minimize blast radius
  */
 
 import { join, dirname } from "node:path";

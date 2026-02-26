@@ -187,7 +187,7 @@ describe("generateHtml", () => {
   });
 
   /**
-   * @testdoc 完全な HTML ドキュメントを生成する
+   * @testdoc [test-cases-main] 完全な HTML ドキュメントを生成する
    */
   it("should generate a complete HTML document", () => {
     const testCases = [createTestCase()];
@@ -200,7 +200,7 @@ describe("generateHtml", () => {
   });
 
   /**
-   * @testdoc タイトルにプロジェクト名を含む
+   * @testdoc [test-cases-main] タイトルにプロジェクト名を含む
    */
   it("should include project name in title", () => {
     const testCases = [createTestCase()];
@@ -256,7 +256,7 @@ describe("generateHtml", () => {
   });
 
   /**
-   * @testdoc ポータルに戻るリンクを含む
+   * @testdoc [test-cases-main] ポータルに戻るリンクを含む
    */
   it("should include back to portal link", () => {
     const testCases = [createTestCase()];

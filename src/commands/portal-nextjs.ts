@@ -7,12 +7,12 @@
 
 import { resolve, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { spawnSync } from "node:child_process";
 import { existsSync, cpSync, rmSync, mkdirSync, copyFileSync, readdirSync, statSync, writeFileSync, readFileSync } from "node:fs";
 import { loadConfig, getOutputPath } from "../utils/config.js";
 import { createLogger } from "../utils/logger.js";
 import { runApiTools } from "./api-tools.js";
 import { runLintCoverage } from "./lint-coverage.js";
+import { spawnAsync } from "../utils/spawn-async.js";
 
 // __dirname equivalent for ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -270,25 +270,25 @@ export async function buildNextjsPortal(options: NextjsPortalOptions): Promise<v
     // 3. 依存関係をインストール
     // 一時ディレクトリはワークスペース外なので --ignore-workspace でインストール
     logger.info("依存関係をインストール中...");
-    const installResult = spawnSync("pnpm", ["install", "--ignore-workspace"], {
+    const installResult = await spawnAsync("pnpm", ["install", "--ignore-workspace"], {
       cwd: tmpBuildDir,
       stdio: options.verbose ? "inherit" : "pipe",
       env: { ...process.env },
     });
 
-    if (installResult.status !== 0) {
+    if (installResult.exitCode !== 0) {
       // pnpm がない場合は npm で試す
-      const npmResult = spawnSync("npm", ["install"], {
+      const npmResult = await spawnAsync("npm", ["install"], {
         cwd: tmpBuildDir,
         stdio: options.verbose ? "inherit" : "pipe",
         env: { ...process.env },
       });
 
-      if (npmResult.status !== 0) {
+      if (npmResult.exitCode !== 0) {
         if (!options.verbose) {
           logger.error("依存関係のインストールに失敗しました");
           if (npmResult.stderr) {
-            logger.error(npmResult.stderr.toString());
+            logger.error(npmResult.stderr);
           }
         }
         throw new Error("依存関係のインストールに失敗しました");
@@ -298,21 +298,21 @@ export async function buildNextjsPortal(options: NextjsPortalOptions): Promise<v
     // 4. Next.js ビルドを実行
     const portalFormat = options.format || "card";
     logger.info(`Next.js ビルドを実行中... (format: ${portalFormat})`);
-    const buildResult = spawnSync("npx", ["next", "build", "--no-lint"], {
+    const buildResult = await spawnAsync("npx", ["next", "build", "--no-lint"], {
       cwd: tmpBuildDir,
       stdio: options.verbose ? "inherit" : "pipe",
       env: {
         ...process.env,
         PROJECT_NAME: config.project.name,
         PORTAL_DATA_DIR: dataDir,
-        PROJECT_ROOT: projectPath,  // OVERVIEW.md を読み込むために必要
-        PORTAL_FORMAT: portalFormat,  // 出力形式 ("card" | "document")
+        PROJECT_ROOT: projectPath,
+        PORTAL_FORMAT: portalFormat,
       },
     });
 
-    if (buildResult.status !== 0) {
+    if (buildResult.exitCode !== 0) {
       if (!options.verbose && buildResult.stderr) {
-        logger.error(buildResult.stderr.toString());
+        logger.error(buildResult.stderr);
       }
       throw new Error("Next.js ビルドに失敗しました");
     }

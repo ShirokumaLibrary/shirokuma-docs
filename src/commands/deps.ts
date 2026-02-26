@@ -15,8 +15,11 @@ import { promisify } from "node:util";
 import { loadConfig, getOutputPath, resolvePath } from "../utils/config.js";
 import { ensureDir, fileExists, writeFile } from "../utils/file.js";
 import { createLogger, type Logger } from "../utils/logger.js";
+import { execFileAsync } from "../utils/spawn-async.js";
+import { isLocalBinAvailable } from "../utils/package-check.js";
 
-const execAsync = promisify(exec);
+// パイプが必要な SVG 生成（depcruise | dot）で使用。execFile ではシェルパイプ不可のため exec を維持
+const execShellAsync = promisify(exec);
 
 interface DepsOptions {
   project: string;
@@ -39,29 +42,26 @@ async function checkDepcruise(
   projectPath: string,
   logger: Logger
 ): Promise<boolean> {
-  try {
-    await execAsync("npx depcruise --version", { cwd: projectPath });
+  if (isLocalBinAvailable(projectPath, "depcruise")) {
     return true;
-  } catch {
-    logger.warn("dependency-cruiser がインストールされていません");
-    logger.info("インストール: pnpm add -D dependency-cruiser");
-    return false;
   }
+  logger.warn("dependency-cruiser がインストールされていません");
+  logger.info("インストール: pnpm add -D dependency-cruiser");
+  return false;
 }
 
 /**
  * graphviz (dot) がインストールされているか確認
  */
 async function checkGraphviz(logger: Logger): Promise<boolean> {
-  try {
-    await execAsync("dot -V");
+  const result = await execFileAsync("dot", ["-V"]);
+  if (result.exitCode === 0) {
     return true;
-  } catch {
-    logger.warn("graphviz がインストールされていません");
-    logger.info("インストール: apt install graphviz (Ubuntu/Debian)");
-    logger.info("           : brew install graphviz (macOS)");
-    return false;
   }
+  logger.warn("graphviz がインストールされていません");
+  logger.info("インストール: apt install graphviz (Ubuntu/Debian)");
+  logger.info("           : brew install graphviz (macOS)");
+  return false;
 }
 
 /**
@@ -92,28 +92,33 @@ async function generateJson(
   verbose: boolean
 ): Promise<boolean> {
   try {
-    const jsonCmd = [
-      "npx depcruise",
-      ...existingPaths.map((p) => `"${p}"`),
-      "--output-type json",
-      excludeRegex ? `--exclude "^(${excludeRegex})"` : "",
-    ]
-      .filter(Boolean)
-      .join(" ");
+    const args = [
+      "depcruise",
+      ...existingPaths,
+      "--output-type", "json",
+    ];
+    if (excludeRegex) {
+      args.push("--exclude", `^(${excludeRegex})`);
+    }
 
-    logger.debug(`実行: ${jsonCmd}`);
+    logger.debug(`実行: npx ${args.join(" ")}`);
 
-    const { stdout, stderr } = await execAsync(jsonCmd, {
+    const result = await execFileAsync("npx", args, {
       cwd: projectPath,
-      maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large projects
+      maxBuffer: 50 * 1024 * 1024,
     });
 
-    if (stderr && verbose) {
-      logger.debug(`stderr: ${stderr}`);
+    if (result.exitCode !== 0) {
+      logger.error(`JSON 生成失敗: ${result.stderr}`);
+      return false;
+    }
+
+    if (result.stderr && verbose) {
+      logger.debug(`stderr: ${result.stderr}`);
     }
 
     // JSON を整形して保存
-    const jsonData = JSON.parse(stdout);
+    const jsonData = JSON.parse(result.stdout);
     writeFile(outputPath, JSON.stringify(jsonData, null, 2));
 
     logger.success(`依存関係データ (JSON): ${outputPath}`);
@@ -158,7 +163,7 @@ async function generateSvg(
 
     logger.debug(`実行: ${svgCmd}`);
 
-    await execAsync(svgCmd, {
+    await execShellAsync(svgCmd, {
       cwd: projectPath,
       shell: "/bin/bash",
       maxBuffer: 50 * 1024 * 1024,

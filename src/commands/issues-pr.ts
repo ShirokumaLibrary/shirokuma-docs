@@ -2,6 +2,7 @@
  * issues PR subcommands - Pull Request operations
  *
  * Provides PR-related functionality for the issues command:
+ * - pr-create: Create a pull request via Octokit REST API
  * - pr-comments: Fetch PR review comments and threads
  * - merge: Merge a PR with configurable method
  * - pr-reply: Reply to a review comment
@@ -10,8 +11,8 @@
  *
  * Design:
  * - GraphQL for queries (more efficient nested data)
- * - REST API for reply (simpler than GraphQL which requires pullRequestReviewId)
- * - gh pr merge CLI for merge (handles edge cases reliably)
+ * - REST API for mutations (pr-create, reply — simpler than GraphQL)
+ * - Octokit REST for merge (handles edge cases reliably)
  */
 
 import { Logger } from "../utils/logger.js";
@@ -27,6 +28,7 @@ import {
   resolveTargetRepo,
 } from "../utils/repo-pairs.js";
 import { resolveAndUpdateStatus } from "../utils/issue-detail.js";
+import { getCurrentBranch } from "../utils/git-local.js";
 
 // =============================================================================
 // Types
@@ -39,6 +41,9 @@ export interface IssuesPrOptions {
   // list/show options (#568)
   state?: string;
   limit?: number;
+  // pr-create options (#986)
+  base?: string;
+  title?: string;
   // merge options
   squash?: boolean;
   merge?: boolean;
@@ -1003,4 +1008,82 @@ export async function cmdPrShow(
 
   console.log(JSON.stringify(output, null, 2));
   return 0;
+}
+
+// =============================================================================
+// cmdPrCreate (#986 — PR 作成)
+// =============================================================================
+
+/**
+ * Create a pull request via Octokit REST API.
+ *
+ * Options:
+ * - --base (required): Target branch (e.g., develop)
+ * - --title (required): PR title
+ * - --body-file (optional): Body content (already resolved by resolveBodyFileOption)
+ * - --head (optional): Source branch (defaults to current git branch)
+ */
+export async function cmdPrCreate(
+  options: IssuesPrOptions,
+  logger: Logger
+): Promise<number> {
+  if (!options.base) {
+    logger.error("--base is required (target branch)");
+    logger.info(
+      "Usage: shirokuma-docs issues pr-create --base develop --title \"feat: ...\" [--body-file ...]"
+    );
+    return 1;
+  }
+
+  if (!options.title) {
+    logger.error("--title is required (PR title)");
+    return 1;
+  }
+
+  const repoInfo = resolveTargetRepo(options);
+  if (!repoInfo) {
+    logger.error("Could not determine repository");
+    return 1;
+  }
+
+  const { owner, name: repo } = repoInfo;
+
+  // Resolve head branch: explicit --head or current git branch
+  const headBranch = options.head ?? getCurrentBranch() ?? undefined;
+  if (!headBranch) {
+    logger.error("Could not determine source branch. Specify --head <branch>.");
+    return 1;
+  }
+
+  const body = options.bodyFile ?? "";
+
+  const octokit = getOctokit();
+
+  try {
+    const { data } = await octokit.rest.pulls.create({
+      owner,
+      repo,
+      title: options.title,
+      body,
+      head: headBranch,
+      base: options.base,
+    });
+
+    logger.success(`Created PR #${data.number}: ${data.title}`);
+
+    const output = {
+      number: data.number,
+      title: data.title,
+      url: data.html_url,
+      head_branch: data.head.ref,
+      base_branch: data.base.ref,
+    };
+
+    console.log(JSON.stringify(output, null, 2));
+    return 0;
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    logger.error(`Failed to create PR: ${errorMsg}`);
+    return 1;
+  }
 }

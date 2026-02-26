@@ -15,6 +15,7 @@ Organization の Issue Types にカスタムタイプを追加する。
 | Chore | 設定・ツール・リファクタリング | Gray | gear |
 | Docs | ドキュメント | Blue | page facing up |
 | Research | 調査・検証 | Purple | magnifying glass |
+| Evolution | ルール・スキル進化シグナル・改善追跡 | Green | seedling |
 
 ## Discussion カテゴリ作成
 

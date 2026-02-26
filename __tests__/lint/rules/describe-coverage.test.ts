@@ -9,7 +9,7 @@ import type { TestCaseForLint } from "../../../src/lint/types.js";
 
 describe("describe-coverage rule", () => {
   /**
-   * @testdoc ルールメタデータが正しく定義されている
+   * @testdoc [describe-coverage] ルールメタデータが正しく定義されている
    */
   it("should have correct metadata", () => {
     expect(describeCoverageRule.id).toBe("describe-coverage");

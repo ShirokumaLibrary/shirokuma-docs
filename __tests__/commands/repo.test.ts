@@ -86,7 +86,7 @@ describe("repo command actions", () => {
 
   describe("Action routing", () => {
     /**
-     * @testdoc サポートされるアクション一覧
+     * @testdoc [repo] サポートされるアクション一覧
      * @purpose 利用可能なアクションを文書化
      */
     it("should document supported actions", () => {
@@ -409,7 +409,7 @@ describe("repo error handling", () => {
 
   describe("Error conditions", () => {
     /**
-     * @testdoc リポジトリ情報が取得できない場合
+     * @testdoc [repo] リポジトリ情報が取得できない場合
      * @purpose getRepoInfoがnullを返す場合のエラー条件を文書化
      */
     it("should document repository unavailable error", () => {
@@ -480,7 +480,7 @@ describe("repo error handling", () => {
     });
 
     /**
-     * @testdoc 不明なアクションが指定された場合
+     * @testdoc [repo] 不明なアクションが指定された場合
      * @purpose サポートされていないアクションのエラー条件を文書化
      */
     it("should document unknown action error", () => {

@@ -11,7 +11,7 @@ import type { CodeIssue } from "../../../src/lint/code-types.js";
 
 describe("annotationRequiredRule", () => {
   /**
-   * @testdoc ルールメタデータが正しく定義されている
+   * @testdoc [annotation-required] ルールメタデータが正しく定義されている
    */
   it("should have correct metadata", () => {
     expect(annotationRequiredRule.id).toBe("annotation-required");

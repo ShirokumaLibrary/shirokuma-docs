@@ -85,8 +85,10 @@ Understand the full scope of changes, not just the latest commit.
 
 ### Step 4: Create PR
 
-```bash
-gh pr create --base {base_branch} --title "{title}" --body "$(cat <<'EOF'
+Write the PR body to a file, then create the PR:
+
+```markdown
+<!-- /tmp/shirokuma-docs/{number}-pr-body.md -->
 ## Summary
 - {bullet point 1}
 - {bullet point 2}
@@ -97,8 +99,10 @@ gh pr create --base {base_branch} --title "{title}" --body "$(cat <<'EOF'
 ## Test plan
 - [ ] {test item 1}
 - [ ] {test item 2}
-EOF
-)"
+```
+
+```bash
+shirokuma-docs issues pr-create --base {base_branch} --title "{title}" --body-file /tmp/shirokuma-docs/{number}-pr-body.md
 ```
 
 **Title rules:**
@@ -134,14 +138,15 @@ docs: CLAUDE.md のコマンド一覧を更新      ← Wrong: not English
 ## Pull Request Created
 
 **PR:** {url}
-**Branch:** {branch} → develop
+**Branch:** {branch} → {base-branch}
 **Commits:** {count}
 
 ### Summary
 {brief description}
 
 ### Linked Issues
-- #{number} - {title}
+- Closes #{number}
+- Refs #{number}
 ```
 
 ### Step 6: Self-Review Chain

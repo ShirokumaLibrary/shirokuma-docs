@@ -9,7 +9,7 @@ import type { TestCaseForLint } from "../../../src/lint/types.js";
 
 describe("testdoc-min-length rule", () => {
   /**
-   * @testdoc ルールメタデータが正しく定義されている
+   * @testdoc [testdoc-min-length] ルールメタデータが正しく定義されている
    */
   it("should have correct metadata", () => {
     expect(testdocMinLengthRule.id).toBe("testdoc-min-length");
@@ -76,7 +76,7 @@ describe("testdoc-min-length rule", () => {
     });
 
     /**
-     * @testdoc @testdocがない場合はissueを返さない
+     * @testdoc [testdoc-min-length] @testdocがない場合はissueを返さない
      */
     it("should not return issue when @testdoc is missing", () => {
       const testCase: TestCaseForLint = {

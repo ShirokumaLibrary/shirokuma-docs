@@ -36,8 +36,10 @@ export interface IssuesOptions {
     title?: string;
     bodyFile?: string;
     issueType?: string;
+    addAssignee?: string;
     addLabel?: string[];
     removeLabel?: string[];
+    base?: string;
     stateReason?: string;
     squash?: boolean;
     merge?: boolean;

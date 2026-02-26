@@ -111,7 +111,7 @@ describe("ensureSingleLanguagePlugin", () => {
 
   if (!isClaudeAvailable()) {
     /**
-     * @testdoc claude CLI が利用不可の場合はスキップされる
+     * @testdoc [skills-repo-single-lang] claude CLI が利用不可の場合はスキップされる
      * @purpose claude CLI がない環境で attempted=false が返ることを確認
      */
     it("should skip when claude CLI is not available", () => {

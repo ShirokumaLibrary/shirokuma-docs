@@ -68,13 +68,17 @@ export async function runGraphQL(query, variables, options = {}) {
             ...convertedVars,
             ...(options.headers ? { headers: options.headers } : {}),
         });
+        // ランタイム型ガード: レスポンスが非 null オブジェクトであることを検証
+        if (data === null || data === undefined || typeof data !== "object") {
+            return { success: false, error: "Unexpected GraphQL response structure" };
+        }
         // 後方互換: { data: <response> } でラップ
         return { success: true, data: { data } };
     }
     catch (error) {
         if (error instanceof GraphqlResponseError) {
             // 部分成功: data と errors が両方ある場合
-            if (error.data !== undefined && error.data !== null) {
+            if (error.data !== undefined && error.data !== null && typeof error.data === "object") {
                 const graphqlErrors = (error.errors ?? []).map((e) => ({
                     message: e.message,
                     type: e.type,

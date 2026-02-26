@@ -2,6 +2,7 @@
  * issues PR subcommands - Pull Request operations
  *
  * Provides PR-related functionality for the issues command:
+ * - pr-create: Create a pull request via Octokit REST API
  * - pr-comments: Fetch PR review comments and threads
  * - merge: Merge a PR with configurable method
  * - pr-reply: Reply to a review comment
@@ -10,8 +11,8 @@
  *
  * Design:
  * - GraphQL for queries (more efficient nested data)
- * - REST API for reply (simpler than GraphQL which requires pullRequestReviewId)
- * - gh pr merge CLI for merge (handles edge cases reliably)
+ * - REST API for mutations (pr-create, reply — simpler than GraphQL)
+ * - Octokit REST for merge (handles edge cases reliably)
  */
 import { Logger } from "../utils/logger.js";
 import { OutputFormat } from "../utils/formatters.js";
@@ -21,6 +22,8 @@ export interface IssuesPrOptions {
     format?: OutputFormat;
     state?: string;
     limit?: number;
+    base?: string;
+    title?: string;
     squash?: boolean;
     merge?: boolean;
     rebase?: boolean;
@@ -94,4 +97,14 @@ export declare function parsePrStateFilter(state: string): ("OPEN" | "CLOSED" | 
 export declare function fetchOpenPRs(owner: string, repo: string, limit?: number): Promise<PrSummary[]>;
 export declare function cmdPrList(options: IssuesPrOptions, logger: Logger): Promise<number>;
 export declare function cmdPrShow(prNumberStr: string, options: IssuesPrOptions, logger: Logger): Promise<number>;
+/**
+ * Create a pull request via Octokit REST API.
+ *
+ * Options:
+ * - --base (required): Target branch (e.g., develop)
+ * - --title (required): PR title
+ * - --body-file (optional): Body content (already resolved by resolveBodyFileOption)
+ * - --head (optional): Source branch (defaults to current git branch)
+ */
+export declare function cmdPrCreate(options: IssuesPrOptions, logger: Logger): Promise<number>;
 //# sourceMappingURL=issues-pr.d.ts.map

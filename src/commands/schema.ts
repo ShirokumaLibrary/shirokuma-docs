@@ -8,7 +8,7 @@
  */
 
 import { resolve, basename, join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { rmSync } from "node:fs";
 import { loadConfig, getOutputPath, resolvePath, type ShirokumaConfig, type SchemaSourceConfig } from "../utils/config.js";
 import {
   ensureDir,
@@ -24,6 +24,8 @@ import {
   toPortalDbSchema,
   type DrizzleSchemaResult,
 } from "../parsers/drizzle-schema.js";
+import { isPackageInstalled, isBinaryInPath } from "../utils/package-check.js";
+import { execFileAsync, spawnAsync } from "../utils/spawn-async.js";
 
 interface SchemaOptions {
   project: string;
@@ -255,11 +257,7 @@ function checkPackages(projectPath: string, logger: Logger): PackageStatus {
   };
 
   // drizzle-dbml-generator 確認
-  const dbmlGenResult = spawnSync("npm", ["list", "drizzle-dbml-generator"], {
-    cwd: projectPath,
-    stdio: "pipe",
-  });
-  if (dbmlGenResult.status === 0) {
+  if (isPackageInstalled(projectPath, "drizzle-dbml-generator")) {
     status.dbmlGenerator = true;
     logger.debug("drizzle-dbml-generator: インストール済み");
   } else {
@@ -268,17 +266,12 @@ function checkPackages(projectPath: string, logger: Logger): PackageStatus {
   }
 
   // @softwaretechnik/dbml-renderer 確認
-  const dbmlRendererResult = spawnSync("npm", ["list", "@softwaretechnik/dbml-renderer"], {
-    cwd: projectPath,
-    stdio: "pipe",
-  });
-  if (dbmlRendererResult.status === 0) {
+  if (isPackageInstalled(projectPath, "@softwaretechnik/dbml-renderer")) {
     status.dbmlRenderer = true;
     logger.debug("@softwaretechnik/dbml-renderer: インストール済み");
   } else {
     // グローバルにインストールされているか確認
-    const whichResult = spawnSync("which", ["dbml-renderer"], { stdio: "pipe" });
-    if (whichResult.status === 0) {
+    if (isBinaryInPath("dbml-renderer")) {
       status.dbmlRenderer = true;
       logger.debug("dbml-renderer: グローバルインストール済み");
     } else {
@@ -340,18 +333,20 @@ console.log(dbml);
   logger.debug(`生成スクリプト: ${scriptPath}`);
 
   // スクリプト実行
-  const nodeResult = spawnSync("node", [scriptPath], {
+  const nodeResult = await execFileAsync("node", [scriptPath], {
     cwd: projectPath,
-    encoding: "utf-8",
-    stdio: ["pipe", "pipe", verbose ? "inherit" : "pipe"],
   });
 
-  if (nodeResult.status === 0 && nodeResult.stdout) {
+  if (verbose && nodeResult.stderr) {
+    process.stderr.write(nodeResult.stderr);
+  }
+
+  if (nodeResult.exitCode === 0 && nodeResult.stdout) {
     writeFile(dbmlPath, nodeResult.stdout);
     logger.success(`DBML: ${dbmlPath}`);
 
     // 一時スクリプト削除
-    spawnSync("rm", ["-f", scriptPath], { stdio: "pipe" });
+    rmSync(scriptPath, { force: true });
     return dbmlPath;
   }
 
@@ -370,22 +365,24 @@ console.log(dbml);
   writeFile(scriptPath, tsxScriptContent);
 
   // npx tsx を使用
-  const tsxResult = spawnSync("npx", ["tsx", scriptPath], {
+  const tsxResult = await execFileAsync("npx", ["tsx", scriptPath], {
     cwd: projectPath,
-    encoding: "utf-8",
-    stdio: ["pipe", "pipe", verbose ? "inherit" : "pipe"],
   });
 
-  // 一時スクリプト削除
-  spawnSync("rm", ["-f", scriptPath], { stdio: "pipe" });
+  if (verbose && tsxResult.stderr) {
+    process.stderr.write(tsxResult.stderr);
+  }
 
-  if (tsxResult.status === 0 && tsxResult.stdout) {
+  // 一時スクリプト削除
+  rmSync(scriptPath, { force: true });
+
+  if (tsxResult.exitCode === 0 && tsxResult.stdout) {
     writeFile(dbmlPath, tsxResult.stdout);
     logger.success(`DBML: ${dbmlPath}`);
     return dbmlPath;
   }
 
-  logger.warn(`DBML 生成失敗: ${tsxResult.stderr || tsxResult.error}`);
+  logger.warn(`DBML 生成失敗: ${tsxResult.stderr}`);
   logger.info("ヒント: TypeScript スキーマの場合は tsx をインストールしてください");
   logger.info("  pnpm add -D tsx");
   return null;
@@ -408,16 +405,16 @@ async function generateSvg(
   if (packageStatus.dbmlRenderer) {
     logger.debug(`実行: npx dbml-renderer -i "${dbmlPath}" -o "${svgPath}"`);
 
-    const rendererResult = spawnSync("npx", ["dbml-renderer", "-i", dbmlPath, "-o", svgPath], {
+    const rendererResult = await spawnAsync("npx", ["dbml-renderer", "-i", dbmlPath, "-o", svgPath], {
       cwd: projectPath,
       stdio: verbose ? "inherit" : "pipe",
     });
 
-    if (rendererResult.status === 0 && fileExists(svgPath)) {
+    if (rendererResult.exitCode === 0 && fileExists(svgPath)) {
       logger.success(`SVG ER 図: ${svgPath}`);
       return;
     }
-    logger.debug(`dbml-renderer 失敗: ${rendererResult.stderr || rendererResult.error}`);
+    logger.debug(`dbml-renderer 失敗: ${rendererResult.stderr}`);
   }
 
   // 方法2: dbml-cli + graphviz を使用
@@ -425,27 +422,26 @@ async function generateSvg(
   const dotPath = resolve(outputDir, "schema.dot");
 
   // @dbml/cli がインストールされているか確認
-  const dbmlCliResult = spawnSync("npm", ["list", "@dbml/cli"], { cwd: projectPath, stdio: "pipe" });
-  if (dbmlCliResult.status === 0) {
+  if (isPackageInstalled(projectPath, "@dbml/cli")) {
     // dbml を dot に変換
     logger.debug(`実行: npx dbml2dot "${dbmlPath}" -o "${dotPath}"`);
-    const toDotResult = spawnSync("npx", ["dbml2dot", dbmlPath, "-o", dotPath], {
+    const toDotResult = await spawnAsync("npx", ["dbml2dot", dbmlPath, "-o", dotPath], {
       cwd: projectPath,
       stdio: verbose ? "inherit" : "pipe",
     });
 
     // dot を svg に変換
-    if (toDotResult.status === 0 && fileExists(dotPath)) {
+    if (toDotResult.exitCode === 0 && fileExists(dotPath)) {
       logger.debug(`実行: dot -Tsvg "${dotPath}" -o "${svgPath}"`);
-      const toSvgResult = spawnSync("dot", ["-Tsvg", dotPath, "-o", svgPath], {
+      const toSvgResult = await spawnAsync("dot", ["-Tsvg", dotPath, "-o", svgPath], {
         cwd: projectPath,
         stdio: verbose ? "inherit" : "pipe",
       });
 
-      if (toSvgResult.status === 0 && fileExists(svgPath)) {
+      if (toSvgResult.exitCode === 0 && fileExists(svgPath)) {
         logger.success(`SVG ER 図: ${svgPath}`);
         // dot ファイル削除
-        spawnSync("rm", ["-f", dotPath], { stdio: "pipe" });
+        rmSync(dotPath, { force: true });
         return;
       }
     }

@@ -245,7 +245,7 @@ For token efficiency:
 
 ## Next Steps
 
-When invoked directly (not via `working-on-issue`), suggest the next workflow step after the review:
+When invoked standalone (not via `working-on-issue`), suggest the next workflow step after the review:
 
 ```
 Review complete. If changes were made based on findings:

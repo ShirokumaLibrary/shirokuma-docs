@@ -113,7 +113,7 @@ pnpm --filter {app} build        # Build
 
 ## Next Steps
 
-When invoked directly (not via `working-on-issue` chain):
+When invoked standalone (not via `working-on-issue` chain):
 
 ```
 Implementation complete. Next step:

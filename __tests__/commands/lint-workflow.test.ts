@@ -193,7 +193,7 @@ describe("validateIssueFields", () => {
   });
 
   /**
-   * @testdoc severity引数が反映される
+   * @testdoc [lint-workflow/validateIssueFields] severity引数が反映される
    * @purpose severity設定の正確な伝播
    */
   it("should use specified severity", () => {
@@ -561,7 +561,7 @@ describe("validateCommitFormat", () => {
   });
 
   /**
-   * @testdoc severity引数が反映される
+   * @testdoc [lint-workflow/validateCommitFormat] severity引数が反映される
    * @purpose severity設定の正確な伝播
    */
   it("should use specified severity", () => {

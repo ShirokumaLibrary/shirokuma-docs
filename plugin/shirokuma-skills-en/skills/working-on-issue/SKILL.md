@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion, TodoWrite
 
 Orchestrate the full workflow from planning to implementation, commit, PR, and self-review based on issue type or task description.
 
-**Note**: For session setup, use `starting-session`. This skill is for starting work on a specific task.
+**Note**: For session setup, use `starting-session`. This skill works both within a session and standalone (without `starting-session`). It is the primary entry point for working on a specific task in either mode.
 
 ## TodoWrite Registration (Required)
 
@@ -174,20 +174,15 @@ After work completes, execute the chain **automatically**. No user confirmation 
 - After self-review, review-based Issue body updates follow comment-first principle (handled by `creating-pr-on-issue` Step 6c)
 - On failure: stop chain, report status, return control to user
 
-### Step 6: Evolution Signal Reminder
+### Step 6: Evolution Signal Auto-Recording
 
-After successful chain completion (skip on chain failure), check for accumulated Evolution signals.
+After successful chain completion (skip on chain failure), auto-record Evolution signals detected during the session following the "Auto-Recording Procedure at Skill Completion" in the `rule-evolution` rule.
 
-```bash
-shirokuma-docs discussions list --category Evolution --limit 1
-```
+1. Self-review the session using the detection checklist (see `rule-evolution` rule)
+2. Signals detected → Post comment to Evolution Issue → Display 1-line recording confirmation
+3. No signals → Check for accumulated signals → Display reminder (fallback)
 
-- 0 discussions → display nothing
-- 1+ discussions → display one line:
-
-> 🧬 Evolution signals are accumulated. Run `/evolving-rules` to analyze.
-
-Do not register in TodoWrite (non-blocking display, not a work step).
+Do not register in TodoWrite (non-blocking processing, not a work step).
 
 ## Batch Mode
 

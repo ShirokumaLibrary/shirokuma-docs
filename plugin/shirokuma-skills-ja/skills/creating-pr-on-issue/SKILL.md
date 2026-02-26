@@ -79,8 +79,10 @@ git diff --stat {base_branch}..HEAD
 
 ### ステップ 4: PR作成
 
-```bash
-gh pr create --base {base_branch} --title "{title}" --body "$(cat <<'EOF'
+PR 本文をファイルに書き出してから PR を作成する:
+
+```markdown
+<!-- /tmp/shirokuma-docs/{number}-pr-body.md -->
 ## 概要
 - {箇条書き}
 
@@ -89,15 +91,30 @@ gh pr create --base {base_branch} --title "{title}" --body "$(cat <<'EOF'
 
 ## テスト計画
 - [ ] {テスト項目}
-EOF
-)"
+```
+
+```bash
+shirokuma-docs issues pr-create --base {base_branch} --title "{title}" --body-file /tmp/shirokuma-docs/{number}-pr-body.md
 ```
 
 **タイトルルール**: 70文字以内、プレフィックス(`feat:` 等)は英語、**それ以降は日本語**で記述する。Issue番号はタイトルに入れない。
 
 ### ステップ 5: 完了レポート
 
-PR URL、ブランチ、コミット数、概要、リンクされた Issue を表示。
+```markdown
+## PR 作成完了
+
+**PR:** {url}
+**ブランチ:** {branch} → {base-branch}
+**コミット:** {count} 件
+
+### 概要
+{変更内容の要約}
+
+### 関連 Issue
+- Closes #{number}
+- Refs #{number}
+```
 
 ### ステップ 6: セルフレビューチェーン
 

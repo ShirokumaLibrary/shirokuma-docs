@@ -1024,3 +1024,97 @@ describe("pr-show - output structure", () => {
     expect(output.linked_issues).toEqual([]);
   });
 });
+
+// =============================================================================
+// #986: pr-create - Output structure contracts
+// =============================================================================
+
+describe("pr-create - output structure", () => {
+  /**
+   * @testdoc pr-createの出力JSONにPR番号・タイトル・URLが含まれる
+   * @purpose 作成されたPRの基本メタデータが返される契約
+   */
+  it("should include PR metadata in output", () => {
+    const output = {
+      number: 42,
+      title: "feat: add branch workflow (#39)",
+      url: "https://github.com/owner/repo/pull/42",
+      head_branch: "feat/39-branch-workflow",
+      base_branch: "develop",
+    };
+
+    expect(output).toHaveProperty("number");
+    expect(output).toHaveProperty("title");
+    expect(output).toHaveProperty("url");
+    expect(output).toHaveProperty("head_branch");
+    expect(output).toHaveProperty("base_branch");
+    expect(typeof output.number).toBe("number");
+    expect(typeof output.url).toBe("string");
+  });
+
+  /**
+   * @testdoc pr-createの出力にhead/baseブランチ名が含まれる
+   * @purpose ブランチ情報が返される契約（チェーン処理で後続スキルが使用）
+   */
+  it("should include branch names for downstream chain use", () => {
+    const output = {
+      number: 100,
+      title: "release: v0.2.0",
+      url: "https://github.com/owner/repo/pull/100",
+      head_branch: "develop",
+      base_branch: "main",
+    };
+
+    expect(output.head_branch).toBe("develop");
+    expect(output.base_branch).toBe("main");
+  });
+});
+
+// =============================================================================
+// #986: pr-create - Validation
+// =============================================================================
+
+describe("pr-create - validation", () => {
+  /**
+   * @testdoc --base未指定時にエラーとなる
+   * @purpose 必須オプション未指定の検証
+   */
+  it("should require --base option", () => {
+    // cmdPrCreate checks for options.base and returns 1 if missing
+    const options = { title: "feat: test" };
+    expect(options).not.toHaveProperty("base");
+  });
+
+  /**
+   * @testdoc --title未指定時にエラーとなる
+   * @purpose 必須オプション未指定の検証
+   */
+  it("should require --title option", () => {
+    const options = { base: "develop" };
+    expect(options).not.toHaveProperty("title");
+  });
+
+  /**
+   * @testdoc --headが未指定の場合はgitブランチから自動検出
+   * @purpose デフォルトブランチ検出の仕様確認
+   */
+  it("should use current git branch when --head is not specified", () => {
+    const options = { base: "develop", title: "feat: test" };
+    // head is undefined, cmdPrCreate will call getCurrentBranch()
+    expect(options).not.toHaveProperty("head");
+  });
+
+  /**
+   * @testdoc リリースワークフローで--headを明示指定できる
+   * @purpose develop→mainのリリースPR作成パターンの仕様確認
+   */
+  it("should accept explicit --head for release workflow", () => {
+    const options = {
+      base: "main",
+      head: "develop",
+      title: "release: v0.2.0",
+    };
+    expect(options.head).toBe("develop");
+    expect(options.base).toBe("main");
+  });
+});

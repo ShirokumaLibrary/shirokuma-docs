@@ -16,7 +16,7 @@ Without arguments: Infer from conversation context:
 |--------|--------|--------|
 | Title | Recent user message | Summarize the problem/feature mentioned before "make this an issue" |
 | **Type classification** | Conversation context | See "Type Classification" below |
-| Type (Issue Types) | Derived from classification | feature → Feature, bug → Bug, chore → Chore, docs → Docs, research → Research (specify via `--issue-type` option) |
+| Type (Issue Types) | Derived from classification | feature → Feature, bug → Bug, chore → Chore, docs → Docs, research → Research, evolution → Evolution (specify via `--issue-type` option) |
 | Label (area) | Conversation context | Infer from impact scope: CLI-related → `area:cli`, plugin-related → `area:plugin`, etc. |
 | Priority | Conversation context | Urgency expressions ("urgent" → High, normal → Medium) |
 | Body | Type template | Structure using the type-specific template from Step 2 |
@@ -31,6 +31,7 @@ Without arguments: Infer from conversation context:
 | refactor, improve, config, chore, internal | chore |
 | documentation, docs, document, readme | docs |
 | research, evaluate, compare, investigate | research |
+| evolution, signal, evolve, rule improvement | evolution |
 
 ### Purpose Clarity Check
 
@@ -165,7 +166,7 @@ For typo fixes, single-line changes, and other XS-sized issues:
 
 | Field | Options | Default |
 |-------|---------|---------|
-| Issue Type | Feature / Bug / Task / Chore / Docs / Research | (from type inference) |
+| Issue Type | Feature / Bug / Task / Chore / Docs / Research / Evolution | (from type inference) |
 | Priority | Critical / High / Medium / Low | Medium |
 | Size | XS / S / M / L / XL | S |
 | Status | Backlog / Ready | Backlog |

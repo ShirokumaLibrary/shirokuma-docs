@@ -63,6 +63,8 @@ shirokuma-docs issues reopen {number}
 ### Issues — Pull Requests
 
 ```bash
+shirokuma-docs issues pr-create --base develop --title "feat: title (#42)" --body-file /tmp/shirokuma-docs/pr-body.md
+shirokuma-docs issues pr-create --base main --head develop --title "release: v0.2.0"  # Release workflow
 shirokuma-docs issues pr-list                               # PR list (default: open)
 shirokuma-docs issues pr-list --state merged --limit 5     # Filtering
 shirokuma-docs issues pr-show {number}                      # PR details (body, diff stats, linked issues)
@@ -126,8 +128,6 @@ gh repo view --json nameWithOwner -q '.nameWithOwner'
 gh auth login
 gh auth status
 
-# PR creation (not in shirokuma-docs CLI — single operation, gh direct use allowed)
-gh pr create --base develop --title "feat: title (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
 ```
 
 ## `--body-file` Usage Guide
@@ -167,7 +167,7 @@ Work type classification is primarily handled by **Issue Types** (Organization-l
 
 | Mechanism | Role | Example |
 |-----------|------|---------|
-| Issue Types | **What** kind of work | Feature, Bug, Chore, Docs, Research |
+| Issue Types | **What** kind of work | Feature, Bug, Chore, Docs, Research, Evolution |
 | Area labels | **Where** the work applies | `area:cli`, `area:plugin` |
 | Operational labels | Triage / lifecycle | `duplicate`, `invalid`, `wontfix` |
 

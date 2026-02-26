@@ -27,7 +27,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Nested braces
+     * @testdoc [feature-map-type-extraction] Nested braces
      */
     it("should handle nested braces", () => {
       const content = "{ outer: { inner: string; }; }";

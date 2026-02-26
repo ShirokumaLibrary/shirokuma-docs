@@ -164,10 +164,10 @@ Check `shirokuma-docs/src/lint/rules/` for current implementations.
 
 ## Existing Rule Deficiency Detection
 
-When discovering patterns reveals deficiencies in existing rules (coverage gaps, ambiguous descriptions, divergence from practice), record them as comments in the Evolution Discussion.
+When discovering patterns reveals deficiencies in existing rules (coverage gaps, ambiguous descriptions, divergence from practice), record them as comments in an Evolution Issue.
 
 ```bash
-shirokuma-docs discussions comment {evolution-number} --body-file - <<'EOF'
+shirokuma-docs issues comment {evolution-number} --body-file - <<'EOF'
 **Type:** Missing pattern
 **Target:** {rule name}
 **Context:** {discovery situation}

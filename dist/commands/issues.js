@@ -21,7 +21,7 @@
 import { createLogger } from "../utils/logger.js";
 import { runGraphQL, getRepoInfo, validateTitle, validateBody, isIssueNumber, parseIssueNumber, } from "../utils/github.js";
 import { getOctokit } from "../utils/octokit-client.js";
-import { cmdPrComments, cmdPrList, cmdPrShow, cmdMerge, cmdPrReply, cmdResolve, } from "./issues-pr.js";
+import { cmdPrComments, cmdPrCreate, cmdPrList, cmdPrShow, cmdMerge, cmdPrReply, cmdResolve, } from "./issues-pr.js";
 import { cmdSubList, cmdSubAdd, cmdSubRemove, } from "./issues-sub.js";
 import { loadGhConfig, getDefaultLimit, getDefaultStatus } from "../utils/gh-config.js";
 import { formatOutput, GH_ISSUES_LIST_COLUMNS, GH_ISSUES_SEARCH_COLUMNS, } from "../utils/formatters.js";
@@ -773,6 +773,36 @@ async function cmdUpdate(issueNumberStr, options, logger) {
             }
         }
     }
+    // Add assignee (#986)
+    if (options.addAssignee) {
+        const octokit = getOctokit();
+        let assignee = options.addAssignee;
+        // Resolve @me to authenticated user
+        if (assignee === "@me") {
+            try {
+                const { data: user } = await octokit.rest.users.getAuthenticated();
+                assignee = user.login;
+            }
+            catch {
+                logger.error("Failed to resolve @me — could not get authenticated user");
+                return 1;
+            }
+        }
+        try {
+            await octokit.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                assignees: [assignee],
+            });
+            updated = true;
+            logger.success(`Assigned ${assignee}`);
+        }
+        catch (err) {
+            const errorMsg = err instanceof Error ? err.message : String(err);
+            logger.error(`Failed to add assignee: ${errorMsg}`);
+        }
+    }
     // Update project fields
     const statusValue = options.fieldStatus;
     const fields = {};
@@ -1486,6 +1516,9 @@ export async function issuesCommand(action, target, options) {
             else {
                 exitCode = await cmdRemove(target, options, logger);
             }
+            break;
+        case "pr-create":
+            exitCode = await cmdPrCreate(options, logger);
             break;
         case "pr-list":
             exitCode = await cmdPrList(options, logger);

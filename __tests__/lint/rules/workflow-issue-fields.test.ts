@@ -1,7 +1,7 @@
 /**
  * workflow-issue-fields Rule Tests
  *
- * validateIssueFields（純粋関数）と checkIssueFields（spawnSync ラッパー）のテスト
+ * validateIssueFields（純粋関数）と checkIssueFields（async ラッパー）のテスト
  * ESM 環境のため jest.unstable_mockModule + dynamic import を使用。
  *
  * @testdoc Issue フィールド検証テスト
@@ -13,10 +13,10 @@ import { jest } from "@jest/globals";
 // Mocks (ESM: unstable_mockModule + dynamic import)
 // =============================================================================
 
-const mockSpawnSync = jest.fn<(...args: any[]) => any>();
+const mockExecFileAsync = jest.fn<(...args: any[]) => any>();
 
-jest.unstable_mockModule("node:child_process", () => ({
-  spawnSync: mockSpawnSync,
+jest.unstable_mockModule("../../../src/utils/spawn-async.js", () => ({
+  execFileAsync: mockExecFileAsync,
 }));
 
 const { validateIssueFields, checkIssueFields } = await import(
@@ -28,12 +28,12 @@ import type { TableJsonResponse } from "../../../src/lint/rules/workflow-issue-f
 // Helpers
 // =============================================================================
 
-function spawnOk(stdout: string) {
-  return { status: 0, stdout, stderr: "", pid: 0, output: [], signal: null };
+function asyncOk(stdout: string) {
+  return Promise.resolve({ stdout, stderr: "", exitCode: 0 });
 }
 
-function spawnFail(stderr = "error") {
-  return { status: 1, stdout: "", stderr, pid: 0, output: [], signal: null };
+function asyncFail(stderr = "error") {
+  return Promise.resolve({ stdout: "", stderr, exitCode: 1 });
 }
 
 function makeTableData(
@@ -155,34 +155,34 @@ describe("workflow-issue-fields", () => {
 
   describe("checkIssueFields", () => {
     beforeEach(() => {
-      mockSpawnSync.mockReset();
+      mockExecFileAsync.mockReset();
     });
 
     /**
      * @testdoc 正常な JSON 出力を検証する
      */
-    it("should validate parsed JSON from CLI output", () => {
+    it("should validate parsed JSON from CLI output", async () => {
       const data = makeTableData([
         [1, "Issue", "Backlog", "High", "M"],
       ]);
-      mockSpawnSync.mockReturnValue(spawnOk(JSON.stringify(data)));
+      mockExecFileAsync.mockReturnValue(asyncOk(JSON.stringify(data)));
 
-      const issues = checkIssueFields();
+      const issues = await checkIssueFields();
       expect(issues).toEqual([]);
-      expect(mockSpawnSync).toHaveBeenCalledWith(
+      expect(mockExecFileAsync).toHaveBeenCalledWith(
         "shirokuma-docs",
         ["issues", "list", "--format", "table-json"],
-        expect.objectContaining({ encoding: "utf-8" })
+        expect.objectContaining({ timeout: 30_000 })
       );
     });
 
     /**
      * @testdoc CLI コマンド失敗時に warning を返す
      */
-    it("should return warning when CLI command fails", () => {
-      mockSpawnSync.mockReturnValue(spawnFail("connection error"));
+    it("should return warning when CLI command fails", async () => {
+      mockExecFileAsync.mockReturnValue(asyncFail("connection error"));
 
-      const issues = checkIssueFields();
+      const issues = await checkIssueFields();
       expect(issues).toHaveLength(1);
       expect(issues[0].type).toBe("warning");
       expect(issues[0].message).toContain("Failed to fetch");
@@ -191,10 +191,10 @@ describe("workflow-issue-fields", () => {
     /**
      * @testdoc JSON パースエラー時に warning を返す
      */
-    it("should return warning for JSON parse error", () => {
-      mockSpawnSync.mockReturnValue(spawnOk("not-valid-json{"));
+    it("should return warning for JSON parse error", async () => {
+      mockExecFileAsync.mockReturnValue(asyncOk("not-valid-json{"));
 
-      const issues = checkIssueFields();
+      const issues = await checkIssueFields();
       expect(issues).toHaveLength(1);
       expect(issues[0].type).toBe("warning");
       expect(issues[0].message).toContain("Failed to parse");
@@ -203,10 +203,10 @@ describe("workflow-issue-fields", () => {
     /**
      * @testdoc stdout が空の場合に warning を返す
      */
-    it("should return warning when stdout is empty", () => {
-      mockSpawnSync.mockReturnValue(spawnOk(""));
+    it("should return warning when stdout is empty", async () => {
+      mockExecFileAsync.mockReturnValue(asyncOk(""));
 
-      const issues = checkIssueFields();
+      const issues = await checkIssueFields();
       expect(issues).toHaveLength(1);
       expect(issues[0].type).toBe("warning");
     });
@@ -214,10 +214,10 @@ describe("workflow-issue-fields", () => {
     /**
      * @testdoc stderr の内容がコンテキストに含まれる
      */
-    it("should include stderr in context on failure", () => {
-      mockSpawnSync.mockReturnValue(spawnFail("auth failed"));
+    it("should include stderr in context on failure", async () => {
+      mockExecFileAsync.mockReturnValue(asyncFail("auth failed"));
 
-      const issues = checkIssueFields();
+      const issues = await checkIssueFields();
       expect(issues[0].context).toBe("auth failed");
     });
   });

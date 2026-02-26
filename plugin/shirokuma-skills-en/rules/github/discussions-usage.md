@@ -17,7 +17,8 @@ Discussions store human-readable knowledge; Rules store AI-readable extracts.
 | ADR | 📐 | Open-ended discussion | Architecture decisions confirmed |
 | Knowledge | 💡 | Open-ended discussion | Patterns/solutions confirmed |
 | Research | 🔬 | Open-ended discussion | Investigation needed |
-| Evolution | 🧬 | Open-ended discussion | Rule/skill evolution signal accumulation |
+
+> Evolution signals are now managed via Issues, not Discussions. See the `rule-evolution` rule for details.
 
 ## Workflow
 
@@ -61,4 +62,3 @@ Knowledge→Rule extraction workflow and search command details: `managing-githu
 | ADR | `ADR-{NNN}: {title}` |
 | Knowledge | `{Topic Name}` |
 | Research | `[Research] {topic}` |
-| Evolution | `[Evolution] {topic}` |

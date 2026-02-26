@@ -4,7 +4,7 @@
  * Checks open issues for missing Project fields (Priority, Size).
  * Uses shirokuma-docs issues list output (JSON with project fields).
  */
-import { spawnSync } from "node:child_process";
+import { execFileAsync } from "../../utils/spawn-async.js";
 const REQUIRED_FIELDS = ["priority", "size"];
 /**
  * Pure validation: check issue data for missing fields.
@@ -55,13 +55,10 @@ export function validateIssueFields(data, severity = "warning") {
 /**
  * Fetch issue data and check field completeness.
  */
-export function checkIssueFields(severity = "warning") {
-    // Fetch open issues via shirokuma-docs CLI (reuse existing logic)
-    const result = spawnSync("shirokuma-docs", ["issues", "list", "--format", "table-json"], {
-        encoding: "utf-8",
-        timeout: 30_000,
-    });
-    if (result.status !== 0 || !result.stdout?.trim()) {
+export async function checkIssueFields(severity = "warning") {
+    // Fetch open issues via shirokuma-docs CLI
+    const result = await execFileAsync("shirokuma-docs", ["issues", "list", "--format", "table-json"], { timeout: 30_000 });
+    if (result.exitCode !== 0 || !result.stdout?.trim()) {
         return [
             {
                 type: "warning",

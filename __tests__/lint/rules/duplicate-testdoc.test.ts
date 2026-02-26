@@ -9,7 +9,7 @@ import type { TestCaseForLint } from "../../../src/lint/types.js";
 
 describe("duplicate-testdoc rule", () => {
   /**
-   * @testdoc ルールメタデータが正しく定義されている
+   * @testdoc [duplicate-testdoc] ルールメタデータが正しく定義されている
    */
   it("should have correct metadata", () => {
     expect(duplicateTestdocRule.id).toBe("duplicate-testdoc");
@@ -116,7 +116,7 @@ describe("duplicate-testdoc rule", () => {
     });
 
     /**
-     * @testdoc @testdocがない場合はissueを返さない
+     * @testdoc [duplicate-testdoc] @testdocがない場合はissueを返さない
      */
     it("should not return issue when @testdoc is missing", () => {
       const testCase: TestCaseForLint = {

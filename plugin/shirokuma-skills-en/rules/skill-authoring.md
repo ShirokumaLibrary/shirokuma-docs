@@ -71,6 +71,44 @@ skill-name/
 └── scripts/        # Optional, automation
 ```
 
+## Template Definition Conventions
+
+### Placeholder Notation
+
+Standard notation is `{placeholder}` (curly braces, lowercase, snake_case or kebab-case).
+
+```markdown
+**Branch:** {branch-name}
+**Status:** {status}
+**Issue:** #{number} {title}
+```
+
+| Notation | Allowed | Use Case |
+|----------|---------|----------|
+| `{placeholder}` | Standard | All templates |
+| `{{PLACEHOLDER}}` | Template engine files only | Handlebars `.template` files |
+| `<placeholder>` | CLI command examples only | Bash argument notation |
+
+Always use `{placeholder}` in SKILL.md explanatory text.
+
+### Completion Report Template Placement
+
+| Placement | When | Examples |
+|-----------|------|---------|
+| `## Completion Report` standalone section | Workflow has 5+ steps | managing-rules, evolving-rules |
+| Step subsection | Workflow has 4 or fewer steps | committing-on-issue |
+
+Define templates in ` ```markdown ` fenced code blocks.
+
+### Code Block Language Tags
+
+| Content | Language Tag |
+|---------|-------------|
+| Completion report template | `markdown` |
+| CLI command examples | `bash` |
+| Config file examples | `yaml` / `json` |
+| GitHub body templates | `markdown` |
+
 ## Anti-Patterns
 
 - Deep reference chains (keep ONE level from SKILL.md)

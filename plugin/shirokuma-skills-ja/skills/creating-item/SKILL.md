@@ -57,7 +57,7 @@ Args: create-item --title "{タイトル}" --issue-type "{Type}" --labels "{area
 
 ## 次のステップ
 
-`working-on-issue` チェーンではなく直接起動された場合:
+`working-on-issue` チェーンではなくスタンドアロンで起動された場合:
 
 ```
 アイテム作成完了: #{number}
@@ -65,18 +65,13 @@ Args: create-item --title "{タイトル}" --issue-type "{Type}" --labels "{area
 → またはそのまま Backlog に配置
 ```
 
-## Evolution シグナルリマインド
+## Evolution シグナル自動記録
 
-アイテム作成完了レポートの末尾で、Evolution シグナルの蓄積を確認する。
+アイテム作成完了レポートの末尾で、`rule-evolution` ルールの「スキル完了時の自動記録手順」に従い、セッション中に発生した Evolution シグナルを自動記録する。
 
-```bash
-shirokuma-docs discussions list --category Evolution --limit 1
-```
-
-- Discussion が 0 件 → 何も表示しない
-- Discussion が 1 件以上 → 完了レポートの末尾に 1 行追記:
-
-> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
+1. 検出チェックリスト（`rule-evolution` ルール参照）でセッション中の作業を振り返る
+2. シグナルあり → Evolution Issue にコメント投稿 → 記録完了を 1 行表示
+3. シグナルなし → 既存シグナルの蓄積確認 → リマインド表示（フォールバック）
 
 ## GitHub 書き込みルール
 

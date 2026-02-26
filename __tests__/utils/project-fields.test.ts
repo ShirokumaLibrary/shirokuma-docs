@@ -48,7 +48,7 @@ describe("resolveFieldName", () => {
 
 describe("generateTimestamp", () => {
   /**
-   * @testdoc ISO 8601 形式のタイムスタンプを生成する
+   * @testdoc [project-fields] ISO 8601 形式のタイムスタンプを生成する
    * @purpose タイムスタンプフォーマット確認
    */
   it("should generate ISO 8601 timestamp with timezone", () => {

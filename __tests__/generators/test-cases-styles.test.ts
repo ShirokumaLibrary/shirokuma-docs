@@ -332,7 +332,7 @@ describe("getSidebarStyles", () => {
   });
 
   /**
-   * @testdoc レスポンシブメディアクエリを含む
+   * @testdoc [test-cases-styles/getSidebarStyles] レスポンシブメディアクエリを含む
    */
   it("should include responsive media query", () => {
     const result = getSidebarStyles();
@@ -400,7 +400,7 @@ describe("getCategoryListStyles", () => {
   });
 
   /**
-   * @testdoc レスポンシブメディアクエリを含む
+   * @testdoc [test-cases-styles/getCategoryListStyles] レスポンシブメディアクエリを含む
    */
   it("should include responsive media query", () => {
     const result = getCategoryListStyles();
@@ -424,7 +424,7 @@ describe("getFileListStyles", () => {
   });
 
   /**
-   * @testdoc パンくずナビゲーションのスタイルを含む
+   * @testdoc [test-cases-styles/getFileListStyles] パンくずナビゲーションのスタイルを含む
    */
   it("should include breadcrumb styles", () => {
     const result = getFileListStyles();
@@ -451,7 +451,7 @@ describe("getTestDetailStyles", () => {
   });
 
   /**
-   * @testdoc パンくずナビゲーションのスタイルを含む
+   * @testdoc [test-cases-styles/getTestDetailStyles] パンくずナビゲーションのスタイルを含む
    */
   it("should include breadcrumb styles", () => {
     const result = getTestDetailStyles();

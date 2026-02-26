@@ -9,7 +9,7 @@ import type { TestCaseForLint } from "../../../src/lint/types.js";
 
 describe("testdoc-japanese rule", () => {
   /**
-   * @testdoc ルールメタデータが正しく定義されている
+   * @testdoc [testdoc-japanese] ルールメタデータが正しく定義されている
    */
   it("should have correct metadata", () => {
     expect(testdocJapaneseRule.id).toBe("testdoc-japanese");

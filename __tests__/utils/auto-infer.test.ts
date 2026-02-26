@@ -124,7 +124,7 @@ import { Button } from "@/components/ui";
   });
 
   /**
-   * @testdoc 重複を除去する
+   * @testdoc [auto-infer/inferComponents] 重複を除去する
    * @purpose 同じコンポーネントを複数回インポートしている場合
    */
   it("should remove duplicates", () => {
@@ -206,7 +206,7 @@ await db.delete(users).where(eq(users.id, id));
   });
 
   /**
-   * @testdoc 重複を除去する
+   * @testdoc [auto-infer/inferDbTables] 重複を除去する
    * @purpose 同じテーブルを複数回使用している場合
    */
   it("should remove duplicates", () => {

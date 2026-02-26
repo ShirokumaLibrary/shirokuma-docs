@@ -189,7 +189,7 @@ const nextjsMonorepoTemplate = {
  * Scaffold Next.js monorepo directory structure and base files.
  * Skips existing directories and files to avoid overwriting user data.
  */
-async function scaffoldNextjsMonorepo(projectPath) {
+export async function scaffoldNextjsMonorepo(projectPath) {
     const result = {
         directories_created: [],
         files_created: [],
@@ -228,8 +228,13 @@ async function scaffoldNextjsMonorepo(projectPath) {
             },
             packageManager: "pnpm@10.30.0",
         };
-        writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + "\n", "utf-8");
-        result.files_created.push("package.json");
+        try {
+            writeFileSync(rootPkgPath, JSON.stringify(rootPkg, null, 2) + "\n", "utf-8");
+            result.files_created.push("package.json");
+        }
+        catch (err) {
+            console.error(`Failed to write ${rootPkgPath}: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
     // apps/web/package.json（存在しない場合のみ生成）
     const webPkgPath = resolve(projectPath, "apps/web/package.json");
@@ -264,8 +269,13 @@ async function scaffoldNextjsMonorepo(projectPath) {
                 "@playwright/test": "^1.40.0",
             },
         };
-        writeFileSync(webPkgPath, JSON.stringify(webPkg, null, 2) + "\n", "utf-8");
-        result.files_created.push("apps/web/package.json");
+        try {
+            writeFileSync(webPkgPath, JSON.stringify(webPkg, null, 2) + "\n", "utf-8");
+            result.files_created.push("apps/web/package.json");
+        }
+        catch (err) {
+            console.error(`Failed to write ${webPkgPath}: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
     // packages/database/package.json（存在しない場合のみ生成）
     const dbPkgPath = resolve(projectPath, "packages/database/package.json");
@@ -287,8 +297,13 @@ async function scaffoldNextjsMonorepo(projectPath) {
                 "drizzle-kit": "^0.20.0",
             },
         };
-        writeFileSync(dbPkgPath, JSON.stringify(dbPkg, null, 2) + "\n", "utf-8");
-        result.files_created.push("packages/database/package.json");
+        try {
+            writeFileSync(dbPkgPath, JSON.stringify(dbPkg, null, 2) + "\n", "utf-8");
+            result.files_created.push("packages/database/package.json");
+        }
+        catch (err) {
+            console.error(`Failed to write ${dbPkgPath}: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
     // packages/shared/package.json（存在しない場合のみ生成）
     const sharedPkgPath = resolve(projectPath, "packages/shared/package.json");
@@ -305,8 +320,13 @@ async function scaffoldNextjsMonorepo(projectPath) {
                 "typescript": "^5.0.0",
             },
         };
-        writeFileSync(sharedPkgPath, JSON.stringify(sharedPkg, null, 2) + "\n", "utf-8");
-        result.files_created.push("packages/shared/package.json");
+        try {
+            writeFileSync(sharedPkgPath, JSON.stringify(sharedPkg, null, 2) + "\n", "utf-8");
+            result.files_created.push("packages/shared/package.json");
+        }
+        catch (err) {
+            console.error(`Failed to write ${sharedPkgPath}: ${err instanceof Error ? err.message : String(err)}`);
+        }
     }
     // git init（.git が存在しない場合のみ実行）
     const gitDir = resolve(projectPath, ".git");

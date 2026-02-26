@@ -5,7 +5,7 @@
  * Uses shirokuma-docs issues list output (JSON with project fields).
  */
 
-import { spawnSync } from "node:child_process";
+import { execFileAsync } from "../../utils/spawn-async.js";
 import type { WorkflowIssue, WorkflowIssueSeverity } from "../workflow-types.js";
 
 /**
@@ -76,20 +76,17 @@ export function validateIssueFields(
 /**
  * Fetch issue data and check field completeness.
  */
-export function checkIssueFields(
+export async function checkIssueFields(
   severity: WorkflowIssueSeverity = "warning"
-): WorkflowIssue[] {
-  // Fetch open issues via shirokuma-docs CLI (reuse existing logic)
-  const result = spawnSync(
+): Promise<WorkflowIssue[]> {
+  // Fetch open issues via shirokuma-docs CLI
+  const result = await execFileAsync(
     "shirokuma-docs",
     ["issues", "list", "--format", "table-json"],
-    {
-      encoding: "utf-8",
-      timeout: 30_000,
-    }
+    { timeout: 30_000 }
   );
 
-  if (result.status !== 0 || !result.stdout?.trim()) {
+  if (result.exitCode !== 0 || !result.stdout?.trim()) {
     return [
       {
         type: "warning",

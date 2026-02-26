@@ -38,7 +38,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc #付きのIssue番号を認識する
+     * @testdoc [projects] #付きのIssue番号を認識する
      * @purpose GitHub形式（#123）がIssue番号として認識されることを確認
      */
     it("should recognize issue numbers with hash prefix", () => {
@@ -48,7 +48,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 無効な入力を拒否する
+     * @testdoc [projects] 無効な入力を拒否する
      * @purpose 非数値入力がIssue番号として認識されないことを確認
      */
     it("should reject invalid inputs", () => {
@@ -61,7 +61,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc Issue番号を正しくパースする
+     * @testdoc [projects] Issue番号を正しくパースする
      * @purpose 文字列から数値への変換が正しく行われることを確認
      */
     it("should parse issue numbers correctly", () => {
@@ -73,7 +73,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 先頭ゼロを10進数としてパースする
+     * @testdoc [projects] 先頭ゼロを10進数としてパースする
      * @purpose 8進数として解釈されないことを確認
      */
     it("should parse leading zeros as decimal", () => {
@@ -84,7 +84,7 @@ describe("projects command validation", () => {
 
   describe("Title validation for draft issue creation", () => {
     /**
-     * @testdoc 有効なタイトルを受け入れる
+     * @testdoc [projects] 有効なタイトルを受け入れる
      * @purpose 通常のタイトル文字列が受け入れられることを確認
      */
     it("should accept valid titles", () => {
@@ -94,7 +94,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 空のタイトルを拒否する
+     * @testdoc [projects] 空のタイトルを拒否する
      * @purpose 空文字列がエラーを返すことを確認
      */
     it("should reject empty title", () => {
@@ -102,7 +102,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 空白のみのタイトルを拒否する
+     * @testdoc [projects] 空白のみのタイトルを拒否する
      * @purpose ホワイトスペースのみがエラーを返すことを確認
      */
     it("should reject whitespace-only title", () => {
@@ -111,7 +111,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 最大長のタイトルを受け入れる
+     * @testdoc [projects] 最大長のタイトルを受け入れる
      * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept title at max length", () => {
@@ -120,7 +120,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 最大長を超えるタイトルを拒否する
+     * @testdoc [projects] 最大長を超えるタイトルを拒否する
      * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject title exceeding max length", () => {
@@ -131,7 +131,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 多言語タイトルを受け入れる
+     * @testdoc [projects] 多言語タイトルを受け入れる
      * @purpose 日本語や絵文字が受け入れられることを確認
      */
     it("should accept multilingual titles", () => {
@@ -143,7 +143,7 @@ describe("projects command validation", () => {
 
   describe("Body validation for draft issue creation", () => {
     /**
-     * @testdoc undefinedのボディを受け入れる
+     * @testdoc [projects] undefinedのボディを受け入れる
      * @purpose ボディが省略可能であることを確認
      */
     it("should accept undefined body", () => {
@@ -151,7 +151,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 空のボディを受け入れる
+     * @testdoc [projects] 空のボディを受け入れる
      * @purpose 空文字列が許可されることを確認
      */
     it("should accept empty body", () => {
@@ -159,7 +159,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 有効なボディを受け入れる
+     * @testdoc [projects] 有効なボディを受け入れる
      * @purpose 通常のボディ文字列が受け入れられることを確認
      */
     it("should accept valid body", () => {
@@ -168,7 +168,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc Markdown形式のボディを受け入れる
+     * @testdoc [projects] Markdown形式のボディを受け入れる
      * @purpose Markdown構文が受け入れられることを確認
      */
     it("should accept markdown body", () => {
@@ -187,7 +187,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 最大長のボディを受け入れる
+     * @testdoc [projects] 最大長のボディを受け入れる
      * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept body at max length", () => {
@@ -196,7 +196,7 @@ describe("projects command validation", () => {
     });
 
     /**
-     * @testdoc 最大長を超えるボディを拒否する
+     * @testdoc [projects] 最大長を超えるボディを拒否する
      * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject body exceeding max length", () => {
@@ -303,7 +303,7 @@ describe("projects command actions", () => {
 
   describe("Action routing", () => {
     /**
-     * @testdoc サポートされるアクション一覧
+     * @testdoc [projects] サポートされるアクション一覧
      * @purpose 利用可能なアクションを文書化
      */
     it("should document supported actions", () => {
@@ -379,7 +379,7 @@ describe("projects command actions", () => {
     });
 
     /**
-     * @testdoc createアクションは--titleを必要とする
+     * @testdoc [projects] createアクションは--titleを必要とする
      * @purpose タイトルオプションが必須であることを文書化
      */
     it("create action should require --title", () => {
@@ -443,7 +443,7 @@ describe("projects Project fields", () => {
 
   describe("Project field options", () => {
     /**
-     * @testdoc Statusフィールドの有効値
+     * @testdoc [projects] Statusフィールドの有効値
      * @purpose 一般的なStatus値を文書化（project-items.mdに準拠）
      */
     it("should document common Status field values", () => {
@@ -483,7 +483,7 @@ describe("projects Project fields", () => {
     });
 
     /**
-     * @testdoc Priorityフィールドの有効値
+     * @testdoc [projects] Priorityフィールドの有効値
      * @purpose 一般的なPriority値を文書化
      */
     it("should document common Priority field values", () => {
@@ -495,7 +495,7 @@ describe("projects Project fields", () => {
     });
 
     /**
-     * @testdoc Sizeフィールドの有効値
+     * @testdoc [projects] Sizeフィールドの有効値
      * @purpose 一般的なSize値を文書化
      */
     it("should document common Size field values", () => {
@@ -533,7 +533,7 @@ describe("projects output format", () => {
 
   describe("list output structure", () => {
     /**
-     * @testdoc list出力のJSON構造
+     * @testdoc [projects] list出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document list output structure", () => {
@@ -677,7 +677,7 @@ describe("projects output format", () => {
 
   describe("create output structure", () => {
     /**
-     * @testdoc create出力のJSON構造
+     * @testdoc [projects] create出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document create output structure", () => {

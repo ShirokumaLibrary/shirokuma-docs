@@ -127,7 +127,7 @@ describe("registerPluginCache", () => {
 
   if (!isClaudeAvailable()) {
     /**
-     * @testdoc claude CLI が利用不可の場合はスキップされる
+     * @testdoc [skills-repo-cache] claude CLI が利用不可の場合はスキップされる
      * @purpose claude CLI がない環境で適切にスキップされることを確認
      */
     it("should return skipped when claude CLI is not available", () => {

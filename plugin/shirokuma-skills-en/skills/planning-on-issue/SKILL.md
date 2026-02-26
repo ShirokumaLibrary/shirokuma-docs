@@ -47,7 +47,7 @@ If the issue status is Backlog, transition to Planning to record the planning st
 
 ```bash
 shirokuma-docs issues update {number} --field-status "Planning"
-gh issue edit {number} --add-assignee @me
+shirokuma-docs issues update {number} --add-assignee @me
 ```
 
 Skip status update if already Planning or Spec Review. Assignee is idempotent, so always execute.
@@ -294,18 +294,13 @@ Review the plan. If approved, run `/working-on-issue #{number}` to start impleme
 If changes are needed, provide feedback.
 ```
 
-#### Evolution Signal Reminder
+#### Evolution Signal Auto-Recording
 
-At the end of the plan completion report, check for accumulated Evolution signals.
+At the end of the plan completion report, auto-record Evolution signals detected during the session following the "Auto-Recording Procedure at Skill Completion" in the `rule-evolution` rule.
 
-```bash
-shirokuma-docs discussions list --category Evolution --limit 1
-```
-
-- 0 discussions → display nothing
-- 1+ discussions → append one line to the plan summary:
-
-> 🧬 Evolution signals are accumulated. Run `/evolving-rules` to analyze.
+1. Self-review the session using the detection checklist (see `rule-evolution` rule)
+2. Signals detected → Post comment to Evolution Issue → Display 1-line recording confirmation
+3. No signals → Check for accumulated signals → Display reminder (fallback)
 
 ## GitHub Writing Rules
 

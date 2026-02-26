@@ -15,6 +15,7 @@ Add custom Issue Types to the Organization.
 | Chore | Config, tooling, refactoring | Gray | gear |
 | Docs | Documentation | Blue | page facing up |
 | Research | Investigation and research | Purple | magnifying glass |
+| Evolution | Rule/skill evolution signals and improvement tracking | Green | seedling |
 
 ## Discussion Category Creation
 

@@ -6,24 +6,24 @@ allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion, TodoWrite
 
 # ルール・スキル進化
 
-Evolution Discussion に蓄積されたフィードバックシグナルを分析し、プロジェクト固有のルール・スキルの改善を提案する。
+Evolution Issue に蓄積されたフィードバックシグナルを分析し、プロジェクト固有のルール・スキルの改善を提案する。
 
 ## ワークフロー
 
 ### ステップ 1: シグナル収集
 
-Evolution Discussion からシグナルを取得する。
+Evolution Issue からシグナルを取得する。
 
 ```bash
-# Evolution カテゴリの Discussion 一覧
-shirokuma-docs discussions list --category Evolution --limit 10
+# Evolution Issue を検索
+shirokuma-docs search "[Evolution]" --type issues --limit 10
 ```
 
-Discussion が見つかったら、コメントを含む詳細を取得:
+Issue が見つかったら、コメントを含む詳細を取得:
 
 ```bash
-shirokuma-docs discussions show {number}
-shirokuma-docs discussions comment {number}
+shirokuma-docs issues show {number}
+shirokuma-docs issues comments {number}
 ```
 
 **シグナルがない場合**: 「Evolution シグナルがまだ蓄積されていません。日常作業中にシグナルを記録してください。」と報告して終了。
@@ -103,11 +103,11 @@ EN/JA 両方のファイルを同時に更新すること。
 
 ### ステップ 7: 記録更新
 
-Evolution Discussion の本文を集計サマリーとして更新:
+Evolution Issue の本文を集計サマリーとして更新:
 
 ```bash
 # 本文更新（コメントファースト原則に従い、先にコメントを投稿）
-shirokuma-docs discussions comment {number} --body-file - <<'EOF'
+shirokuma-docs issues comment {number} --body-file - <<'EOF'
 ## 分析完了: {date}
 
 ### 適用済み
@@ -118,7 +118,7 @@ shirokuma-docs discussions comment {number} --body-file - <<'EOF'
 EOF
 
 # 本文を集計サマリーに更新
-shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/evolution-summary.md
+shirokuma-docs issues update {number} --body-file /tmp/shirokuma-docs/evolution-summary.md
 ```
 
 ## 完了レポート
@@ -139,7 +139,7 @@ shirokuma-docs discussions update {number} --body-file /tmp/shirokuma-docs/evolu
 
 | 状況 | 対応 |
 |------|------|
-| Evolution Discussion がない | プロジェクトに Evolution Discussion を作成することを提案 |
+| Evolution Issue がない | プロジェクトに Evolution Issue を作成することを提案 |
 | シグナルが 3 件未満 | 「シグナルが少ないため分析を見送ります」と報告 |
 | 対象ルール・スキルが存在しない | 新規作成を提案（`managing-rules` に委任） |
 | EN/JA の一方のみ存在 | 両方の作成・更新を提案 |

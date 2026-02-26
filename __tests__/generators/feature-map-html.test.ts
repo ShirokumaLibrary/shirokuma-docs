@@ -585,7 +585,7 @@ describe("buildSidebar", () => {
 
 describe("generateFeatureMapHtml", () => {
   /**
-   * @testdoc 完全な HTML ドキュメントを生成する
+   * @testdoc [feature-map-html] 完全な HTML ドキュメントを生成する
    */
   it("should generate a complete HTML document", () => {
     const featureMap = createFeatureMap({

@@ -47,7 +47,7 @@ Issue のステータスが Backlog の場合、Planning に遷移して計画�
 
 ```bash
 shirokuma-docs issues update {number} --field-status "Planning"
-gh issue edit {number} --add-assignee @me
+shirokuma-docs issues update {number} --add-assignee @me
 ```
 
 既に Planning / Spec Review の場合はステータス更新をスキップ。アサインは冪等なので常に実行する。
@@ -294,18 +294,13 @@ shirokuma-docs issues update {number} --field-status "Spec Review"
 修正が必要な場合はフィードバックをお願いします。
 ```
 
-#### Evolution シグナルリマインド
+#### Evolution シグナル自動記録
 
-計画完了レポートの末尾で、Evolution シグナルの蓄積を確認する。
+計画完了レポートの末尾で、`rule-evolution` ルールの「スキル完了時の自動記録手順」に従い、セッション中に発生した Evolution シグナルを自動記録する。
 
-```bash
-shirokuma-docs discussions list --category Evolution --limit 1
-```
-
-- Discussion が 0 件 → 何も表示しない
-- Discussion が 1 件以上 → 計画サマリーの末尾に 1 行追記:
-
-> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
+1. 検出チェックリスト（`rule-evolution` ルール参照）でセッション中の作業を振り返る
+2. シグナルあり → Evolution Issue にコメント投稿 → 記録完了を 1 行表示
+3. シグナルなし → 既存シグナルの蓄積確認 → リマインド表示（フォールバック）
 
 ## GitHub 書き込みルール
 

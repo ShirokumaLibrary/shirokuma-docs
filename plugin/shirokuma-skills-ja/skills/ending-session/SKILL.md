@@ -16,6 +16,18 @@ allowed-tools: Bash, Read, Write, Grep, Glob, AskUserQuestion
 - ユーザーが引き継ぎをスキップしようとした場合、重要性を説明して作成を続行
 - サマリー や 次のステップ セクションを空にしない — 各セクション最低 1 行は記載
 
+## スタンドアロン作業に関する注記
+
+このスキルはセッションベースのワークフロー向けに設計されている。スキルがスタンドアロン（`starting-session` なし）で起動された場合、`ending-session` は**不要**。
+
+ただし、スタンドアロン作業が以下に該当する場合は `ending-session` の実行を検討:
+
+| スタンドアロン作業の規模 | 推奨 |
+|------------------------|------|
+| 単一スキルの簡易起動（タイポ修正、アイテム作成） | ハンドオーバー不要 |
+| 複数コミットまたは大幅なコード変更 | `ending-session` でコンテキスト保存を推奨 |
+| 調査結果やアーキテクチャ検討 | Discussion の作成を推奨 |
+
 ## ワークフロー
 
 ### ステップ 1: セッションサマリー収集
@@ -78,7 +90,11 @@ git push -u origin {branch-name}
 `creating-pr-on-issue` スキルのワークフローに従い、`develop` ターゲットで PR を作成（`branch-workflow` ルール参照）:
 
 ```bash
-gh pr create --base develop --title "{タイトル}" --body "$(cat <<'EOF'
+shirokuma-docs issues pr-create --base develop --title "{タイトル}" --body-file /tmp/shirokuma-docs/pr-body.md
+```
+
+`/tmp/shirokuma-docs/pr-body.md` の内容:
+```markdown
 ## 概要
 {達成内容の箇条書き 1-3 点}
 
@@ -87,8 +103,6 @@ gh pr create --base develop --title "{タイトル}" --body "$(cat <<'EOF'
 
 ## テスト計画
 - [ ] {テストチェックリスト}
-EOF
-)"
 ```
 
 > PR のタイトルと本文は `output-language` ルールに準拠すること。`github-writing-style` ルールの箇条書きガイドラインにも従う。
@@ -263,7 +277,7 @@ Implemented the feature...  ← 日本語設定では不正
 | セッション中に変更なし | 簡潔でも引き継ぎを保存 |
 | Issue がプロジェクトにない | 警告して続行 |
 | `git push` 失敗 | ユーザーに警告、PR なしで引き継ぎ保存 |
-| `gh pr create` 失敗 | ユーザーに警告、ブランチ名を引き継ぎに含める |
+| `issues pr-create` 失敗 | ユーザーに警告、ブランチ名を引き継ぎに含める |
 | ベースブランチにいる（フィーチャーブランチなし） | プッシュ/PR ステップをスキップ、引き継ぎのみ保存 |
 
 ## 注意事項

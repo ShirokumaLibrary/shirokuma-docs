@@ -105,7 +105,7 @@ shirokuma-docs discussions create \
 
 ## 次のステップ
 
-`working-on-issue` チェーンではなく直接起動された場合:
+`working-on-issue` チェーンではなくスタンドアロンで起動された場合:
 
 ```
 Design complete. Next step:

@@ -21,11 +21,11 @@ Policy 実行（日常作業）→ Reward 観測（シグナル収集）→ Poli
 
 ## シグナル永続化
 
-Evolution Discussion カテゴリにシグナルをコメントとして蓄積する。
+Evolution Issue にシグナルをコメントとして蓄積する。
 
 | 項目 | 値 |
 |------|-----|
-| カテゴリ | Evolution |
+| Issue Type | Evolution |
 | Emoji | 🧬 |
 | タイトル形式 | `[Evolution] {トピック}` |
 
@@ -46,7 +46,7 @@ Evolution Discussion カテゴリにシグナルをコメントとして蓄積�
 | 予防的 | シグナル記録時にパターンを認識 | コメントに提案を含めて記録 |
 | 定期的 | ユーザーが `evolving-rules` を明示的に起動 | 蓄積シグナル全体を分析 |
 | セッション開始時 | `starting-session` がシグナル蓄積を検出 | `evolving-rules` の起動を推奨（自動実行しない） |
-| スキル完了時 | `working-on-issue`、`planning-on-issue`、`creating-item` の完了時 | シグナル蓄積をリマインド表示（ノンブロッキング 1 行） |
+| スキル完了時 | `working-on-issue`、`planning-on-issue`、`creating-item` の完了時 | 検出チェックリストで自動記録。シグナル未検出時はリマインド表示（フォールバック） |
 
 ## 責務境界
 
@@ -56,33 +56,100 @@ Evolution Discussion カテゴリにシグナルをコメントとして蓄積�
 | `evolving-rules` | 既存ルール・スキルの改善提案 | Evolution シグナル |
 | `managing-rules` | ルールファイルの作成・更新（実行者） | 提案内容 |
 
-**曖昧領域:** `discovering-codebase-rules` が既存ルールの不備を検出した場合、Evolution Discussion にコメントとして記録する。`discovering-codebase-rules` 自体はルールの修正を行わない（新規提案のみ）。
+**曖昧領域:** `discovering-codebase-rules` が既存ルールの不備を検出した場合、Evolution Issue にコメントとして記録する。`discovering-codebase-rules` 自体はルールの修正を行わない（新規提案のみ）。
 
-## セッション外シグナル記録
+## スキル完了時の自動記録手順
 
-セッションを使わない作業（単発スキル起動、直接編集等）でもシグナルを記録できる。
+主要スキル（`working-on-issue`, `planning-on-issue`, `creating-item`）の完了時に、以下の手順でセッション中に発生した Evolution シグナルを自動記録する。各スキルはこのセクションを参照して自動記録を実行する。
+
+### シグナル検出チェックリスト
+
+スキル完了時に以下を自己チェックする。判定に迷う場合は記録しない（偽陽性回避）。
+
+| チェック項目 | シグナル種別 | 検出する例 | 検出しない例 |
+|------------|-----------|----------|------------|
+| ユーザーがルールに基づく動作を修正・上書きしたか | ルール摩擦 | 「コミットメッセージは英語で」とルール設定を上書き | タイポの修正指示（ルールの問題ではない） |
+| ユーザーが出力のやり直しを指示したか | やり直し指示 | 「PR 本文の形式が違う、テンプレートに合わせて」 | 「もう少し詳しく」（品質改善の通常指示） |
+| 想定外の障害やワークアラウンドが発生したか | 不足パターン | CLI コマンドの未対応オプションでフォールバック実行 | 初見ファイルの構造把握に時間がかかった（通常の探索） |
+| 同じパターンの問題がセッション中に繰り返されたか | レビュー指摘パターン | セルフレビューで同種の指摘が 2 回以上発生 | 異なる種類の修正を順次実施（繰り返しではない） |
+
+### 自動記録フロー
+
+```
+スキル完了 → 検出チェックリストで自己振り返り
+  ├─ シグナルあり → Evolution Issue 検索 → コメント投稿 → 記録完了を 1 行表示
+  └─ シグナルなし → 既存シグナルの蓄積確認 → リマインド表示（フォールバック）
+```
+
+#### シグナルありの場合
+
+1. Evolution Issue を検索:
+   ```bash
+   shirokuma-docs search "[Evolution]" --type issues --limit 1
+   ```
+2. Issue が 0 件の場合、汎用 Evolution Issue を作成:
+   ```bash
+   shirokuma-docs issues create --issue-type Evolution --title "[Evolution] スキル・ルール改善シグナル" --body-file - <<'EOF'
+   Evolution シグナルの蓄積用 Issue。スキル完了時の自動記録と手動記録の両方で使用する。
+   EOF
+   ```
+3. シグナルをコメントとして投稿（複数シグナルは 1 コメントに集約）:
+   ```bash
+   shirokuma-docs issues comment {number} --body-file - <<'EOF'
+   **種別:** {種別}
+   **対象:** {ルール名 or スキル名}
+   **コンテキスト:** {発生状況}（Issue #{number} の作業中）
+   **提案:** {改善案}
+   EOF
+   ```
+4. 記録完了を 1 行表示:
+   > 🧬 Evolution シグナルを記録しました（{種別}: {対象}）。
+
+#### シグナルなしの場合（フォールバック）
+
+既存シグナルの蓄積を確認し、リマインド表示する:
+
+```bash
+shirokuma-docs search "[Evolution]" --type issues --limit 1
+```
+
+- Issue が 0 件 → 何も表示しない
+- Issue が 1 件以上 → 以下を 1 行表示:
+
+> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
+
+### 制約
+
+- 1 スキル完了あたり最大 1 コメント（複数シグナルは 1 コメントに集約）
+- TodoWrite に登録しない（ノンブロッキング処理）
+- 振り返りは簡潔なチェックリスト形式でコンテキスト消費を最小化
+- シグナル未検出時は CLI コマンド実行を最小化（`search` 1 回のみ）
+
+## スタンドアロンシグナル記録
+
+セッションを使わない作業（スタンドアロンスキル起動、直接編集等）でもシグナルを記録できる。
 
 ### ユースケース
 
 | ユースケース | シグナル種別 | 記録方法 |
 |------------|------------|---------|
-| 単発 `/working-on-issue` 起動 | ルール摩擦、やり直し指示 | 記録テンプレート + リマインド。**コンテキスト**に Issue 番号を記載 |
-| 単発 `/planning-on-issue` 起動 | ルール摩擦、スキル改善 | 記録テンプレート + リマインド。**対象**に摩擦したルール/スキル名を記載 |
-| 単発 `/creating-item` 起動 | スキル改善 | 記録テンプレート + リマインド。**提案**に改善案を記載 |
+| スタンドアロン `/working-on-issue` 起動 | ルール摩擦、やり直し指示 | 記録テンプレート + リマインド。**コンテキスト**に Issue 番号を記載 |
+| スタンドアロン `/planning-on-issue` 起動 | ルール摩擦、スキル改善 | 記録テンプレート + リマインド。**対象**に摩擦したルール/スキル名を記載 |
+| スタンドアロン `/creating-item` 起動 | スキル改善 | 記録テンプレート + リマインド。**提案**に改善案を記載 |
 | 直接的なファイル編集・コミット | ルール摩擦 | 記録テンプレート参照。**対象**に摩擦したルール名を記載 |
 | レビュー対応のみの短時間作業 | レビュー指摘パターン | Reports 蓄積（既存）。**提案**にパターン改善案を記載 |
 | lint 実行結果の確認 | lint 違反傾向 | 記録テンプレート参照。**コンテキスト**に違反数の推移を記載 |
 
 ### 記録テンプレート
 
-Evolution Discussion にシグナルを記録するコマンドスニペット:
+Evolution Issue にシグナルを記録するコマンドスニペット:
 
 ```bash
-# 1. Evolution Discussion を検索
-shirokuma-docs discussions list --category Evolution --limit 5
+# 1. Evolution Issue を検索
+shirokuma-docs search "[Evolution]" --type issues --limit 5
 
 # 2. シグナルをコメントとして投稿
-shirokuma-docs discussions comment {discussion-number} --body-file - <<'EOF'
+shirokuma-docs issues comment {issue-number} --body-file - <<'EOF'
 **種別:** {ルール摩擦 | 不足パターン | スキル改善 | lint 傾向 | 成功率}
 **対象:** {ルール名 or スキル名 or 一般}
 **コンテキスト:** {発生状況}
@@ -94,7 +161,7 @@ EOF
 
 ## ルール
 
-1. **シグナルは Discussion に記録** — メモリではなく Evolution Discussion に蓄積する
+1. **シグナルは Issue に記録** — メモリではなく Evolution Issue に蓄積する
 2. **閾値を守る** — 3+ 件蓄積で分析起動、それ未満では自動提案しない
 3. **慎重に提案** — 過度な提案はノイズになる。DemyAgent の「少ないツール呼び出しが効果的」を反映
 4. **既存スキルと重複しない** — `discovering-codebase-rules` は新規パターン発見、`evolving-rules` は既存の改善

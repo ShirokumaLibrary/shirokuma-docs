@@ -173,10 +173,10 @@ Discussion はルールの根拠の**ソースオブトゥルース**。ルー�
 
 ## 既存ルール不備の検出
 
-パターン発見の過程で既存ルールの不備（カバー漏れ、曖昧な記述、実態との乖離）を検出した場合、Evolution Discussion にコメントとして記録する。
+パターン発見の過程で既存ルールの不備（カバー漏れ、曖昧な記述、実態との乖離）を検出した場合、Evolution Issue にコメントとして記録する。
 
 ```bash
-shirokuma-docs discussions comment {evolution-number} --body-file - <<'EOF'
+shirokuma-docs issues comment {evolution-number} --body-file - <<'EOF'
 **種別:** 不足パターン
 **対象:** {ルール名}
 **コンテキスト:** {発見時の状況}

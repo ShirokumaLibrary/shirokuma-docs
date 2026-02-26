@@ -11,6 +11,7 @@ Issue Type follows the type determination table in `managing-github-items`'s `re
 | refactoring, config change, tooling, chore | Chore |
 | documentation, README, docs | Docs |
 | research, investigation | Research |
+| evolution, signal, evolve, rule improvement | Evolution |
 
 ## Priority / Size Inference
 

@@ -40,7 +40,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc #付きのIssue番号を認識する
+     * @testdoc [issues] #付きのIssue番号を認識する
      * @purpose GitHub形式（#123）がIssue番号として認識されることを確認
      */
     it("should recognize issue numbers with hash prefix", () => {
@@ -50,7 +50,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 無効な入力を拒否する
+     * @testdoc [issues] 無効な入力を拒否する
      * @purpose 非数値入力がIssue番号として認識されないことを確認
      */
     it("should reject invalid inputs", () => {
@@ -63,7 +63,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc Issue番号を正しくパースする
+     * @testdoc [issues] Issue番号を正しくパースする
      * @purpose 文字列から数値への変換が正しく行われることを確認
      */
     it("should parse issue numbers correctly", () => {
@@ -75,7 +75,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 先頭ゼロを10進数としてパースする
+     * @testdoc [issues] 先頭ゼロを10進数としてパースする
      * @purpose 8進数として解釈されないことを確認
      */
     it("should parse leading zeros as decimal", () => {
@@ -86,7 +86,7 @@ describe("issues command validation", () => {
 
   describe("Title validation", () => {
     /**
-     * @testdoc 有効なタイトルを受け入れる
+     * @testdoc [issues] 有効なタイトルを受け入れる
      * @purpose 通常のタイトル文字列が受け入れられることを確認
      */
     it("should accept valid titles", () => {
@@ -96,7 +96,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 空のタイトルを拒否する
+     * @testdoc [issues] 空のタイトルを拒否する
      * @purpose 空文字列がエラーを返すことを確認
      */
     it("should reject empty title", () => {
@@ -104,7 +104,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 空白のみのタイトルを拒否する
+     * @testdoc [issues] 空白のみのタイトルを拒否する
      * @purpose ホワイトスペースのみがエラーを返すことを確認
      */
     it("should reject whitespace-only title", () => {
@@ -113,7 +113,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 最大長のタイトルを受け入れる
+     * @testdoc [issues] 最大長のタイトルを受け入れる
      * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept title at max length", () => {
@@ -122,7 +122,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 最大長を超えるタイトルを拒否する
+     * @testdoc [issues] 最大長を超えるタイトルを拒否する
      * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject title exceeding max length", () => {
@@ -133,7 +133,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 多言語タイトルを受け入れる
+     * @testdoc [issues] 多言語タイトルを受け入れる
      * @purpose 日本語や絵文字が受け入れられることを確認
      */
     it("should accept multilingual titles", () => {
@@ -145,7 +145,7 @@ describe("issues command validation", () => {
 
   describe("Body validation", () => {
     /**
-     * @testdoc undefinedのボディを受け入れる
+     * @testdoc [issues] undefinedのボディを受け入れる
      * @purpose ボディが省略可能であることを確認
      */
     it("should accept undefined body", () => {
@@ -153,7 +153,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 空のボディを受け入れる
+     * @testdoc [issues] 空のボディを受け入れる
      * @purpose 空文字列が許可されることを確認
      */
     it("should accept empty body", () => {
@@ -161,7 +161,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc 有効なボディを受け入れる
+     * @testdoc [issues] 有効なボディを受け入れる
      * @purpose 通常のボディ文字列が受け入れられることを確認
      */
     it("should accept valid body", () => {
@@ -170,7 +170,7 @@ describe("issues command validation", () => {
     });
 
     /**
-     * @testdoc Markdown形式のボディを受け入れる
+     * @testdoc [issues] Markdown形式のボディを受け入れる
      * @purpose Markdown構文が受け入れられることを確認
      */
     it("should accept markdown body", () => {
@@ -186,7 +186,7 @@ const x = 1;
     });
 
     /**
-     * @testdoc 最大長のボディを受け入れる
+     * @testdoc [issues] 最大長のボディを受け入れる
      * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept body at max length", () => {
@@ -195,7 +195,7 @@ const x = 1;
     });
 
     /**
-     * @testdoc 最大長を超えるボディを拒否する
+     * @testdoc [issues] 最大長を超えるボディを拒否する
      * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject body exceeding max length", () => {
@@ -385,7 +385,7 @@ describe("issues command actions", () => {
 
   describe("Action routing", () => {
     /**
-     * @testdoc サポートされるアクション一覧
+     * @testdoc [issues] サポートされるアクション一覧
      * @purpose 利用可能なアクションを文書化
      */
     it("should document supported actions", () => {
@@ -433,7 +433,7 @@ describe("issues command actions", () => {
     });
 
     /**
-     * @testdoc createアクションは--titleを必要とする
+     * @testdoc [issues] createアクションは--titleを必要とする
      * @purpose タイトルオプションが必須であることを文書化
      */
     it("create action should require --title", () => {
@@ -876,7 +876,7 @@ describe("issues Project integration", () => {
 
   describe("Project field options", () => {
     /**
-     * @testdoc Statusフィールドの有効値
+     * @testdoc [issues] Statusフィールドの有効値
      * @purpose 一般的なStatus値を文書化
      */
     it("should document common Status field values", () => {
@@ -901,7 +901,7 @@ describe("issues Project integration", () => {
     });
 
     /**
-     * @testdoc Priorityフィールドの有効値
+     * @testdoc [issues] Priorityフィールドの有効値
      * @purpose 一般的なPriority値を文書化
      */
     it("should document common Priority field values", () => {
@@ -913,7 +913,7 @@ describe("issues Project integration", () => {
     });
 
     /**
-     * @testdoc Sizeフィールドの有効値
+     * @testdoc [issues] Sizeフィールドの有効値
      * @purpose 一般的なSize値を文書化
      */
     it("should document common Size field values", () => {
@@ -946,7 +946,7 @@ describe("issues output format", () => {
 
   describe("list output structure", () => {
     /**
-     * @testdoc list出力のJSON構造
+     * @testdoc [issues] list出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document list output structure", () => {
@@ -1088,7 +1088,7 @@ describe("issues output format", () => {
 
   describe("create output structure", () => {
     /**
-     * @testdoc create出力のJSON構造
+     * @testdoc [issues] create出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document create output structure", () => {
@@ -1358,7 +1358,7 @@ describe("issues error handling", () => {
 
   describe("Error conditions", () => {
     /**
-     * @testdoc リポジトリ情報が取得できない場合
+     * @testdoc [issues] リポジトリ情報が取得できない場合
      * @purpose getRepoInfoがnullを返す場合のエラー条件を文書化
      */
     it("should document repository unavailable error", () => {
@@ -1484,7 +1484,7 @@ describe("issues error handling", () => {
     });
 
     /**
-     * @testdoc 不明なアクションが指定された場合
+     * @testdoc [issues] 不明なアクションが指定された場合
      * @purpose サポートされていないアクションのエラー条件を文書化
      */
     it("should document unknown action error", () => {
@@ -1498,7 +1498,7 @@ describe("issues error handling", () => {
     });
 
     /**
-     * @testdoc Projectフィールドの値が無効な場合
+     * @testdoc [issues] Projectフィールドの値が無効な場合
      * @purpose 存在しないStatus等の値を指定した場合のエラー条件を文書化
      */
     it("should document invalid project field value error", () => {
@@ -1638,7 +1638,7 @@ describe("issues --issue-type option (#693)", () => {
 
 describe("generateTimestamp (#342)", () => {
   /**
-   * @testdoc ISO 8601 形式のタイムスタンプを生成する
+   * @testdoc [issues] ISO 8601 形式のタイムスタンプを生成する
    * @purpose ローカルタイムゾーン付きの ISO 8601 フォーマット検証
    */
   it("should return ISO 8601 format with timezone offset", () => {

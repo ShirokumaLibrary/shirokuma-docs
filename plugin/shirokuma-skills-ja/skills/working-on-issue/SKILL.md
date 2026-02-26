@@ -8,7 +8,7 @@ allowed-tools: Bash, Read, Grep, Glob, AskUserQuestion, TodoWrite
 
 Issue の種類やタスク説明に基づいて、計画→実装→コミット→PR→セルフレビューの一連のフローを統括する。
 
-**注意**: セッションセットアップには `starting-session` を使用。このスキルは特定タスクの作業開始用。
+**注意**: セッションセットアップには `starting-session` を使用。このスキルはセッション内でもスタンドアロン（`starting-session` なし）でも動作する。いずれのモードでも特定タスクの作業開始の主要エントリーポイントとなる。
 
 ## TodoWrite 登録（必須）
 
@@ -173,20 +173,15 @@ TDD 共通ワークフローの詳細は [docs/tdd-workflow.md](docs/tdd-workflo
 - セルフレビュー完了後、レビュー結果に基づく Issue 本文の統合はコメントファースト原則に従う（`creating-pr-on-issue` ステップ 6c で処理）
 - 失敗時: チェーン停止、状況報告、ユーザーに制御を返す
 
-### ステップ 6: Evolution シグナルリマインド
+### ステップ 6: Evolution シグナル自動記録
 
-チェーン正常完了後（チェーン失敗時はスキップ）、Evolution シグナルの蓄積を確認する。
+チェーン正常完了後（チェーン失敗時はスキップ）、`rule-evolution` ルールの「スキル完了時の自動記録手順」に従い、セッション中に発生した Evolution シグナルを自動記録する。
 
-```bash
-shirokuma-docs discussions list --category Evolution --limit 1
-```
+1. 検出チェックリスト（`rule-evolution` ルール参照）でセッション中の作業を振り返る
+2. シグナルあり → Evolution Issue にコメント投稿 → 記録完了を 1 行表示
+3. シグナルなし → 既存シグナルの蓄積確認 → リマインド表示（フォールバック）
 
-- Discussion が 0 件 → 何も表示しない
-- Discussion が 1 件以上 → 以下を 1 行表示:
-
-> 🧬 Evolution シグナルが蓄積されています。`/evolving-rules` で分析できます。
-
-TodoWrite には登録しない（ノンブロッキング表示であり作業ステップではないため）。
+TodoWrite には登録しない（ノンブロッキング処理であり作業ステップではないため）。
 
 ## バッチモード
 

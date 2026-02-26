@@ -13,11 +13,3 @@ shirokuma-docs lint-tests -p .
 # 間違い - 不要なオーバーヘッド
 npx shirokuma-docs session start
 ```
-
-## 例外: gh 直接使用が許容される操作
-
-PR 作成は `shirokuma-docs` CLI に未実装。単一操作で完結するため `gh pr create` の直接使用を許容する。
-
-```bash
-gh pr create --base develop --title "feat: タイトル (#42)" --body "$(cat /tmp/shirokuma-docs/body.md)"
-```

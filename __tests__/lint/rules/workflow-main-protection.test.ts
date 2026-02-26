@@ -63,7 +63,7 @@ describe("workflow-main-protection", () => {
     });
 
     /**
-     * @testdoc 保護ブランチ上の未コミット変更を検出する
+     * @testdoc [main-protection/validate] 保護ブランチ上の未コミット変更を検出する
      */
     it("should detect uncommitted changes on protected branch", () => {
       const state: GitProtectionState = {
@@ -93,7 +93,7 @@ describe("workflow-main-protection", () => {
     });
 
     /**
-     * @testdoc Co-Authored-By を含むコミットを検出する
+     * @testdoc [main-protection/validate] Co-Authored-By を含むコミットを検出する
      */
     it("should detect Co-Authored-By in commit body", () => {
       const state: GitProtectionState = {
@@ -161,7 +161,7 @@ describe("workflow-main-protection", () => {
     });
 
     /**
-     * @testdoc 保護ブランチ上の未コミット変更を検出する
+     * @testdoc [main-protection/check] 保護ブランチ上の未コミット変更を検出する
      */
     it("should detect uncommitted changes on protected branch", async () => {
       mockGetCurrentBranch.mockReturnValue("develop");
@@ -189,7 +189,7 @@ describe("workflow-main-protection", () => {
     });
 
     /**
-     * @testdoc Co-Authored-By を含むコミットを検出する
+     * @testdoc [main-protection/check] Co-Authored-By を含むコミットを検出する
      */
     it("should detect Co-Authored-By in recent commits", async () => {
       mockGetCurrentBranch.mockReturnValue("feat/42-feature");

@@ -49,9 +49,48 @@ GitHub 書き込み（Issues, PRs, Discussions）での箇条書き vs 散文の
 | チェーン（working-on-issue 経由） | 省略（チェーンが自動実行） |
 | スタンドアロン | 必ず提案 |
 
+## スキルカテゴリ別ガイド
+
+| カテゴリ | テンプレート要否 | 例 |
+|---------|----------------|-----|
+| Workflow | 必須（厳格） | committing-on-issue, creating-pr-on-issue, ending-session |
+| Config Management | 必須（厳格） | managing-rules, managing-skills, managing-agents |
+| Analysis | 必須（テーブル含む） | evolving-rules, planning-on-issue |
+| Display / Orchestrator | 不要 | showing-github, working-on-issue |
+| Delegator | 呼び出し元に委ねる | reviewing-on-issue, creating-item |
+
+テンプレート不要のスキルは完了レポートセクションを持たなくてよい。
+
+## 情報階層
+
+完了レポートの情報は以下の優先度で配置する:
+
+```
+Level 1: 見出し（結果 + コンテキスト ID）     -- 1 秒スキャン
+Level 2: KV ペア（重要事実）                   -- 5 秒スキャン
+Level 3: テーブルまたはリスト（詳細）           -- 15 秒スキャン
+Level 4: 散文説明（根拠）                      -- 30 秒+ 読み込み
+```
+
+**1 秒テスト**: 最初の 3 行だけで、結果と成果物の場所がわかること。
+
+## フィールド分類
+
+テンプレート内の各フィールドを以下に分類する:
+
+| 分類 | 意味 | テンプレート表記 |
+|------|------|----------------|
+| Fixed | 常に存在、同一形式 | `**ラベル:** {値}` |
+| Conditional | 該当時のみ表示 | `[**ラベル:** {値}]` |
+| Freeform | 可変長コンテンツ | `{説明}` |
+
+Fixed フィールドの省略・Conditional フィールドの常時表示は避ける。
+
 ## 禁止事項
 
 - GitHub 参照に URL 直書き（`https://github.com/.../issues/42` → `#42`）
 - GitHub 参照に `[#123](URL)` マークダウンリンク（`#123` で十分）
 - 見出しに動詞形（`## レポートを生成する` → `## レポート生成完了`）
 - セクション名のブレ（「確認表示」「サマリー表示」「レポート生成」を混用しない）
+- プロセス説明（「まずファイルを読んで…」→ 結果のみ記述）
+- 自己言及的な冗長表現（「正常に完了しました！」→ 事実のみ記述）

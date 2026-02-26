@@ -35,6 +35,7 @@ import {
 import { getOctokit } from "../utils/octokit-client.js";
 import {
   cmdPrComments,
+  cmdPrCreate,
   cmdPrList,
   cmdPrShow,
   cmdMerge,
@@ -107,9 +108,13 @@ export interface IssuesOptions {
   title?: string;
   bodyFile?: string;
   issueType?: string;
+  // Assignee management (#986)
+  addAssignee?: string;
   // Label management
   addLabel?: string[];
   removeLabel?: string[];
+  // PR create options (#986)
+  base?: string;
   // Close options
   stateReason?: string;
   // Merge options
@@ -1155,6 +1160,37 @@ async function cmdUpdate(
     }
   }
 
+  // Add assignee (#986)
+  if (options.addAssignee) {
+    const octokit = getOctokit();
+    let assignee = options.addAssignee;
+
+    // Resolve @me to authenticated user
+    if (assignee === "@me") {
+      try {
+        const { data: user } = await octokit.rest.users.getAuthenticated();
+        assignee = user.login;
+      } catch {
+        logger.error("Failed to resolve @me — could not get authenticated user");
+        return 1;
+      }
+    }
+
+    try {
+      await octokit.rest.issues.addAssignees({
+        owner,
+        repo,
+        issue_number: issueNumber,
+        assignees: [assignee],
+      });
+      updated = true;
+      logger.success(`Assigned ${assignee}`);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      logger.error(`Failed to add assignee: ${errorMsg}`);
+    }
+  }
+
   // Update project fields
   const statusValue = options.fieldStatus;
   const fields: Record<string, string> = {};
@@ -2091,6 +2127,10 @@ export async function issuesCommand(
       } else {
         exitCode = await cmdRemove(target, options, logger);
       }
+      break;
+
+    case "pr-create":
+      exitCode = await cmdPrCreate(options, logger);
       break;
 
     case "pr-list":

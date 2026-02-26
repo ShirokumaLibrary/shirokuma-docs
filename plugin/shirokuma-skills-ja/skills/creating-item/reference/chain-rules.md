@@ -11,6 +11,7 @@ Issue Type は `managing-github-items` の `reference/create-item.md` の種別�
 | リファクタリング、設定変更、ツール、chore | Chore |
 | ドキュメント、README、docs | Docs |
 | 調査、検証、research | Research |
+| 進化、シグナル、evolution、ルール改善 | Evolution |
 
 ## Priority / Size 推定
 

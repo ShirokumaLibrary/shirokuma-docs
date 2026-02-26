@@ -6,7 +6,7 @@
  * @testdoc init コマンドのテスト（バンドルプラグインインストール含む）
  */
 
-import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, rmSync, readFileSync, writeFileSync, chmodSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 import { spawnSync } from "child_process";
@@ -235,7 +235,7 @@ describe("init command", () => {
 
   describe("no metadata file", () => {
     /**
-     * @testdoc .shirokuma-meta.json が作成されない
+     * @testdoc [init] .shirokuma-meta.json が作成されない
      * @purpose メタデータファイルが廃止されたことを確認（#401）
      */
     it("should not create .shirokuma-meta.json", () => {
@@ -768,6 +768,31 @@ describe("init command", () => {
       const output = extractJson<InitResult>(result.stdout);
       expect(output.nextjs_scaffolded).toBe(true);
       expect(output.nextjs_directories_created).toBeGreaterThan(0);
+    });
+  });
+
+  describe("scaffoldNextjsMonorepo error handling", () => {
+    /**
+     * @testdoc writeFileSync 失敗時にクラッシュせずに続行する
+     * @purpose ファイル書き込み失敗時のグレースフルな処理を確認
+     */
+    it("should not crash when writeFileSync fails on read-only directory", () => {
+      const readonlyDir = join(TEST_OUTPUT_DIR, "readonly-test");
+      mkdirSync(readonlyDir, { recursive: true });
+
+      // ディレクトリを読み取り専用にして package.json の書き込みを失敗させる
+      chmodSync(readonlyDir, 0o555);
+
+      try {
+        // --nextjs は scaffoldNextjsMonorepo を呼ぶ
+        // 読み取り専用のため config ファイルも書き込めず終了するが、クラッシュしないことを確認
+        const result = runCli(["init", "--nextjs", "--project", readonlyDir]);
+
+        // プロセスがクラッシュ（シグナル終了）していないこと
+        expect(result.status).not.toBeNull();
+      } finally {
+        chmodSync(readonlyDir, 0o755);
+      }
     });
   });
 

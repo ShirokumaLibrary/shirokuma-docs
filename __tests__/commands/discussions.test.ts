@@ -35,7 +35,7 @@ describe("discussions command validation", () => {
     });
 
     /**
-     * @testdoc 空のタイトルを拒否する
+     * @testdoc [discussions] 空のタイトルを拒否する
      * @purpose 空文字列がエラーを返すことを確認
      */
     it("should reject empty title", () => {
@@ -43,7 +43,7 @@ describe("discussions command validation", () => {
     });
 
     /**
-     * @testdoc 空白のみのタイトルを拒否する
+     * @testdoc [discussions] 空白のみのタイトルを拒否する
      * @purpose ホワイトスペースのみがエラーを返すことを確認
      */
     it("should reject whitespace-only title", () => {
@@ -52,7 +52,7 @@ describe("discussions command validation", () => {
     });
 
     /**
-     * @testdoc 最大長のタイトルを受け入れる
+     * @testdoc [discussions] 最大長のタイトルを受け入れる
      * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept title at max length", () => {
@@ -61,7 +61,7 @@ describe("discussions command validation", () => {
     });
 
     /**
-     * @testdoc 最大長を超えるタイトルを拒否する
+     * @testdoc [discussions] 最大長を超えるタイトルを拒否する
      * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject title exceeding max length", () => {
@@ -84,7 +84,7 @@ describe("discussions command validation", () => {
 
   describe("Body validation", () => {
     /**
-     * @testdoc undefinedのボディを受け入れる
+     * @testdoc [discussions] undefinedのボディを受け入れる
      * @purpose ボディが省略可能であることを確認
      */
     it("should accept undefined body", () => {
@@ -92,7 +92,7 @@ describe("discussions command validation", () => {
     });
 
     /**
-     * @testdoc 空のボディを受け入れる
+     * @testdoc [discussions] 空のボディを受け入れる
      * @purpose 空文字列が許可されることを確認
      */
     it("should accept empty body", () => {
@@ -109,7 +109,7 @@ describe("discussions command validation", () => {
     });
 
     /**
-     * @testdoc Markdown形式のボディを受け入れる
+     * @testdoc [discussions] Markdown形式のボディを受け入れる
      * @purpose Markdown構文が受け入れられることを確認
      */
     it("should accept markdown body", () => {
@@ -131,7 +131,7 @@ const session = await startSession();
     });
 
     /**
-     * @testdoc 最大長のボディを受け入れる
+     * @testdoc [discussions] 最大長のボディを受け入れる
      * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept body at max length", () => {
@@ -140,7 +140,7 @@ const session = await startSession();
     });
 
     /**
-     * @testdoc 最大長を超えるボディを拒否する
+     * @testdoc [discussions] 最大長を超えるボディを拒否する
      * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject body exceeding max length", () => {
@@ -228,7 +228,7 @@ describe("discussions command actions", () => {
 
   describe("Action routing", () => {
     /**
-     * @testdoc サポートされるアクション一覧
+     * @testdoc [discussions] サポートされるアクション一覧
      * @purpose 利用可能なアクションを文書化
      */
     it("should document supported actions", () => {
@@ -565,7 +565,7 @@ describe("discussions output format", () => {
 
   describe("list output structure", () => {
     /**
-     * @testdoc list出力のJSON構造
+     * @testdoc [discussions] list出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document list output structure", () => {
@@ -618,7 +618,7 @@ describe("discussions output format", () => {
 
   describe("get output structure", () => {
     /**
-     * @testdoc get出力のJSON構造
+     * @testdoc [discussions] get出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document get output structure", () => {
@@ -662,7 +662,7 @@ describe("discussions output format", () => {
 
   describe("create output structure", () => {
     /**
-     * @testdoc create出力のJSON構造
+     * @testdoc [discussions] create出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document create output structure", () => {
@@ -716,7 +716,7 @@ describe("discussions output format", () => {
 
   describe("search output structure", () => {
     /**
-     * @testdoc search出力のJSON構造
+     * @testdoc [discussions] search出力のJSON構造
      * @purpose 出力形式を文書化
      */
     it("should document search output structure", () => {
@@ -806,7 +806,7 @@ describe("discussions error handling", () => {
 
   describe("Error conditions", () => {
     /**
-     * @testdoc リポジトリ情報が取得できない場合
+     * @testdoc [discussions] リポジトリ情報が取得できない場合
      * @purpose getRepoInfoがnullを返す場合のエラー条件を文書化
      */
     it("should document repository unavailable error", () => {
@@ -834,7 +834,7 @@ describe("discussions error handling", () => {
     });
 
     /**
-     * @testdoc タイトルが指定されていない場合
+     * @testdoc [discussions] タイトルが指定されていない場合
      * @purpose createアクションでタイトル未指定のエラー条件を文書化
      */
     it("should document title required error", () => {
@@ -892,7 +892,7 @@ describe("discussions error handling", () => {
     });
 
     /**
-     * @testdoc 不明なアクションが指定された場合
+     * @testdoc [discussions] 不明なアクションが指定された場合
      * @purpose サポートされていないアクションのエラー条件を文書化
      */
     it("should document unknown action error", () => {

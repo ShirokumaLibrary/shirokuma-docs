@@ -20,5 +20,5 @@ export declare function validateIssueFields(data: TableJsonResponse, severity?: 
 /**
  * Fetch issue data and check field completeness.
  */
-export declare function checkIssueFields(severity?: WorkflowIssueSeverity): WorkflowIssue[];
+export declare function checkIssueFields(severity?: WorkflowIssueSeverity): Promise<WorkflowIssue[]>;
 //# sourceMappingURL=workflow-issue-fields.d.ts.map

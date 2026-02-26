@@ -113,7 +113,7 @@ describe("workflow-branch-naming", () => {
     });
 
     /**
-     * @testdoc severity パラメータが反映される
+     * @testdoc [branch-naming] severity パラメータが反映される
      */
     it("should use provided severity", () => {
       const issues = validateBranchName("invalid-name", "error");

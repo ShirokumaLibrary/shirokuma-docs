@@ -103,7 +103,7 @@ export async function lintWorkflowCommand(
     logger.debug("Checking issue field completeness...");
     const issueFieldsSeverity =
       lintWorkflowConfig.rules?.["issue-fields"]?.severity ?? "warning";
-    const issues = checkIssueFields(issueFieldsSeverity);
+    const issues = await checkIssueFields(issueFieldsSeverity);
     ruleResults.push({
       rule: "issue-fields",
       description: "Issue field completeness (Priority, Size)",

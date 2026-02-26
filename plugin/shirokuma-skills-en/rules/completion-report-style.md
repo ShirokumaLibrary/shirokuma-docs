@@ -49,9 +49,48 @@ For detailed bullets vs prose guidelines in GitHub content (Issues, PRs, Discuss
 | Chain (via working-on-issue) | Omit (chain auto-executes) |
 | Standalone | Always suggest |
 
+## Skill Category Guide
+
+| Category | Template Required | Examples |
+|----------|------------------|---------|
+| Workflow | Required (strict) | committing-on-issue, creating-pr-on-issue, ending-session |
+| Config Management | Required (strict) | managing-rules, managing-skills, managing-agents |
+| Analysis | Required (with tables) | evolving-rules, planning-on-issue |
+| Display / Orchestrator | Not required | showing-github, working-on-issue |
+| Delegator | Deferred to caller | reviewing-on-issue, creating-item |
+
+Skills that do not require templates may omit the completion report section entirely.
+
+## Information Hierarchy
+
+Arrange completion report information in this priority order:
+
+```
+Level 1: Heading (outcome + context ID)        -- 1 second scan
+Level 2: KV pairs (critical facts)             -- 5 second scan
+Level 3: Table or list (details)               -- 15 second scan
+Level 4: Prose explanation (rationale)          -- 30+ second read
+```
+
+**1-second test**: The first 3 lines must convey the outcome and where to find the artifact.
+
+## Field Classification
+
+Classify each field in a template:
+
+| Classification | Meaning | Template Notation |
+|---------------|---------|-------------------|
+| Fixed | Always present, same format | `**Label:** {value}` |
+| Conditional | Present only when applicable | `[**Label:** {value}]` |
+| Freeform | Variable-length content | `{description}` |
+
+Avoid omitting Fixed fields or always showing Conditional fields.
+
 ## Prohibited Patterns
 
 - Raw URLs for GitHub references (`https://github.com/.../issues/42` → `#42`)
 - Markdown links for GitHub references (`[#123](URL)` → `#123`)
 - Verb forms in headings (`## Generate Report` → `## Report Generated`)
 - Inconsistent section names (do not mix "confirmation", "summary display", "report generation")
+- Process narration ("First I read the file..." → state results only)
+- Self-referential verbosity ("Successfully completed!" → state facts only)

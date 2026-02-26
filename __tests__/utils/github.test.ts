@@ -451,6 +451,32 @@ describe("runGraphQL", () => {
       expect(result.error).not.toContain("reserved");
     }
   });
+
+  /**
+   * @testdoc null レスポンスに対して型ガードがエラーを返す
+   * @purpose ランタイム型ガードが不正なレスポンス構造を検出することを確認
+   */
+  it("should return error for null GraphQL response", async () => {
+    // octokit.graphql が null を返すケースをモック
+    const { getOctokit } = await import("../../src/utils/octokit-client.js");
+    const octokit = getOctokit();
+    const originalGraphql = octokit.graphql;
+    octokit.graphql = (async () => null) as typeof octokit.graphql;
+
+    try {
+      const result = await runGraphQL(
+        "query { viewer { login } }",
+        {},
+        { silent: true }
+      );
+      expect(result.success).toBe(false);
+      if (!result.success) {
+        expect(result.error).toBe("Unexpected GraphQL response structure");
+      }
+    } finally {
+      octokit.graphql = originalGraphql;
+    }
+  });
 });
 
 describe("constants", () => {

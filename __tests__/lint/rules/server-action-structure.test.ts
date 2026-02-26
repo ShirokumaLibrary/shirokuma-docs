@@ -11,7 +11,7 @@ import type { CodeIssue } from "../../../src/lint/code-types.js";
 
 describe("serverActionStructureRule", () => {
   /**
-   * @testdoc ルールメタデータが正しく定義されている
+   * @testdoc [server-action-structure] ルールメタデータが正しく定義されている
    */
   it("should have correct metadata", () => {
     expect(serverActionStructureRule.id).toBe("server-action-structure");

@@ -196,10 +196,10 @@ When a batch option is selected, invoke `working-on-issue` with all issue number
 
 ## Evolution Signal Reminder
 
-After context display (Step 2), check if signals have accumulated in the Evolution Discussion.
+After context display (Step 2), check if signals have accumulated in Evolution Issues.
 
 ```bash
-shirokuma-docs discussions list --category Evolution --limit 1
+shirokuma-docs search "[Evolution]" --type issues --limit 1
 ```
 
 If signals are accumulated, show a single line after the Active Issues section:

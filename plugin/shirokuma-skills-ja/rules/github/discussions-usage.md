@@ -17,7 +17,8 @@ Discussions は人間向けの知識を蓄積し、Rules は AI 向けの抽出�
 | ADR | 📐 | Open-ended discussion | 確定したアーキテクチャ決定 |
 | Knowledge | 💡 | Open-ended discussion | 確認されたパターン・解決策 |
 | Research | 🔬 | Open-ended discussion | 調査が必要な事項 |
-| Evolution | 🧬 | Open-ended discussion | ルール・スキルの進化シグナル蓄積 |
+
+> Evolution シグナルは Discussion ではなく Issue で管理します。詳細は `rule-evolution` ルールを参照。
 
 ## ワークフロー
 
@@ -61,4 +62,3 @@ Knowledge→Rule 抽出ワークフロー・検索コマンド詳細: `managing-
 | ADR | `ADR-{NNN}: {タイトル}` |
 | Knowledge | `{トピック名}` |
 | Research | `[Research] {トピック}` |
-| Evolution | `[Evolution] {トピック}` |

@@ -87,7 +87,7 @@ AI は以下のタイミングで Issue ステータスを更新する必要が�
 
 | トリガー | アクション | 責任者 | コマンド |
 |---------|----------|--------|---------|
-| 計画策定開始 | → Planning + アサイン | `planning-on-issue` | `issues update {n} --field-status "Planning"` + `gh issue edit {n} --add-assignee @me` |
+| 計画策定開始 | → Planning + アサイン | `planning-on-issue` | `issues update {n} --field-status "Planning" --add-assignee @me` |
 | 計画策定完了 | → Spec Review | `planning-on-issue` | `issues update {n} --field-status "Spec Review"` |
 | ユーザーが計画承認、実装開始 | → In Progress + ブランチ | `working-on-issue` | `issues update {n} --field-status "In Progress"` |
 | セルフレビュー完了 | → Review | `creating-pr-on-issue` | `issues update {n} --field-status "Review"`（セルフレビュー**中**は In Progress を維持。Review への遷移はセルフレビュー完了後のみ） |

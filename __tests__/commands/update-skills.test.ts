@@ -200,7 +200,7 @@ describe("update-skills command", () => {
 
   describe("no metadata file", () => {
     /**
-     * @testdoc .shirokuma-meta.json が作成されない
+     * @testdoc [update-skills] .shirokuma-meta.json が作成されない
      * @purpose メタデータファイルが廃止されたことを確認（#401）
      */
     it("should not create .shirokuma-meta.json", () => {

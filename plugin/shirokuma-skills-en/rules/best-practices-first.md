@@ -35,6 +35,39 @@ When the user provides a task with an issue number or work description → deleg
 
 Use the decision flow below only when `working-on-issue` is not applicable (e.g., exploration, architecture, simple questions).
 
+## Session vs Standalone
+
+Skills support two invocation modes:
+
+| Mode | Description | When to Use |
+|------|-------------|-------------|
+| Session-based | Start with `starting-session`, end with `ending-session` | Multi-issue work, context continuity needed |
+| Standalone | Invoke skill directly without session | Single task, quick fix, one-off action |
+
+### Skill Session Support
+
+| Skill | Session | Standalone | Notes |
+|-------|---------|------------|-------|
+| working-on-issue | Yes | Yes | Entry point for both modes |
+| planning-on-issue | Yes | Yes | Via working-on-issue or standalone |
+| coding-nextjs | Yes | Yes | Via working-on-issue or standalone |
+| designing-shadcn-ui | Yes | Yes | Via working-on-issue or standalone |
+| creating-item | — | Yes | Always standalone-capable |
+| committing-on-issue | Yes | Yes | PR chain on standalone with keywords |
+| creating-pr-on-issue | Yes | Yes | Via chain or standalone |
+| starting-session | Yes | — | Session start only |
+| ending-session | Yes | — | Session end only |
+
+### Standalone Handover Guideline
+
+Standalone invocations do not require `ending-session`. However, when standalone work is substantial:
+
+| Standalone Scope | Handover |
+|-----------------|----------|
+| Quick single-skill invocation (typo fix, item creation) | Not needed |
+| Multiple commits or significant code changes | Recommend `ending-session` |
+| Research findings or architecture investigation | Recommend creating a Discussion |
+
 ## Decision Flow
 
 ### 1. On Task Receipt

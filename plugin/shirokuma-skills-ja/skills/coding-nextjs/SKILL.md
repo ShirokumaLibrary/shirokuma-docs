@@ -124,7 +124,7 @@ pnpm dev:{app}                   # 開発
 
 ## 次のステップ
 
-`working-on-issue` チェーンではなく直接起動された場合:
+`working-on-issue` チェーンではなくスタンドアロンで起動された場合:
 
 ```
 Implementation complete. Next step:
