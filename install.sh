@@ -7,8 +7,8 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash
-#   curl -fsSL ... | bash -s -- --lang ja   # non-interactive: Japanese
-#   curl -fsSL ... | bash -s -- --lang en   # non-interactive: English
+#
+# Language is configured during `shirokuma-docs init --lang {en,ja}`, not at install time.
 #
 # Requirements:
 #   - Node.js 20.0.0 or later
@@ -28,56 +28,30 @@ INSTALL_DIR="$HOME/.local/share/shirokuma-docs"
 BIN_DIR="$HOME/.local/bin"
 PACKAGE_NAME="@shirokuma-library/shirokuma-docs"
 BIN_NAME="shirokuma-docs"
-SELECTED_LANG=""
 
-# Print colored output (defined early for use in parse_args/select_language)
+# Print colored output
 info() { echo -e "${BLUE}[INFO]${NC} $1"; }
 success() { echo -e "${GREEN}[SUCCESS]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 error() { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 
 # Parse command-line arguments
-# Note: --lang only affects the post-install "Next steps" message
-# (e.g., which --lang value is shown in the `shirokuma-docs init` command).
-# Actual language configuration happens during `shirokuma-docs init`.
+# Note: --lang is accepted for backwards compatibility but ignored.
+# Language configuration happens during `shirokuma-docs init --lang {en,ja}`.
 parse_args() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --lang)
-        if [[ -n "$2" && "$2" =~ ^(en|ja)$ ]]; then
-          SELECTED_LANG="$2"
-          shift 2
-        else
-          error "Invalid --lang value. Use 'en' or 'ja'."
-          exit 1
-        fi
+        shift 2 2>/dev/null || shift
         ;;
       --lang=*)
-        local val="${1#--lang=}"
-        if [[ "$val" =~ ^(en|ja)$ ]]; then
-          SELECTED_LANG="$val"
-          shift
-        else
-          error "Invalid --lang value. Use 'en' or 'ja'."
-          exit 1
-        fi
+        shift
         ;;
       *)
         shift
         ;;
     esac
   done
-}
-
-# Set language (default: en, override with --lang)
-select_language() {
-  if [ -n "$SELECTED_LANG" ]; then
-    info "Language: $SELECTED_LANG (from --lang argument)"
-    return
-  fi
-
-  SELECTED_LANG="en"
-  info "Language: en (default, use --lang ja for Japanese)"
 }
 
 # Check Node.js version
@@ -206,8 +180,6 @@ verify_installation() {
 
 # Print next steps
 print_next_steps() {
-  local lang_flag=" --lang ${SELECTED_LANG}"
-
   echo ""
   echo "========================================="
   echo "  Installation Complete!"
@@ -224,13 +196,13 @@ print_next_steps() {
   echo "  2. Initialize shirokuma-docs in your project:"
   echo ""
   echo "     cd /path/to/your/project"
-  echo "     shirokuma-docs init --with-skills${lang_flag}"
+  echo "     shirokuma-docs init --with-skills --lang {en,ja}"
   echo ""
   echo "  3. The init command will:"
   echo "     - Create shirokuma-docs.config.yaml"
-  echo "     - Install shirokuma-skills-${SELECTED_LANG} plugin"
+  echo "     - Install shirokuma-skills-{en,ja} plugin"
   echo "     - Deploy rules to .claude/rules/shirokuma/"
-  echo "     - Set language to ${SELECTED_LANG} in .claude/settings.json"
+  echo "     - Set language in .claude/settings.json"
   echo "     - Register plugin in Claude Code's cache"
   echo ""
   echo "  4. Start a new Claude Code session to use the skills"
@@ -249,7 +221,6 @@ main() {
   echo "========================================="
   echo ""
 
-  select_language
   check_node
   check_npm
   create_directories

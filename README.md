@@ -6,30 +6,17 @@ Next.js + TypeScript プロジェクト向けのドキュメント自動生成 C
 
 ## インストール
 
-### 推奨: インストーラスクリプト（sudo 不要）
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash
 ```
 
-`~/.local/` にインストールされます。Claude Code ユーザーは `~/.local/bin` が PATH に含まれているため追加設定不要です。インストーラが言語を対話的に確認します（`--lang ja` で事前指定も可）。
-
-### npm / pnpm でグローバルインストール
-
-```bash
-npm install -g @shirokuma-library/shirokuma-docs
-# または
-pnpm add -g @shirokuma-library/shirokuma-docs
-```
+インストール方法の詳細（npm/pnpm、前提条件、GitHub 認証の設定）は [Getting Started ガイド](docs/guide/getting-started.md) を参照してください。
 
 ## はじめかた
 
-> **前提**: git リポジトリ + GitHub リモート + `GITHUB_TOKEN` 環境変数（または `gh auth login` 済み）。詳細は [Getting Started ガイド](docs/guide/getting-started.md) を参照。
+> **前提**: Node.js 20.0.0 以上 + git リポジトリ + GitHub リモート。前提条件の詳細は [Getting Started ガイド](docs/guide/getting-started.md#前提条件) を参照。
 
 ```bash
-# 0. GITHUB_TOKEN を設定（Projects V2 のスコープ含む）
-export GITHUB_TOKEN="ghp_xxxxx"  # repo, read:project, project スコープ必要
-
 # 1. 初期化（スキル・ルール付き）
 cd /path/to/your/project
 shirokuma-docs init --with-skills --with-rules --lang ja

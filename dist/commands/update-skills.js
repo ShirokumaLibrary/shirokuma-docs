@@ -30,7 +30,7 @@ import { existsSync } from "node:fs";
 import { createLogger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import { loadConfig } from "../utils/config.js";
-import { PLUGIN_NAME, PLUGIN_NAME_JA, PLUGIN_NAME_HOOKS, PLUGIN_REGISTRY_ID, PLUGIN_REGISTRY_ID_JA, PLUGIN_REGISTRY_ID_HOOKS, getBundledPluginPath, getBundledPluginPathJa, getPackageVersion, getPluginVersion, getPluginVersionFromGlobalCache, deployRules, registerPluginCache, ensureMarketplace, getGlobalCachePath, cleanupOldCacheVersions, cleanDeployedRules, isClaudeCliAvailable, getLanguageSetting, ensureSingleLanguagePlugin, getCliInstallDir, updateCliPackage, getMarketplaceClonePath, resolveVersionByChannel, withMarketplaceVersion, } from "../utils/skills-repo.js";
+import { PLUGIN_NAME, PLUGIN_NAME_JA, getBundledPluginPath, getBundledPluginPathJa, getPackageVersion, getPluginVersion, getPluginVersionFromGlobalCache, deployRules, getGlobalCachePath, isClaudeCliAvailable, getLanguageSetting, getCliInstallDir, updateCliPackage, installAllPlugins, } from "../utils/skills-repo.js";
 /**
  * update-skills command handler
  */
@@ -97,73 +97,37 @@ async function updateExternalProject(projectPath, options, logger, T, newVersion
     if (effectiveChannel) {
         logger.info(`Plugin channel: ${effectiveChannel}`);
     }
-    // claude CLI が利用可能な場合のみキャッシュ更新を実行 (#632: graceful degradation)
+    // claude CLI が利用可能な場合のみキャッシュ更新を実行 (#632: graceful degradation, #1043: 共通ユーティリティ)
     if (isClaudeCliAvailable()) {
-        // Marketplace 登録確認
-        const marketplaceOk = await ensureMarketplace();
-        if (!marketplaceOk) {
-            logger.warn("Marketplace registration failed, proceeding with bundled fallback");
-        }
-        // claude plugin update でキャッシュ更新
-        if (!options.dryRun && marketplaceOk) {
+        if (!options.dryRun) {
             logger.info(T("updatingGlobalCache"));
-            // チャンネル指定時はタグベースのバージョン解決を使用 (#961)
-            const installPlugins = () => {
-                // #636: 外部プロジェクトでは marketplace からインストールするため hasJaPlugin()/hasHooksPlugin() 不要
-                const registryIds = [
-                    ...(languageSetting === "japanese"
-                        ? [PLUGIN_REGISTRY_ID_JA]
-                        : [PLUGIN_REGISTRY_ID]),
-                    PLUGIN_REGISTRY_ID_HOOKS,
-                ];
-                for (const registryId of registryIds) {
-                    const cacheResult = registerPluginCache(projectPath, { reinstall: true, registryId });
-                    if (cacheResult.success) {
-                        logger.success(`${registryId}: ${T("globalCacheUpdated")}`);
-                    }
-                    else {
-                        logger.warn(`${registryId}: ${cacheResult.message ?? "update failed"}`);
-                    }
-                }
-            };
-            if (effectiveChannel) {
-                const clonePath = getMarketplaceClonePath();
-                if (clonePath) {
-                    const tag = await resolveVersionByChannel(effectiveChannel, clonePath);
-                    if (tag) {
-                        logger.info(`Resolved version: ${tag} (channel: ${effectiveChannel})`);
-                        await withMarketplaceVersion(clonePath, tag, installPlugins);
-                    }
-                    else {
-                        logger.warn(`No matching tag found for channel "${effectiveChannel}", using HEAD`);
-                        installPlugins();
-                    }
-                }
-                else {
-                    logger.warn("Marketplace clone not found, using HEAD");
-                    installPlugins();
-                }
+            const installResult = await installAllPlugins({
+                projectPath,
+                languageSetting,
+                channel: effectiveChannel,
+                reinstall: true,
+                cleanupOldVersions: true,
+                verbose,
+            });
+            if (!installResult.marketplaceOk) {
+                logger.warn("Marketplace registration failed, proceeding with bundled fallback");
             }
             else {
-                installPlugins();
-            }
-            cacheUpdated = true;
-            // 古いキャッシュバージョンをクリーンアップ (#679)
-            const pluginNames = languageSetting === "japanese"
-                ? [PLUGIN_NAME_JA, PLUGIN_NAME_HOOKS]
-                : [PLUGIN_NAME, PLUGIN_NAME_HOOKS];
-            for (const pn of pluginNames) {
-                const removed = cleanupOldCacheVersions(pn);
-                if (removed.length > 0) {
+                for (const p of installResult.plugins) {
+                    if (p.success) {
+                        logger.success(`${p.registryId}: ${T("globalCacheUpdated")}`);
+                    }
+                    else {
+                        logger.warn(`${p.registryId}: ${p.message ?? "update failed"}`);
+                    }
+                }
+                cacheUpdated = true;
+                for (const [pn, removed] of Object.entries(installResult.cleanedVersions)) {
                     logger.info(`${pn}: ${removed.length} old cache version(s) removed`);
                 }
-            }
-            // 逆言語プラグインを削除 (#812)
-            const singleLangResult = ensureSingleLanguagePlugin(projectPath, languageSetting, { verbose });
-            if (singleLangResult.attempted) {
-                logger.info(`${singleLangResult.oppositePlugin}: opposite language plugin removed`);
-                // 逆言語のルールが残っている可能性があるため、デプロイ前にクリーン
-                await cleanDeployedRules(projectPath, { verbose });
+                if (installResult.singleLanguage.attempted) {
+                    logger.info(`${installResult.singleLanguage.oppositePlugin}: opposite language plugin removed`);
+                }
             }
         }
     }

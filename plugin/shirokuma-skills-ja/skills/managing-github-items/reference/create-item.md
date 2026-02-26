@@ -166,7 +166,7 @@ C) その他（具体的に教えてください）
 
 | フィールド | 選択肢 | デフォルト |
 |-----------|--------|----------|
-| Issue Type | Feature / Bug / Task / Chore / Docs / Research / Evolution | （種別判定から） |
+| Issue Type（**必須**） | Feature / Bug / Task / Chore / Docs / Research / Evolution | （種別判定から） |
 | Priority | Critical / High / Medium / Low | Medium |
 | Size | XS / S / M / L / XL | S |
 | Status | Backlog / Ready | Backlog |

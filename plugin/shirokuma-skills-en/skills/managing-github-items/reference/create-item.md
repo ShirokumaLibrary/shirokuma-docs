@@ -166,7 +166,7 @@ For typo fixes, single-line changes, and other XS-sized issues:
 
 | Field | Options | Default |
 |-------|---------|---------|
-| Issue Type | Feature / Bug / Task / Chore / Docs / Research / Evolution | (from type inference) |
+| Issue Type (**required**) | Feature / Bug / Task / Chore / Docs / Research / Evolution | (from type inference) |
 | Priority | Critical / High / Medium / Low | Medium |
 | Size | XS / S / M / L / XL | S |
 | Status | Backlog / Ready | Backlog |

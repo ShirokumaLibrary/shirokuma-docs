@@ -99,7 +99,8 @@ When `reviewing-on-issue` posts review results as PR comments or Issue comments,
 
 - `reviewing-on-issue` runs with `context: fork`, so it only posts comments and does not update bodies
 - Body updates are the responsibility of caller skills (`creating-pr-on-issue`, `working-on-issue`)
-- The review comment itself serves as the primary record, so no additional comment is needed (the review comment = the "comment" in comment-first)
+- **PASS case**: The review comment itself serves as the primary record, so no additional comment is needed (the review comment = the "comment" in comment-first)
+- **Auto-fix case**: After the self-review loop completes, post a comment summarizing all fixes before updating the body (see `creating-pr-on-issue` Step 6d)
 
 ## Guidelines
 

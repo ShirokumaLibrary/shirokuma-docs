@@ -145,10 +145,26 @@ See project-specific workflow documentation for detailed fix instructions.
 Use `templates/report.md` format:
 
 1. Summary (include shirokuma-docs lint summary)
-2. Critical Issues
-3. Improvements
-4. Best Practices
-5. Recommendations
+2. **Issue Summary** (breakdown table of detected issues by severity)
+3. Critical Issues
+4. Improvements
+5. Best Practices
+6. Recommendations
+
+**Issue summary table** (placed immediately after the Summary section):
+
+```markdown
+### Issue Summary
+| Severity | Count |
+|----------|-------|
+| Critical | {n} |
+| High | {n} |
+| Medium | {n} |
+| Low | {n} |
+| **Total** | **{n}** |
+```
+
+If 0 issues are found, state "No issues were detected" and omit the table.
 
 ### 6. Save Report
 

@@ -295,7 +295,7 @@ export declare function getGlobalCachePath(pluginName: string, version?: string)
  * alpha < beta < rc < stable の順。
  * 各チャンネルはそのレベル以上のバージョンを受け入れる。
  */
-type PluginChannel = "stable" | "rc" | "beta" | "alpha";
+export type PluginChannel = "stable" | "rc" | "beta" | "alpha";
 /**
  * marketplace クローンのローカルパスを取得する
  *
@@ -448,5 +448,45 @@ export declare function updateCliPackage(installDir: string, options?: {
 export declare function ensureSingleLanguagePlugin(projectPath: string, languageSetting: string | null, options?: {
     verbose?: boolean;
 }): SingleLanguageResult;
-export {};
+/**
+ * installAllPlugins のオプション
+ */
+export interface InstallAllPluginsOptions {
+    projectPath: string;
+    languageSetting: string | null;
+    channel?: PluginChannel;
+    /** init: false (デフォルト), update: true */
+    reinstall?: boolean;
+    /** init: false (デフォルト), update: true */
+    cleanupOldVersions?: boolean;
+    verbose?: boolean;
+}
+/**
+ * 個々のプラグインインストール結果
+ */
+export interface PluginInstallStatus {
+    registryId: string;
+    success: boolean;
+    message?: string;
+}
+/**
+ * installAllPlugins の戻り値
+ */
+export interface InstallAllPluginsResult {
+    marketplaceOk: boolean;
+    plugins: PluginInstallStatus[];
+    singleLanguage: SingleLanguageResult;
+    deployedRulesCleaned: boolean;
+    cleanedVersions: Record<string, string[]>;
+}
+/**
+ * marketplace 確認→プラグインインストール→逆言語削除→キャッシュクリーンアップを一括実行 (#1043)
+ *
+ * `init.ts` と `update-skills.ts` の共通プラグインインストールパターンをカプセル化する。
+ * 呼び出し元は `isClaudeCliAvailable()` チェックと `dryRun` ガードを担当する。
+ *
+ * @param options - インストールオプション
+ * @returns インストール結果
+ */
+export declare function installAllPlugins(options: InstallAllPluginsOptions): Promise<InstallAllPluginsResult>;
 //# sourceMappingURL=skills-repo.d.ts.map

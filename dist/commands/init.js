@@ -24,7 +24,7 @@ import { createLogger } from "../utils/logger.js";
 import { t } from "../utils/i18n.js";
 import { validateGitHubSetup, printSetupCheckResults } from "../utils/setup-check.js";
 import { loadConfig } from "../utils/config.js";
-import { deployRules, registerPluginCache, ensureMarketplace, getGlobalCachePath, getInstalledSkills, getInstalledRules, updateGitignore, isClaudeCliAvailable, getLanguageSetting, getBundledPluginPath, getBundledPluginPathJa, DEPLOYED_RULES_DIR, PLUGIN_NAME, PLUGIN_NAME_JA, PLUGIN_REGISTRY_ID_JA, PLUGIN_REGISTRY_ID_HOOKS, cleanDeployedRules, ensureSingleLanguagePlugin, getMarketplaceClonePath, resolveVersionByChannel, withMarketplaceVersion, } from "../utils/skills-repo.js";
+import { deployRules, getGlobalCachePath, getInstalledSkills, getInstalledRules, updateGitignore, isClaudeCliAvailable, getLanguageSetting, getBundledPluginPath, getBundledPluginPathJa, DEPLOYED_RULES_DIR, PLUGIN_NAME, PLUGIN_NAME_JA, PLUGIN_REGISTRY_ID_JA, PLUGIN_REGISTRY_ID_HOOKS, installAllPlugins, } from "../utils/skills-repo.js";
 /** 言語コードから settings.json の language 値へのマッピング */
 const LANG_MAP = {
     en: "english",
@@ -454,68 +454,34 @@ export async function initCommand(options) {
             if (effectiveChannel) {
                 logger.info(`Plugin channel: ${effectiveChannel}`);
             }
-            // marketplace 登録 + キャッシュインストール (#801: 常に external フロー)
+            // marketplace 登録 + キャッシュインストール (#801: 常に external フロー, #1043: 共通ユーティリティ)
             if (isClaudeCliAvailable()) {
                 logger.info("\n" + t("commands.init.registeringCache"));
-                const marketplaceOk = await ensureMarketplace();
-                if (marketplaceOk) {
-                    // プラグインインストール処理を関数化（チャンネルラップ対応 #961）
-                    const installPlugins = () => {
-                        // 言語に応じたスキルプラグインを登録（#495, #636: marketplace パスでは hasJaPlugin() 不要）
-                        if (effectiveLang === "japanese") {
-                            const jaCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_JA });
-                            if (jaCacheResult.success) {
-                                logger.success(t("commands.init.jaCacheRegistered"));
-                                result.cache_registered = true;
+                const installResult = await installAllPlugins({
+                    projectPath,
+                    languageSetting: effectiveLang,
+                    channel: effectiveChannel,
+                    verbose: options.verbose ?? false,
+                });
+                if (installResult.marketplaceOk) {
+                    for (const p of installResult.plugins) {
+                        if (p.registryId === PLUGIN_REGISTRY_ID_HOOKS) {
+                            if (p.success) {
+                                logger.success(t("commands.init.hooksCacheRegistered"));
                             }
-                            else {
-                                logger.warn(t("commands.init.cacheFailed", { message: jaCacheResult.message ?? "" }));
-                            }
+                        }
+                        else if (p.success) {
+                            logger.success(p.registryId === PLUGIN_REGISTRY_ID_JA
+                                ? t("commands.init.jaCacheRegistered")
+                                : t("commands.init.cacheRegistered"));
+                            result.cache_registered = true;
                         }
                         else {
-                            const cacheResult = registerPluginCache(projectPath);
-                            if (cacheResult.success) {
-                                logger.success(t("commands.init.cacheRegistered"));
-                                result.cache_registered = true;
-                            }
-                            else {
-                                logger.warn(t("commands.init.cacheFailed", { message: cacheResult.message ?? "" }));
-                            }
-                        }
-                        // Hooks プラグイン: 言語に関わらず常に登録（#636: marketplace パスでは hasHooksPlugin() 不要）
-                        const hooksCacheResult = registerPluginCache(projectPath, { registryId: PLUGIN_REGISTRY_ID_HOOKS });
-                        if (hooksCacheResult.success) {
-                            logger.success(t("commands.init.hooksCacheRegistered"));
-                        }
-                    };
-                    // チャンネル指定時はタグベースのバージョン解決を使用 (#961)
-                    if (effectiveChannel) {
-                        const clonePath = getMarketplaceClonePath();
-                        if (clonePath) {
-                            const tag = await resolveVersionByChannel(effectiveChannel, clonePath);
-                            if (tag) {
-                                logger.info(`Resolved version: ${tag} (channel: ${effectiveChannel})`);
-                                await withMarketplaceVersion(clonePath, tag, installPlugins);
-                            }
-                            else {
-                                logger.warn(`No matching tag found for channel "${effectiveChannel}", using HEAD`);
-                                installPlugins();
-                            }
-                        }
-                        else {
-                            logger.warn("Marketplace clone not found, using HEAD");
-                            installPlugins();
+                            logger.warn(t("commands.init.cacheFailed", { message: p.message ?? "" }));
                         }
                     }
-                    else {
-                        installPlugins();
-                    }
-                    // 逆言語プラグインを削除 (#812)
-                    const singleLangResult = ensureSingleLanguagePlugin(projectPath, effectiveLang, { verbose: options.verbose ?? false });
-                    if (singleLangResult.attempted) {
-                        logger.info(`${singleLangResult.oppositePlugin}: opposite language plugin removed`);
-                        // 逆言語のルールが残っている可能性があるため、デプロイ前にクリーン
-                        await cleanDeployedRules(projectPath, { verbose: options.verbose ?? false });
+                    if (installResult.singleLanguage.attempted) {
+                        logger.info(`${installResult.singleLanguage.oppositePlugin}: opposite language plugin removed`);
                     }
                 }
                 else {

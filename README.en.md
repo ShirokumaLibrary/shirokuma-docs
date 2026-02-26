@@ -6,25 +6,15 @@ Next.js + TypeScript project documentation generator CLI with bundled Claude Cod
 
 ## Installation
 
-### Recommended: Installer Script (No sudo required)
-
 ```bash
 curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash
 ```
 
-Installs to `~/.local/`. Claude Code users already have `~/.local/bin` in PATH. The installer prompts for language selection interactively (or use `--lang en` to pre-select).
-
-### Alternative: npm / pnpm global install
-
-```bash
-npm install -g @shirokuma-library/shirokuma-docs
-# or
-pnpm add -g @shirokuma-library/shirokuma-docs
-```
+For alternative install methods (npm/pnpm), prerequisites, and GitHub authentication setup, see the [Getting Started Guide](docs/guide/getting-started.md).
 
 ## Getting Started
 
-> **Prerequisites**: git repository + GitHub remote + `GITHUB_TOKEN` environment variable (or `gh auth login` completed). See [Getting Started Guide](docs/guide/getting-started.md) for details.
+> **Prerequisites**: Node.js 20.0.0+, git repository, and GitHub remote. See [Getting Started Guide](docs/guide/getting-started.md#前提条件) for details.
 
 ```bash
 # 1. Initialize (with skills and rules)

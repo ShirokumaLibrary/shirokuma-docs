@@ -20,6 +20,18 @@ Brief overview (2-3 sentences):
 - Overall assessment (Good/Needs Work/Critical)
 - Key finding
 
+### Issue Summary
+
+| Severity | Count |
+|----------|-------|
+| Critical | {n} |
+| High | {n} |
+| Medium | {n} |
+| Low | {n} |
+| **Total** | **{n}** |
+
+If 0 issues are found, omit this table and state "No issues were detected".
+
 ### 2. Critical Issues
 
 **Must fix before merge** (See [Severity Definitions](#severity-definitions))
@@ -67,6 +79,16 @@ Brief overview (2-3 sentences):
 ## Summary
 
 Reviewed 5 Server Action files. Overall security posture is **Good** with one critical issue: missing authorization check in `deleteComment`. All other actions follow secure patterns.
+
+### Issue Summary
+
+| Severity | Count |
+|----------|-------|
+| Critical | 1 |
+| High | 1 |
+| Medium | 1 |
+| Low | 1 |
+| **Total** | **4** |
 
 ## Critical Issues
 

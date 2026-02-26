@@ -1194,4 +1194,93 @@ export function ensureSingleLanguagePlugin(projectPath, languageSetting, options
         cacheRemoved,
     };
 }
+/**
+ * marketplace 確認→プラグインインストール→逆言語削除→キャッシュクリーンアップを一括実行 (#1043)
+ *
+ * `init.ts` と `update-skills.ts` の共通プラグインインストールパターンをカプセル化する。
+ * 呼び出し元は `isClaudeCliAvailable()` チェックと `dryRun` ガードを担当する。
+ *
+ * @param options - インストールオプション
+ * @returns インストール結果
+ */
+export async function installAllPlugins(options) {
+    const { projectPath, languageSetting, channel, reinstall = false, cleanupOldVersions = false, verbose = false, } = options;
+    const emptyResult = {
+        marketplaceOk: false,
+        plugins: [],
+        singleLanguage: { attempted: false, cacheRemoved: false },
+        deployedRulesCleaned: false,
+        cleanedVersions: {},
+    };
+    // 1. marketplace 確認
+    const marketplaceOk = await ensureMarketplace();
+    if (!marketplaceOk) {
+        return emptyResult;
+    }
+    // 2. registry IDs を構築（言語プラグイン + hooks）
+    const registryIds = [
+        ...(languageSetting === "japanese"
+            ? [PLUGIN_REGISTRY_ID_JA]
+            : [PLUGIN_REGISTRY_ID]),
+        PLUGIN_REGISTRY_ID_HOOKS,
+    ];
+    // 3. プラグインインストール（チャンネルラップ対応 #961）
+    const plugins = [];
+    const installPlugins = () => {
+        for (const registryId of registryIds) {
+            const cacheResult = registerPluginCache(projectPath, { reinstall, registryId });
+            plugins.push({
+                registryId,
+                success: cacheResult.success,
+                message: cacheResult.message,
+            });
+        }
+    };
+    if (channel) {
+        const clonePath = getMarketplaceClonePath();
+        if (clonePath) {
+            const tag = await resolveVersionByChannel(channel, clonePath);
+            if (tag) {
+                await withMarketplaceVersion(clonePath, tag, installPlugins);
+            }
+            else {
+                installPlugins();
+            }
+        }
+        else {
+            installPlugins();
+        }
+    }
+    else {
+        installPlugins();
+    }
+    // 4. 逆言語プラグイン削除 (#812)
+    const singleLanguage = ensureSingleLanguagePlugin(projectPath, languageSetting, { verbose });
+    // 5. 逆言語削除が実行された場合、デプロイ済みルールをクリーン
+    let deployedRulesCleaned = false;
+    if (singleLanguage.attempted) {
+        await cleanDeployedRules(projectPath, { verbose });
+        deployedRulesCleaned = true;
+    }
+    // 6. 古いキャッシュバージョンのクリーンアップ (#679)
+    const cleanedVersions = {};
+    if (cleanupOldVersions) {
+        const pluginNames = languageSetting === "japanese"
+            ? [PLUGIN_NAME_JA, PLUGIN_NAME_HOOKS]
+            : [PLUGIN_NAME, PLUGIN_NAME_HOOKS];
+        for (const pn of pluginNames) {
+            const removed = cleanupOldCacheVersions(pn);
+            if (removed.length > 0) {
+                cleanedVersions[pn] = removed;
+            }
+        }
+    }
+    return {
+        marketplaceOk: true,
+        plugins,
+        singleLanguage,
+        deployedRulesCleaned,
+        cleanedVersions,
+    };
+}
 //# sourceMappingURL=skills-repo.js.map

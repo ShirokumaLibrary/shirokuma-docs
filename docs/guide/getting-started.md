@@ -2,53 +2,14 @@
 
 shirokuma-docs のインストールからプロジェクトへの導入までを説明します。
 
-## インストール
-
-### 方法 1: ワンライナーインストール（推奨）
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash
-```
-
-言語を事前に指定する場合:
-
-```bash
-# 日本語
-curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash -s -- --lang ja
-
-# 英語
-curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash -s -- --lang en
-```
-
-> `--lang` を省略した場合は対話的に言語を選択できます。パイプ経由（`curl ... | bash`）で `--lang` を省略するとデフォルトで英語版（en）がインストールされます。
-
-`~/.local/` にインストールされます。Claude Code ユーザーは `~/.local/bin` が既に PATH に含まれているため、追加設定は不要です。
-
-### 方法 2: npm / pnpm でグローバルインストール
-
-```bash
-# npm
-npm install -g @shirokuma-library/shirokuma-docs
-
-# pnpm
-pnpm add -g @shirokuma-library/shirokuma-docs
-```
-
-### インストールの確認
-
-```bash
-shirokuma-docs --version
-# => 0.2.0-alpha.5
-```
-
 ## 前提条件
 
-| ソフトウェア | バージョン | 用途 |
-|-------------|-----------|------|
-| Node.js | 20.0.0 以上 | 実行環境 |
-| `GITHUB_TOKEN` | — | GitHub 連携コマンドに必要（推奨） |
-| GitHub CLI (`gh`) | 最新版 | 認証のフォールバック手段（任意） |
-| Claude Code | 最新版 | AI 協働機能（スキル・ルール）に必要 |
+| ソフトウェア | バージョン | 区分 | 用途 |
+|-------------|-----------|------|------|
+| Node.js | 20.0.0 以上 | 必須 | 実行環境 |
+| `GITHUB_TOKEN` | — | 推奨 | GitHub 連携コマンドに必要 |
+| GitHub CLI (`gh`) | 最新版 | 任意 | 認証のフォールバック手段 |
+| Claude Code | 最新版 | AI 協働に必須 | スキル・ルール機能に必要 |
 
 ### GitHub 認証の設定
 
@@ -72,6 +33,32 @@ GitHub CLI がインストール済みの場合、`gh auth token` の出力を�
 ```bash
 gh auth login
 gh auth refresh -s read:project,project
+```
+
+## インストール
+
+### 方法 1: ワンライナーインストール（推奨）
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/main/install.sh | bash
+```
+
+`~/.local/` にインストールされます。Claude Code ユーザーは `~/.local/bin` が既に PATH に含まれているため、追加設定は不要です。言語設定はインストール後の `shirokuma-docs init --lang ja|en` で行います。
+
+### 方法 2: npm / pnpm でグローバルインストール
+
+```bash
+# npm
+npm install -g @shirokuma-library/shirokuma-docs
+
+# pnpm
+pnpm add -g @shirokuma-library/shirokuma-docs
+```
+
+### インストールの確認
+
+```bash
+shirokuma-docs --version
 ```
 
 ## プロジェクトの初期化

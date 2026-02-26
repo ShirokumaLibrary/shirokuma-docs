@@ -4,8 +4,8 @@
 
 ## 対象読者
 
+- [Getting Started](getting-started.md) の手順が完了している（shirokuma-docs インストール済み）
 - Next.js の基礎知識がある
-- shirokuma-docs を初めて使う
 - Claude Code と組み合わせてプロジェクト管理を効率化したい
 
 ## 全体の流れ

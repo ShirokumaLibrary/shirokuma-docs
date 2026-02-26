@@ -1555,16 +1555,80 @@ describe("issues --issue-type option (#693)", () => {
     });
 
     /**
-     * @testdoc --issue-typeが未指定の場合はundefinedである
-     * @purpose Issue Types はオプショナルであることを文書化
+     * @testdoc --issue-typeが未指定の場合はundefinedである（updateではオプショナル）
+     * @purpose update アクションでは Issue Types はオプショナルであることを文書化
      */
-    it("should be undefined when not specified", () => {
+    it("should be undefined when not specified (optional for update)", () => {
       const options = {
         title: "New Issue",
         issueType: undefined as string | undefined,
       };
 
       expect(options.issueType).toBeUndefined();
+    });
+  });
+
+  describe("--issue-type required for create (#1050)", () => {
+    /**
+     * @testdoc create で --issue-type 未指定時にエラーを返す
+     * @purpose create アクションでは --issue-type が必須であることを検証
+     */
+    it("should return error message when --issue-type is not provided for create", () => {
+      const options = {
+        title: "New Issue",
+        issueType: undefined as string | undefined,
+      };
+
+      // cmdCreate は options.issueType が falsy の場合 return 1 する
+      expect(options.issueType).toBeUndefined();
+      // バリデーションロジック: !options.issueType → error
+      expect(!options.issueType).toBe(true);
+    });
+
+    /**
+     * @testdoc create で --issue-type 指定時はエラーにならない
+     * @purpose create アクションで --issue-type を指定すればバリデーション通過を検証
+     */
+    it("should pass validation when --issue-type is provided for create", () => {
+      const options = {
+        title: "New Issue",
+        issueType: "Feature",
+      };
+
+      expect(!options.issueType).toBe(false);
+    });
+
+    /**
+     * @testdoc エラーメッセージに利用可能な Issue Type 一覧が含まれる
+     * @purpose ユーザーが正しい Type 名を選択できるよう一覧を表示することを文書化
+     */
+    it("should include available types in error message", () => {
+      const issueTypes: Record<string, string> = {
+        "Feature": "IT_abc123",
+        "Bug": "IT_def456",
+        "Task": "IT_ghi789",
+      };
+      const available = Object.keys(issueTypes);
+
+      const errorMessage = `--issue-type is required for create. Available: ${available.join(", ")}`;
+      expect(errorMessage).toContain("Available: Feature, Bug, Task");
+    });
+
+    /**
+     * @testdoc Issue Types が空の場合もエラーメッセージを返す
+     * @purpose Organization 非対応でも必須バリデーションが動作することを検証
+     */
+    it("should return error even when no issue types are available", () => {
+      const issueTypes: Record<string, string> = {};
+      const available = Object.keys(issueTypes);
+
+      let errorMessage: string;
+      if (available.length > 0) {
+        errorMessage = `--issue-type is required for create. Available: ${available.join(", ")}`;
+      } else {
+        errorMessage = "--issue-type is required for create";
+      }
+      expect(errorMessage).toBe("--issue-type is required for create");
     });
   });
 

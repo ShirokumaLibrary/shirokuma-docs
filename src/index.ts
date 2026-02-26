@@ -529,7 +529,7 @@ program
   .option("--field-size <size>", "(alias for --size)")
   .option("-t, --title <title>", "Issue title (for create)")
   .option("-b, --body-file <file>", "Issue body file path, or - for stdin (for create/update/comment/close)")
-  .option("--issue-type <type>", "Set Issue Type (e.g., Feature, Bug, Task) (for create/update)")
+  .option("--issue-type <type>", "Set Issue Type (e.g., Feature, Bug, Task) (required for create, optional for update)")
   .option(
     "--state-reason <reason>",
     "Close reason: COMPLETED, NOT_PLANNED (for close)",

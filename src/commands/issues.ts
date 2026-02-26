@@ -883,6 +883,18 @@ async function cmdCreate(
     }
   }
 
+  // Validate --issue-type is provided (required for create)
+  if (!options.issueType) {
+    const issueTypes = await getOrganizationIssueTypes(owner);
+    const available = Object.keys(issueTypes);
+    if (available.length > 0) {
+      logger.error(`--issue-type is required for create. Available: ${available.join(", ")}`);
+    } else {
+      logger.error("--issue-type is required for create");
+    }
+    return 1;
+  }
+
   // Resolve issue type name to ID
   let issueTypeId: string | null = null;
   if (options.issueType) {
