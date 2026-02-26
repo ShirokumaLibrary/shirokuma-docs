@@ -13,9 +13,9 @@ Add custom Issue Types to the Organization.
 | Type | Purpose | Color | Icon |
 |------|---------|-------|------|
 | Chore | Config, tooling, refactoring | Gray | gear |
-| Docs | Documentation | Blue | page facing up |
+| Docs | Documentation | Green | page facing up |
 | Research | Investigation and research | Purple | magnifying glass |
-| Evolution | Rule/skill evolution signals and improvement tracking | Green | seedling |
+| Evolution | Rule/skill evolution signals and improvement tracking | Pink | seedling |
 
 ## Discussion Category Creation
 
