@@ -85,6 +85,11 @@ export interface LintWorkflowConfig {
             /** Allowed commit types */
             types?: string[];
         };
+        /** Co-Authored-By signature detection */
+        "co-authored-by"?: {
+            severity?: WorkflowIssueSeverity;
+            enabled?: boolean;
+        };
     };
 }
 //# sourceMappingURL=workflow-types.d.ts.map

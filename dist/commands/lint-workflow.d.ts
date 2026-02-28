@@ -5,14 +5,14 @@
  * - Issue field completeness (Priority, Size)
  * - Branch naming convention ({type}/{number}-{slug})
  * - Protected branch protection (no direct commits on main/develop)
- * - Co-Authored-By detection
+ * - Co-Authored-By signature detection
  *
  * Rules:
  * - issue-fields: Check open issues for missing project fields (P1)
  * - branch-naming: Validate current branch name convention (P1)
  * - main-protection: Detect direct commits on protected branches (P1)
  * - commit-format: Validate Conventional Commits format (P2)
- * - co-authored-by: Detect Co-Authored-By signatures in commits (detected in main-protection)
+ * - co-authored-by: Detect Co-Authored-By signatures in commits (P2)
  */
 /**
  * Command options

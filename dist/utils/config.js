@@ -470,6 +470,10 @@ function mergeConfig(base, override) {
                         ...base.lintWorkflow?.rules?.["commit-format"],
                         ...override.lintWorkflow.rules?.["commit-format"],
                     },
+                    "co-authored-by": {
+                        ...base.lintWorkflow?.rules?.["co-authored-by"],
+                        ...override.lintWorkflow.rules?.["co-authored-by"],
+                    },
                 },
             }
             : base.lintWorkflow,

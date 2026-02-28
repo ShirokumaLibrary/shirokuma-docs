@@ -5,14 +5,14 @@
  * - Issue field completeness (Priority, Size)
  * - Branch naming convention ({type}/{number}-{slug})
  * - Protected branch protection (no direct commits on main/develop)
- * - Co-Authored-By detection
+ * - Co-Authored-By signature detection
  *
  * Rules:
  * - issue-fields: Check open issues for missing project fields (P1)
  * - branch-naming: Validate current branch name convention (P1)
  * - main-protection: Detect direct commits on protected branches (P1)
  * - commit-format: Validate Conventional Commits format (P2)
- * - co-authored-by: Detect Co-Authored-By signatures in commits (detected in main-protection)
+ * - co-authored-by: Detect Co-Authored-By signatures in commits (P2)
  */
 
 import { resolve } from "node:path";
@@ -29,6 +29,7 @@ import { checkIssueFields } from "../lint/rules/workflow-issue-fields.js";
 import { checkBranchNaming } from "../lint/rules/workflow-branch-naming.js";
 import { checkMainProtection } from "../lint/rules/workflow-main-protection.js";
 import { checkCommitFormat } from "../lint/rules/workflow-commit-format.js";
+import { checkCoAuthoredBy } from "../lint/rules/workflow-co-authored-by.js";
 
 /**
  * Command options
@@ -57,6 +58,7 @@ const defaultLintWorkflowConfig: LintWorkflowConfig = {
     "branch-naming": { severity: "warning", enabled: true },
     "main-protection": { severity: "error", enabled: true },
     "commit-format": { severity: "warning", enabled: true },
+    "co-authored-by": { severity: "warning", enabled: true },
   },
 };
 
@@ -154,6 +156,20 @@ export async function lintWorkflowCommand(
         description: "Conventional Commits format ({type}: {description})",
         issues: commitIssues,
         passed: commitIssues.filter((i) => i.type === "error").length === 0,
+      });
+    }
+
+    // co-authored-by rule (also gated by --commits flag)
+    if (lintWorkflowConfig.rules?.["co-authored-by"]?.enabled !== false) {
+      logger.debug("Checking Co-Authored-By signatures...");
+      const coAuthoredBySeverity =
+        lintWorkflowConfig.rules?.["co-authored-by"]?.severity ?? "warning";
+      const coAuthoredByIssues = await checkCoAuthoredBy(coAuthoredBySeverity);
+      ruleResults.push({
+        rule: "co-authored-by",
+        description: "Co-Authored-By signature detection in commits",
+        issues: coAuthoredByIssues,
+        passed: coAuthoredByIssues.filter((i) => i.type === "error").length === 0,
       });
     }
   }

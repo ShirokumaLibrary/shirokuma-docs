@@ -168,10 +168,10 @@ describe("init command", () => {
     });
 
     /**
-     * @testdoc インストール済みスキルが24個含まれる
+     * @testdoc インストール済みスキルが26個含まれる
      * @purpose 全バンドルスキルがインストールされることを確認
      */
-    it("should install all 24 bundled skills", () => {
+    it("should install all 26 bundled skills", () => {
       const result = runCli([
         "init",
         "--project", TEST_OUTPUT_DIR,
@@ -181,7 +181,7 @@ describe("init command", () => {
 
       expect(result.status).toBe(0);
       const output = extractJson<InitResult>(result.stdout);
-      expect(output.skills_installed).toHaveLength(25);
+      expect(output.skills_installed).toHaveLength(26);
 
       // スキル名リストで検証（ファイルは marketplace + cache にあるためローカルには存在しない）
       expect(output.skills_installed).toContain("managing-agents");

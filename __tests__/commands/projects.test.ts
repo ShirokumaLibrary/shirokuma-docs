@@ -563,7 +563,7 @@ describe("projectsCommand", () => {
     });
 
     /**
-     * @testdoc owner が取得できないと exit(1)
+     * @testdoc projects workflows: owner が取得できないと exit(1)
      */
     it("should exit(1) when owner is unavailable", async () => {
       mockGetOwner.mockReturnValue(null);
@@ -619,7 +619,7 @@ describe("projectsCommand", () => {
 
   describe("unknown action", () => {
     /**
-     * @testdoc 不明なアクションで exit(1)
+     * @testdoc projects: 不明なアクションで exit(1)
      */
     it("should exit(1) for unknown action", async () => {
       await projectsCommand("invalid", undefined, {});

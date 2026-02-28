@@ -78,7 +78,7 @@ describe("lintCodeCommand", () => {
   });
 
   /**
-   * @testdoc config で enabled: false の場合、早期リターンする
+   * @testdoc lint-code: config で enabled: false の場合、早期リターンする
    */
   it("should return early when lintCode is not enabled", async () => {
     mockLoadConfig.mockReturnValue({});

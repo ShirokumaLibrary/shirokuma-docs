@@ -316,7 +316,6 @@ describe("validateMainProtection", () => {
     currentBranch: "feat/42-new-feature",
     hasUncommittedChanges: false,
     directCommitCount: 0,
-    recentCommits: [],
     ...overrides,
   });
 
@@ -375,59 +374,6 @@ describe("validateMainProtection", () => {
     const issues = validateMainProtection(state, "error");
     const errors = issues.filter((i) => i.type === "error");
     expect(errors).toHaveLength(2);
-  });
-
-  /**
-   * @testdoc Co-Authored-By署名のあるコミットに対してwarningを報告する
-   * @purpose Co-Authored-By検出
-   */
-  it("should report warning for commits with Co-Authored-By in body", () => {
-    const state = makeState({
-      recentCommits: [
-        {
-          hash: "abc1234",
-          subject: "feat: add feature",
-          body: "Co-Authored-By: Claude <noreply@anthropic.com>",
-        },
-      ],
-    });
-    const issues = validateMainProtection(state, "error");
-    const coAuthoredIssues = issues.filter((i) => i.rule === "co-authored-by");
-    expect(coAuthoredIssues).toHaveLength(1);
-    expect(coAuthoredIssues[0].type).toBe("warning");
-  });
-
-  /**
-   * @testdoc Co-Authored-Byが件名にある場合も検出する
-   * @purpose subject行のCo-Authored-By検出
-   */
-  it("should detect Co-Authored-By in subject line", () => {
-    const state = makeState({
-      recentCommits: [
-        {
-          hash: "def5678",
-          subject: "Co-Authored-By: test fix",
-          body: "",
-        },
-      ],
-    });
-    const issues = validateMainProtection(state, "error");
-    const coAuthoredIssues = issues.filter((i) => i.rule === "co-authored-by");
-    expect(coAuthoredIssues).toHaveLength(1);
-  });
-
-  /**
-   * @testdoc Co-Authored-Byのない通常コミットでは警告しない
-   * @purpose 正常コミットの合格
-   */
-  it("should not warn for commits without Co-Authored-By", () => {
-    const state = makeState({
-      recentCommits: [
-        { hash: "abc1234", subject: "feat: normal commit", body: "Just a body" },
-      ],
-    });
-    const issues = validateMainProtection(state, "error");
-    expect(issues).toHaveLength(0);
   });
 
   /**

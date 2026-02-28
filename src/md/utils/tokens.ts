@@ -1,17 +1,13 @@
-import { encoding_for_model, type TiktokenModel } from 'tiktoken';
+import { countTokens } from 'gpt-tokenizer/model/gpt-4';
 
 /**
- * Estimate token count for text using tiktoken
+ * Estimate token count for text using gpt-tokenizer
  */
-export function estimateTokens(text: string, model: TiktokenModel = 'gpt-4'): number {
+export function estimateTokens(text: string): number {
   try {
-    // Get encoding for model
-    const encoding = encoding_for_model(model);
-    const tokens = encoding.encode(text);
-    encoding.free();
-    return tokens.length;
+    return countTokens(text);
   } catch (error) {
-    // Fallback to approximate calculation if tiktoken fails
+    // Fallback to approximate calculation if gpt-tokenizer fails
     // Rough estimate: ~4 characters per token
     return Math.ceil(text.length / 4);
   }

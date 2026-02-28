@@ -3,7 +3,6 @@
  *
  * Detects direct commits on protected branches (main, develop).
  * Checks if the current branch is a protected branch and warns accordingly.
- * Also checks recent commits for Co-Authored-By signatures.
  */
 import type { WorkflowIssue, WorkflowIssueSeverity } from "../workflow-types.js";
 /**
@@ -13,12 +12,6 @@ export interface GitProtectionState {
     currentBranch: string;
     hasUncommittedChanges: boolean;
     directCommitCount: number;
-    /** Recent commit entries */
-    recentCommits: Array<{
-        hash: string;
-        subject: string;
-        body: string;
-    }>;
 }
 /**
  * Pure validation: check git state against protection rules.

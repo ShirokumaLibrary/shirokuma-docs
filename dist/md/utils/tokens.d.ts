@@ -1,8 +1,7 @@
-import { type TiktokenModel } from 'tiktoken';
 /**
- * Estimate token count for text using tiktoken
+ * Estimate token count for text using gpt-tokenizer
  */
-export declare function estimateTokens(text: string, model?: TiktokenModel): number;
+export declare function estimateTokens(text: string): number;
 /**
  * Format token count for display
  */

@@ -1,6 +1,7 @@
 /**
  * 設定ファイル読み込みユーティリティ
  */
+import type { WorkflowIssueSeverity } from "../lint/workflow-types.js";
 /**
  * Application type - determines document structure
  */
@@ -566,19 +567,19 @@ export interface ShirokumaConfig {
         rules?: {
             /** @usedComponents 整合性チェック */
             "usedComponents-match"?: {
-                severity?: "error" | "warning" | "info";
+                severity?: WorkflowIssueSeverity;
                 checkOrder?: boolean;
                 excludeHooks?: boolean;
             };
             /** @screen 必須チェック */
             "screen-required"?: {
-                severity?: "error" | "warning" | "info";
+                severity?: WorkflowIssueSeverity;
                 paths?: string[];
                 exclude?: string[];
             };
             /** @component 必須チェック */
             "component-required"?: {
-                severity?: "error" | "warning" | "info";
+                severity?: WorkflowIssueSeverity;
                 paths?: string[];
                 exclude?: string[];
             };
@@ -621,26 +622,31 @@ export interface ShirokumaConfig {
         rules?: {
             /** Issue フィールド完全性チェック */
             "issue-fields"?: {
-                severity?: "error" | "warning" | "info";
+                severity?: WorkflowIssueSeverity;
                 enabled?: boolean;
             };
             /** ブランチ命名規則チェック */
             "branch-naming"?: {
-                severity?: "error" | "warning" | "info";
+                severity?: WorkflowIssueSeverity;
                 enabled?: boolean;
                 prefixes?: string[];
             };
             /** 保護ブランチチェック */
             "main-protection"?: {
-                severity?: "error" | "warning" | "info";
+                severity?: WorkflowIssueSeverity;
                 enabled?: boolean;
                 branches?: string[];
             };
             /** コミットメッセージ形式チェック */
             "commit-format"?: {
-                severity?: "error" | "warning" | "info";
+                severity?: WorkflowIssueSeverity;
                 enabled?: boolean;
                 types?: string[];
+            };
+            /** Co-Authored-By 署名チェック */
+            "co-authored-by"?: {
+                severity?: WorkflowIssueSeverity;
+                enabled?: boolean;
             };
         };
     };

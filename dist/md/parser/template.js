@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import { REGEX_PATTERNS } from '../constants.js';
 /**
  * Load template file from templates directory

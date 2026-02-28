@@ -6,7 +6,7 @@ import { TokenOptimizer } from '../linter/token-optimizer.js';
 import { EXIT_ERROR } from '../constants.js';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 export async function lintCommand(options) {
     const spinner = ora('Loading configuration...').start();
     try {

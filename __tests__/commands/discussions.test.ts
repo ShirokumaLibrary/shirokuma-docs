@@ -493,7 +493,7 @@ describe("discussionsCommand", () => {
     });
 
     /**
-     * @testdoc リポジトリ ID 取得失敗で exit(1)
+     * @testdoc discussions: リポジトリ ID 取得失敗で exit(1)
      */
     it("should exit(1) when repo ID not available", async () => {
       mockGetRepoId.mockResolvedValue(null);
@@ -513,7 +513,7 @@ describe("discussionsCommand", () => {
 
   describe("unknown action", () => {
     /**
-     * @testdoc 不明なアクションで exit(1)
+     * @testdoc discussions: 不明なアクションで exit(1)
      */
     it("should exit(1) for unknown action", async () => {
       await discussionsCommand("invalid", undefined, {});

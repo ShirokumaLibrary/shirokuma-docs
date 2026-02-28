@@ -1,6 +1,6 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import YAML from 'yaml';
 import { Config, ExtractionResult, BatchExtractionResult } from '../types/config.js';
 import { safeRegExp } from '../../utils/sanitize.js';

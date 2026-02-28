@@ -40,7 +40,6 @@ type GitProtectionState = {
   currentBranch: string;
   hasUncommittedChanges: boolean;
   directCommitCount: number;
-  recentCommits: Array<{ hash: string; subject: string; body: string }>;
 };
 
 // =============================================================================
@@ -50,14 +49,13 @@ type GitProtectionState = {
 describe("workflow-main-protection", () => {
   describe("validateMainProtection", () => {
     /**
-     * @testdoc 非保護ブランチでは問題なし（Co-Authored-By なし）
+     * @testdoc 非保護ブランチでは問題なし
      */
     it("should return no issues for non-protected branch", () => {
       const state: GitProtectionState = {
         currentBranch: "feat/42-feature",
         hasUncommittedChanges: false,
         directCommitCount: 0,
-        recentCommits: [],
       };
       expect(validateMainProtection(state)).toEqual([]);
     });
@@ -70,7 +68,6 @@ describe("workflow-main-protection", () => {
         currentBranch: "main",
         hasUncommittedChanges: true,
         directCommitCount: 0,
-        recentCommits: [],
       };
       const issues = validateMainProtection(state);
       expect(issues).toHaveLength(1);
@@ -85,45 +82,10 @@ describe("workflow-main-protection", () => {
         currentBranch: "develop",
         hasUncommittedChanges: false,
         directCommitCount: 3,
-        recentCommits: [],
       };
       const issues = validateMainProtection(state);
       expect(issues).toHaveLength(1);
       expect(issues[0].message).toContain("3 direct");
-    });
-
-    /**
-     * @testdoc [main-protection/validate] Co-Authored-By を含むコミットを検出する
-     */
-    it("should detect Co-Authored-By in commit body", () => {
-      const state: GitProtectionState = {
-        currentBranch: "feat/42-feature",
-        hasUncommittedChanges: false,
-        directCommitCount: 0,
-        recentCommits: [
-          { hash: "abc1234", subject: "feat: add feature", body: "Co-Authored-By: User <u@e.com>" },
-        ],
-      };
-      const issues = validateMainProtection(state);
-      expect(issues).toHaveLength(1);
-      expect(issues[0].rule).toBe("co-authored-by");
-    });
-
-    /**
-     * @testdoc Co-Authored-By を subject に含むコミットも検出する
-     */
-    it("should detect Co-Authored-By in subject", () => {
-      const state: GitProtectionState = {
-        currentBranch: "feat/1-test",
-        hasUncommittedChanges: false,
-        directCommitCount: 0,
-        recentCommits: [
-          { hash: "abc1234", subject: "feat: add Co-Authored-By: User", body: "" },
-        ],
-      };
-      const issues = validateMainProtection(state);
-      expect(issues).toHaveLength(1);
-      expect(issues[0].rule).toBe("co-authored-by");
     });
 
     /**
@@ -134,7 +96,6 @@ describe("workflow-main-protection", () => {
         currentBranch: "staging",
         hasUncommittedChanges: true,
         directCommitCount: 0,
-        recentCommits: [],
       };
       const issues = validateMainProtection(state, "error", ["staging"]);
       expect(issues).toHaveLength(1);
@@ -166,9 +127,7 @@ describe("workflow-main-protection", () => {
     it("should detect uncommitted changes on protected branch", async () => {
       mockGetCurrentBranch.mockReturnValue("develop");
       mockStatus.mockResolvedValue({ files: [{ path: "src/index.ts", working_dir: "M", index: " " }] });
-      mockRaw
-        .mockResolvedValueOnce("")  // log --oneline (direct commits)
-        .mockResolvedValueOnce(""); // log --format (Co-Authored-By)
+      mockRaw.mockResolvedValueOnce(""); // log --oneline (direct commits)
 
       const issues = await checkMainProtection();
       expect(issues.some((i: any) => i.message.includes("Uncommitted"))).toBe(true);
@@ -180,37 +139,22 @@ describe("workflow-main-protection", () => {
     it("should detect direct commits on protected branch", async () => {
       mockGetCurrentBranch.mockReturnValue("main");
       mockStatus.mockResolvedValue({ files: [] });
-      mockRaw
-        .mockResolvedValueOnce("abc1234 feat: direct commit\ndef5678 fix: another\n")
-        .mockResolvedValueOnce("");
+      mockRaw.mockResolvedValueOnce("abc1234 feat: direct commit\ndef5678 fix: another\n");
 
       const issues = await checkMainProtection();
       expect(issues.some((i: any) => i.message.includes("2 direct"))).toBe(true);
     });
 
     /**
-     * @testdoc [main-protection/check] Co-Authored-By を含むコミットを検出する
-     */
-    it("should detect Co-Authored-By in recent commits", async () => {
-      mockGetCurrentBranch.mockReturnValue("feat/42-feature");
-      const logOutput = "abc1234567890\0feat: add feature\0Co-Authored-By: User <u@e.com>\0";
-      mockRaw.mockResolvedValue(logOutput);
-
-      const issues = await checkMainProtection();
-      expect(issues.some((i: any) => i.rule === "co-authored-by")).toBe(true);
-    });
-
-    /**
-     * @testdoc 非保護ブランチでは status/log (direct commits) を呼ばない
+     * @testdoc 非保護ブランチでは status/log を呼ばない
      */
     it("should skip status and direct commit check for non-protected branch", async () => {
       mockGetCurrentBranch.mockReturnValue("feat/42-feature");
-      mockRaw.mockResolvedValue("");
 
       const issues = await checkMainProtection();
       expect(mockStatus).not.toHaveBeenCalled();
-      // raw は Co-Authored-By チェックで1回のみ呼ばれる
-      expect(mockRaw).toHaveBeenCalledTimes(1);
+      expect(mockRaw).not.toHaveBeenCalled();
+      expect(issues).toHaveLength(0);
     });
   });
 });

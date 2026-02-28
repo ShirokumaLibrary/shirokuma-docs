@@ -427,7 +427,7 @@ describe("cmdSubRemove", () => {
   });
 
   /**
-   * @testdoc 無効な親 Issue 番号でエラーを返す
+   * @testdoc issues sub remove: 無効な親 Issue 番号でエラーを返す
    */
   it("should return 1 for invalid parent issue number", async () => {
     mockIsIssueNumber.mockReturnValue(false);

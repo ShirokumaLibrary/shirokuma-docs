@@ -1,4 +1,4 @@
-import matter from 'gray-matter';
+import matter from '@11ty/gray-matter';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { Config, BuildResult } from '../types/config.js';

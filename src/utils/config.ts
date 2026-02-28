@@ -6,6 +6,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { t, setLocaleFromConfig } from "./i18n.js";
+import type { WorkflowIssueSeverity } from "../lint/workflow-types.js";
 
 // ========================================
 // Generic Application Type System
@@ -608,19 +609,19 @@ export interface ShirokumaConfig {
     rules?: {
       /** @usedComponents 整合性チェック */
       "usedComponents-match"?: {
-        severity?: "error" | "warning" | "info";
+        severity?: WorkflowIssueSeverity;
         checkOrder?: boolean;
         excludeHooks?: boolean;
       };
       /** @screen 必須チェック */
       "screen-required"?: {
-        severity?: "error" | "warning" | "info";
+        severity?: WorkflowIssueSeverity;
         paths?: string[];
         exclude?: string[];
       };
       /** @component 必須チェック */
       "component-required"?: {
-        severity?: "error" | "warning" | "info";
+        severity?: WorkflowIssueSeverity;
         paths?: string[];
         exclude?: string[];
       };
@@ -668,26 +669,31 @@ export interface ShirokumaConfig {
     rules?: {
       /** Issue フィールド完全性チェック */
       "issue-fields"?: {
-        severity?: "error" | "warning" | "info";
+        severity?: WorkflowIssueSeverity;
         enabled?: boolean;
       };
       /** ブランチ命名規則チェック */
       "branch-naming"?: {
-        severity?: "error" | "warning" | "info";
+        severity?: WorkflowIssueSeverity;
         enabled?: boolean;
         prefixes?: string[];
       };
       /** 保護ブランチチェック */
       "main-protection"?: {
-        severity?: "error" | "warning" | "info";
+        severity?: WorkflowIssueSeverity;
         enabled?: boolean;
         branches?: string[];
       };
       /** コミットメッセージ形式チェック */
       "commit-format"?: {
-        severity?: "error" | "warning" | "info";
+        severity?: WorkflowIssueSeverity;
         enabled?: boolean;
         types?: string[];
+      };
+      /** Co-Authored-By 署名チェック */
+      "co-authored-by"?: {
+        severity?: WorkflowIssueSeverity;
+        enabled?: boolean;
       };
     };
   };
@@ -1231,6 +1237,10 @@ function mergeConfig(
             "commit-format": {
               ...base.lintWorkflow?.rules?.["commit-format"],
               ...override.lintWorkflow.rules?.["commit-format"],
+            },
+            "co-authored-by": {
+              ...base.lintWorkflow?.rules?.["co-authored-by"],
+              ...override.lintWorkflow.rules?.["co-authored-by"],
             },
           },
         }

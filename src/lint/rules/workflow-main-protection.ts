@@ -3,7 +3,6 @@
  *
  * Detects direct commits on protected branches (main, develop).
  * Checks if the current branch is a protected branch and warns accordingly.
- * Also checks recent commits for Co-Authored-By signatures.
  */
 
 import { simpleGit } from "simple-git";
@@ -19,8 +18,6 @@ export interface GitProtectionState {
   currentBranch: string;
   hasUncommittedChanges: boolean;
   directCommitCount: number;
-  /** Recent commit entries */
-  recentCommits: Array<{ hash: string; subject: string; body: string }>;
 }
 
 /**
@@ -51,21 +48,6 @@ export function validateMainProtection(
         message: `${state.directCommitCount} direct (non-merge) commit(s) on protected branch "${state.currentBranch}". Use feature branches with PRs.`,
         rule: "main-protection",
         context: state.currentBranch,
-      });
-    }
-  }
-
-  // Check recent commits for Co-Authored-By lines (any branch)
-  for (const commit of state.recentCommits) {
-    if (
-      /Co-Authored-By:/i.test(commit.body) ||
-      /Co-Authored-By:/i.test(commit.subject)
-    ) {
-      issues.push({
-        type: "warning",
-        message: `Commit ${commit.hash} "${commit.subject}" contains Co-Authored-By signature`,
-        rule: "co-authored-by",
-        context: commit.hash,
       });
     }
   }
@@ -124,30 +106,8 @@ export async function checkMainProtection(
     }
   }
 
-  // Check recent commits for Co-Authored-By
-  const recentCommits: GitProtectionState["recentCommits"] = [];
-  try {
-    const commitLogResult = await git.raw([
-      "log", "--format=%H%x00%s%x00%b%x00", "-20",
-    ]);
-
-    if (commitLogResult?.trim()) {
-      const parts = commitLogResult.split("\0");
-      for (let i = 0; i + 2 < parts.length; i += 3) {
-        const rawHash = parts[i].trim();
-        if (!rawHash) continue;
-        const hash = rawHash.substring(0, 7);
-        const subject = parts[i + 1];
-        const body = parts[i + 2];
-        recentCommits.push({ hash, subject, body });
-      }
-    }
-  } catch {
-    // log 失敗時は空配列のまま
-  }
-
   return validateMainProtection(
-    { currentBranch, hasUncommittedChanges, directCommitCount, recentCommits },
+    { currentBranch, hasUncommittedChanges, directCommitCount },
     severity,
     protectedBranches
   );
