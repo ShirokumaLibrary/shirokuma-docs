@@ -945,13 +945,13 @@ export async function resolveVersionByChannel(channel: PluginChannel, clonePath:
  * @param tag - チェックアウトするタグ
  * @param fn - タグチェックアウト中に実行する関数
  */
-export async function withMarketplaceVersion<T>(clonePath: string, tag: string, fn: () => T): Promise<T> {
+export async function withMarketplaceVersion<T>(clonePath: string, tag: string, fn: () => T | Promise<T>): Promise<T> {
   const git = simpleGit(clonePath);
   // 指定タグにチェックアウト
   await git.checkout(tag);
 
   try {
-    return fn();
+    return await fn();
   } finally {
     // main ブランチに復帰
     try {

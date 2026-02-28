@@ -9,6 +9,7 @@ import { resolve, relative, basename, extname } from "node:path";
 import { loadConfig, getOutputPath, resolvePath, type ShirokumaConfig } from "../utils/config.js";
 import { ensureDir, writeFile, findFiles, fileExists, readFile } from "../utils/file.js";
 import { createLogger } from "../utils/logger.js";
+import { countBraces } from "../utils/brace-matching.js";
 
 /**
  * コマンドオプション
@@ -299,41 +300,7 @@ function getMarkdownCategory(file: string): string {
   return "other";
 }
 
-/**
- * 括弧のバランスを計算
- */
-function countBraces(line: string): number {
-  let count = 0;
-  let inString = false;
-  let stringChar = "";
-  let escaped = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-
-    if (!inString && (char === '"' || char === "'" || char === "`")) {
-      inString = true;
-      stringChar = char;
-    } else if (inString && char === stringChar) {
-      inString = false;
-    } else if (!inString) {
-      if (char === "{") count++;
-      else if (char === "}") count--;
-    }
-  }
-
-  return count;
-}
+// countBraces は共通ユーティリティから import（上部参照）
 
 /**
  * 検索インデックスを構築

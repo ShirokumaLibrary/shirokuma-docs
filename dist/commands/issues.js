@@ -33,12 +33,10 @@ import { GRAPHQL_QUERY_ISSUE_DETAIL as ISSUE_DETAIL_QUERY, getIssueDetail, updat
 // =============================================================================
 // GraphQL Queries
 // =============================================================================
-// Note: We don't use $states variable because GitHub GraphQL API has issues with enum arrays
-// Instead, we filter by state client-side
 const GRAPHQL_QUERY_ISSUES_WITH_PROJECTS = `
-query($owner: String!, $name: String!, $first: Int!, $cursor: String) {
+query($owner: String!, $name: String!, $first: Int!, $cursor: String, $states: [IssueState!]) {
   repository(owner: $owner, name: $name) {
-    issues(first: $first, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}) {
+    issues(first: $first, after: $cursor, orderBy: {field: CREATED_AT, direction: DESC}, states: $states) {
       pageInfo { hasNextPage endCursor }
       nodes {
         number
@@ -47,6 +45,7 @@ query($owner: String!, $name: String!, $first: Int!, $cursor: String) {
         state
         createdAt
         updatedAt
+        issueType { name }
         labels(first: 10) {
           nodes { name }
         }
@@ -370,11 +369,16 @@ async function cmdList(options, logger) {
     while (allIssues.length < limit) {
         const remaining = limit - allIssues.length;
         const fetchCount = Math.min(remaining, 50);
+        // Build states variable for server-side filtering
+        const statesVar = stateFilter === "all" ? ["OPEN", "CLOSED"] :
+            stateFilter === "closed" ? ["CLOSED"] :
+                ["OPEN"];
         const result = await runGraphQL(GRAPHQL_QUERY_ISSUES_WITH_PROJECTS, {
             owner,
             name: repo,
             first: fetchCount,
             cursor: cursor,
+            states: statesVar,
         });
         if (!result.success || !result.data?.data?.repository?.issues)
             break;
@@ -399,11 +403,16 @@ async function cmdList(options, logger) {
                 if (!hasAllLabels)
                     continue;
             }
+            // Client-side issue type filter
+            const issueTypeName = node.issueType?.name ?? "";
+            if (options.issueType && issueTypeName !== options.issueType)
+                continue;
             const issue = {
                 number: node.number,
                 title: node.title ?? "",
                 url: node.url ?? "",
                 state: nodeState,
+                issueType: issueTypeName || undefined,
                 labels: issueLabels,
                 createdAt: node.createdAt ?? "",
                 updatedAt: node.updatedAt ?? "",
@@ -433,6 +442,7 @@ async function cmdList(options, logger) {
             title: i.title,
             url: i.url,
             state: i.state,
+            issue_type: i.issueType,
             labels: i.labels,
             status: i.status,
             priority: i.priority,
@@ -453,6 +463,10 @@ async function cmdList(options, logger) {
  * get subcommand
  */
 async function cmdGet(issueNumberStr, options, logger) {
+    if (!isIssueNumber(issueNumberStr)) {
+        logger.error("Valid issue number required");
+        return 1;
+    }
     const repoInfo = resolveTargetRepo(options);
     if (!repoInfo) {
         logger.error("Could not determine repository");
@@ -672,6 +686,10 @@ async function cmdCreate(options, logger) {
  * update subcommand
  */
 async function cmdUpdate(issueNumberStr, options, logger) {
+    if (!isIssueNumber(issueNumberStr)) {
+        logger.error("Valid issue number required");
+        return 1;
+    }
     const repoInfo = resolveTargetRepo(options);
     if (!repoInfo) {
         logger.error("Could not determine repository");
@@ -964,6 +982,10 @@ async function cmdUpdate(issueNumberStr, options, logger) {
  * The addComment mutation accepts subjectId for both types.
  */
 async function cmdComment(issueNumberStr, options, logger) {
+    if (!isIssueNumber(issueNumberStr)) {
+        logger.error("Valid issue number required");
+        return 1;
+    }
     if (!options.bodyFile) {
         logger.error("--body-file is required for comment");
         return 1;
@@ -1011,6 +1033,10 @@ async function cmdComment(issueNumberStr, options, logger) {
  * List all comments on an Issue using GraphQL.
  */
 async function cmdComments(issueNumberStr, options, logger) {
+    if (!isIssueNumber(issueNumberStr)) {
+        logger.error("Valid issue number required");
+        return 1;
+    }
     const repoInfo = resolveTargetRepo(options);
     if (!repoInfo) {
         logger.error("Could not determine repository");

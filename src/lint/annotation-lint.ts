@@ -383,9 +383,9 @@ export function generateScreenName(filePath: string): string {
   // app と page.tsx の間のパーツを取得
   const routeParts = parts.slice(appIndex + 1, -1); // 最後の page.tsx を除く
 
-  // [locale] を除外
+  // [locale] とルートグループ (xxx) を除外
   const meaningfulParts = routeParts.filter(
-    (p) => p !== "[locale]" && p !== "(auth)" && p !== "(main)"
+    (p) => p !== "[locale]" && !p.startsWith("(")
   );
 
   if (meaningfulParts.length === 0) {
@@ -480,6 +480,8 @@ function addOrUpdateJSDocTag(
   const tagPattern = new RegExp(`@${tag}\\s+[^@\\n]*`, "g");
 
   if (tagPattern.test(jsdocText)) {
+    // .test() が lastIndex を進めるためリセット
+    tagPattern.lastIndex = 0;
     // 既存のタグを更新
     return jsdocText.replace(tagPattern, `@${tag} ${value}`);
   }
@@ -568,7 +570,7 @@ export function fixScreenAnnotation(
   filePath: string
 ): FixResult {
   // 既存の @screen があれば変更なし
-  if (/@screen\s+\w+/.test(content)) {
+  if (/@screen\s+\S+/.test(content)) {
     return { changed: false, content };
   }
 

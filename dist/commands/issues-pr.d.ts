@@ -28,6 +28,8 @@ export interface IssuesPrOptions {
     merge?: boolean;
     rebase?: boolean;
     deleteBranch?: boolean;
+    checkout?: boolean;
+    deleteLocal?: boolean;
     head?: string;
     skipLinkCheck?: boolean;
     replyTo?: string;

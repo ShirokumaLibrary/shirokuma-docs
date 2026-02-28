@@ -59,6 +59,26 @@ mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $text: String!) {
   }) { projectV2Item { id } }
 }
 `;
+const GRAPHQL_MUTATION_UPDATE_NUMBER_FIELD = `
+mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $number: Float!) {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: $projectId
+    itemId: $itemId
+    fieldId: $fieldId
+    value: { number: $number }
+  }) { projectV2Item { id } }
+}
+`;
+const GRAPHQL_MUTATION_UPDATE_DATE_FIELD = `
+mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $date: Date!) {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: $projectId
+    itemId: $itemId
+    fieldId: $fieldId
+    value: { date: $date }
+  }) { projectV2Item { id } }
+}
+`;
 export const GRAPHQL_MUTATION_ADD_TO_PROJECT = `
 mutation($projectId: ID!, $contentId: ID!) {
   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
@@ -74,8 +94,10 @@ mutation($projectId: ID!, $contentId: ID!) {
  */
 export async function getProjectFields(projectId) {
     const result = await runGraphQL(GRAPHQL_QUERY_FIELDS, { projectId });
-    if (!result.success)
+    if (!result.success) {
+        console.error(`Failed to fetch project fields: ${result.error}`);
         return {};
+    }
     const fields = {};
     const nodes = result.data?.data?.node?.fields?.nodes ?? [];
     for (const node of nodes) {
@@ -90,8 +112,13 @@ export async function getProjectFields(projectId) {
             fields[node.name] = { id: node.id, name: node.name, type: "SINGLE_SELECT", options };
         }
         else if (node.dataType === "TEXT") {
-            // Text field (no options)
             fields[node.name] = { id: node.id, name: node.name, type: "TEXT", options: {} };
+        }
+        else if (node.dataType === "NUMBER") {
+            fields[node.name] = { id: node.id, name: node.name, type: "NUMBER", options: {} };
+        }
+        else if (node.dataType === "DATE") {
+            fields[node.name] = { id: node.id, name: node.name, type: "DATE", options: {} };
         }
     }
     return fields;
@@ -138,6 +165,38 @@ export async function updateTextField(projectId, itemId, fieldId, text, logger) 
     return result.success;
 }
 /**
+ * Update project item Number field.
+ * Logs GraphQL errors as warnings if present.
+ */
+export async function updateNumberField(projectId, itemId, fieldId, value, logger) {
+    const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_NUMBER_FIELD, {
+        projectId,
+        itemId,
+        fieldId,
+        number: value,
+    });
+    if (result.success && result.graphqlErrors) {
+        logger?.warn(`GraphQL partial error (number field): ${formatGraphQLErrors(result.graphqlErrors)}`);
+    }
+    return result.success;
+}
+/**
+ * Update project item Date field.
+ * Logs GraphQL errors as warnings if present.
+ */
+export async function updateDateField(projectId, itemId, fieldId, date, logger) {
+    const result = await runGraphQL(GRAPHQL_MUTATION_UPDATE_DATE_FIELD, {
+        projectId,
+        itemId,
+        fieldId,
+        date,
+    });
+    if (result.success && result.graphqlErrors) {
+        logger?.warn(`GraphQL partial error (date field): ${formatGraphQLErrors(result.graphqlErrors)}`);
+    }
+    return result.success;
+}
+/**
  * Add an item to a project by content ID (Issue/PR GraphQL ID).
  * Returns the project item ID on success, or null on failure.
  */
@@ -178,7 +237,8 @@ function resolveOptionId(fieldName, value, options, logger) {
 }
 /**
  * Set multiple project fields on an item.
- * Dispatches to SingleSelect or Text mutation based on field type.
+ * Dispatches to the appropriate mutation based on field type
+ * (TEXT, NUMBER, DATE, SINGLE_SELECT).
  *
  * Features (#380):
  * - Case-insensitive option ID resolution with warning
@@ -217,7 +277,30 @@ export async function setItemFields(projectId, itemId, fields, logger, cachedFie
                 failedFields.push(fieldName);
             }
         }
-        else {
+        else if (fieldInfo.type === "NUMBER") {
+            // Number field: validate and set numeric value
+            const num = Number(value);
+            if (Number.isNaN(num)) {
+                logger?.error(`Invalid ${fieldName} value '${value}': not a number`);
+                failedFields.push(fieldName);
+            }
+            else if (await updateNumberField(projectId, itemId, fieldInfo.id, num, logger)) {
+                updatedCount++;
+            }
+            else {
+                failedFields.push(fieldName);
+            }
+        }
+        else if (fieldInfo.type === "DATE") {
+            // Date field: set ISO date string
+            if (await updateDateField(projectId, itemId, fieldInfo.id, value, logger)) {
+                updatedCount++;
+            }
+            else {
+                failedFields.push(fieldName);
+            }
+        }
+        else if (fieldInfo.type === "SINGLE_SELECT") {
             // SingleSelect field: resolve option ID with case-insensitive fallback
             const optionId = resolveOptionId(fieldName, value, fieldInfo.options, logger);
             if (optionId) {
@@ -234,6 +317,11 @@ export async function setItemFields(projectId, itemId, fields, logger, cachedFie
                 logger?.info(`  Available options: ${available}`);
                 failedFields.push(fieldName);
             }
+        }
+        else {
+            // Unsupported field type
+            logger?.warn(`Field '${fieldName}' has unsupported type '${fieldInfo.type}'`);
+            failedFields.push(fieldName);
         }
     }
     if (failedFields.length > 0) {

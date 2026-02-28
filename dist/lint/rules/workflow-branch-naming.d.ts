@@ -4,7 +4,7 @@
  * Validates the current git branch name against the convention:
  *   {type}/{issue-number}-{slug}
  *
- * Valid types: feat, fix, chore, docs, hotfix, release
+ * Valid types: feat, fix, chore, docs, hotfix, epic, release
  * Persistent branches (main, develop) are always valid.
  */
 import type { WorkflowIssue, WorkflowIssueSeverity } from "../workflow-types.js";

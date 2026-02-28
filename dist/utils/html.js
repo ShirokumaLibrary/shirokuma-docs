@@ -270,6 +270,9 @@ export function getAllStyles() {
 }
 /**
  * HTML ドキュメントをラップ
+ *
+ * **セキュリティ注意**: `styles` と `scripts` は内部生成の値のみ使用すること。
+ * ユーザー入力を含めた場合、`</style>` / `</script>` によるコンテキストブレイクアウトのリスクがある。
  */
 export function wrapHtmlDocument(options) {
     const { title, content, styles = "", scripts = "", lang = "ja", headElements = "", bodyEndScripts = "", } = options;

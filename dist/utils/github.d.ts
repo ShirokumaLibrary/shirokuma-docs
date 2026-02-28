@@ -181,7 +181,7 @@ export declare function validateBody(body: string | undefined): string | null;
  *
  * @param source - `"-"` で stdin から読み取り、それ以外はファイルパスとして扱う
  * @returns 読み込んだ本文の文字列
- * @throws {Error} ファイルが存在しない、または読み取り権限がない場合
+ * @throws {Error} ファイルが存在しない、読み取り権限がない場合、またはパイプなしの TTY で stdin を指定した場合
  *
  * @example
  * ```typescript

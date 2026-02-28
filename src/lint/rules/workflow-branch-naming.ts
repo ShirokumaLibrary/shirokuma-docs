@@ -4,14 +4,14 @@
  * Validates the current git branch name against the convention:
  *   {type}/{issue-number}-{slug}
  *
- * Valid types: feat, fix, chore, docs, hotfix, release
+ * Valid types: feat, fix, chore, docs, hotfix, epic, release
  * Persistent branches (main, develop) are always valid.
  */
 
 import type { WorkflowIssue, WorkflowIssueSeverity } from "../workflow-types.js";
 import { getCurrentBranch } from "../../utils/git-local.js";
 
-const DEFAULT_PREFIXES = ["feat", "fix", "chore", "docs", "hotfix"];
+const DEFAULT_PREFIXES = ["feat", "fix", "chore", "docs", "hotfix", "epic"];
 const PERSISTENT_BRANCHES = ["main", "develop", "master"];
 
 /**

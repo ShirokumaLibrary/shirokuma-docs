@@ -4,6 +4,7 @@ import * as path from 'path';
 import { estimateTokens } from '../utils/tokens.js';
 import { FileCollector } from '../utils/file-collector.js';
 import { WATCH_DEBOUNCE_MS } from '../constants.js';
+import { CodeBlockTracker } from '../utils/code-blocks.js';
 /**
  * Document builder
  * Combines multiple Markdown files into a single document
@@ -96,10 +97,13 @@ export class Builder {
         return documents;
     }
     parseSections(content) {
-        // Simple heading extraction for now
         const lines = content.split('\n');
         const sections = [];
+        const tracker = new CodeBlockTracker();
         for (const line of lines) {
+            tracker.processLine(line);
+            if (tracker.isInCodeBlock())
+                continue;
             const match = line.match(/^(#{1,6})\s+(.+)$/);
             if (match && match[1] && match[2]) {
                 sections.push({
@@ -274,7 +278,7 @@ export class Builder {
     slugify(text) {
         return text
             .toLowerCase()
-            .replace(/[^\w\s-]/g, '')
+            .replace(/[^\p{L}\p{N}\s_-]/gu, '')
             .replace(/\s+/g, '-');
     }
     combineDocuments(documents) {

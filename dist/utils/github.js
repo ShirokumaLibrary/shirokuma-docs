@@ -299,7 +299,7 @@ export function validateBody(body) {
  *
  * @param source - `"-"` で stdin から読み取り、それ以外はファイルパスとして扱う
  * @returns 読み込んだ本文の文字列
- * @throws {Error} ファイルが存在しない、または読み取り権限がない場合
+ * @throws {Error} ファイルが存在しない、読み取り権限がない場合、またはパイプなしの TTY で stdin を指定した場合
  *
  * @example
  * ```typescript
@@ -311,6 +311,9 @@ export function validateBody(body) {
  */
 export function readBodyFile(source) {
     if (source === "-") {
+        if (process.stdin.isTTY) {
+            throw new Error('stdin is a TTY (no piped input). Use: echo "body" | shirokuma-docs ... --body-file -');
+        }
         return readFileSync(0, "utf-8");
     }
     return readFileSync(source, "utf-8");

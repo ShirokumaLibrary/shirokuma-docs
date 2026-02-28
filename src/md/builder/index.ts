@@ -6,6 +6,7 @@ import type { Document } from '../types/document.js';
 import { estimateTokens } from '../utils/tokens.js';
 import { FileCollector } from '../utils/file-collector.js';
 import { WATCH_DEBOUNCE_MS } from '../constants.js';
+import { CodeBlockTracker } from '../utils/code-blocks.js';
 
 /**
  * Section structure extracted from markdown content
@@ -126,11 +127,14 @@ export class Builder {
   }
 
   private parseSections(content: string): Section[] {
-    // Simple heading extraction for now
     const lines = content.split('\n');
     const sections: Section[] = [];
+    const tracker = new CodeBlockTracker();
 
     for (const line of lines) {
+      tracker.processLine(line);
+      if (tracker.isInCodeBlock()) continue;
+
       const match = line.match(/^(#{1,6})\s+(.+)$/);
       if (match && match[1] && match[2]) {
         sections.push({
@@ -349,7 +353,7 @@ export class Builder {
   private slugify(text: string): string {
     return text
       .toLowerCase()
-      .replace(/[^\w\s-]/g, '')
+      .replace(/[^\p{L}\p{N}\s_-]/gu, '')
       .replace(/\s+/g, '-');
   }
 

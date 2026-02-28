@@ -115,6 +115,55 @@ describe("Extractor", () => {
   });
 
   /**
+   * @testdoc extractor: バッチ抽出でコロンを含む値を正しく集計する
+   */
+  it("should correctly aggregate unmapped values containing colons", async () => {
+    const dir = path.join(tmpDir, "colon-values");
+    const outDir = path.join(tmpDir, "colon-values-out");
+    await fs.mkdir(dir, { recursive: true });
+    await fs.mkdir(outDir, { recursive: true });
+    const file1 = path.join(dir, "item1.md");
+    const file2 = path.join(dir, "item2.md");
+    await fs.writeFile(file1, "# Item 1\n\nSource: http://example.com\n");
+    await fs.writeFile(file2, "# Item 2\n\nSource: http://example.com\n");
+
+    const config = createTestConfig({
+      extraction: {
+        patterns: {
+          item: {
+            source: {
+              pattern: "Source:\\s*(.+)",
+              group: 1,
+              type: "string",
+              mapping: "source_mapping",
+            },
+          },
+        },
+        mappings: {
+          source_mapping: {
+            "internal": "internal",
+            "external": "external",
+          },
+        },
+      },
+    });
+    const extractor = new Extractor(config);
+    const result = await extractor.batchExtract(dir, "item", outDir, {
+      continueOnError: true,
+    });
+
+    // "http://example.com" は mapping に含まれないため unmapped value として報告される
+    // コロンを含む値が正しく復元されることを確認
+    expect(result.unmappedValues.length).toBeGreaterThan(0);
+    const httpUnmapped = result.unmappedValues.find(
+      (v) => v.field === "source"
+    );
+    expect(httpUnmapped).toBeDefined();
+    expect(httpUnmapped!.value).toBe("http://example.com");
+    expect(httpUnmapped!.count).toBe(2);
+  });
+
+  /**
    * @testdoc extractor: 抽出率を正しく計算する
    */
   it("should calculate extraction rate", async () => {

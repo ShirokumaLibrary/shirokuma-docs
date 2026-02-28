@@ -17,6 +17,7 @@ import {
   compareUsedComponents,
   checkScreenAnnotation,
   checkComponentAnnotation,
+  generateScreenName,
   type UsedComponentsResult,
   type AnnotationCheckResult,
 } from "../../src/lint/annotation-lint.js";
@@ -485,6 +486,26 @@ export function getData() {}`;
     });
 
     /**
+     * @testdoc 既存の@usedComponentsをJSDoc先頭付近で正しく更新する (#1057 lastIndex)
+     */
+    it("should update @usedComponents near start of JSDoc (lastIndex fix)", async () => {
+      const { fixUsedComponentsAnnotation } = await import("../../src/lint/annotation-lint.js");
+
+      const content = `/**
+ * @usedComponents Button
+ * @screen DashboardScreen
+ */
+import { Button, Card, Dialog } from "@/components/ui";
+
+export function MyComponent() {}`;
+
+      const result = fixUsedComponentsAnnotation(content, "components/my-component.tsx");
+
+      expect(result.changed).toBe(true);
+      expect(result.content).toContain("@usedComponents Button, Card, Dialog");
+    });
+
+    /**
      * @testdoc 既存のJSDocに追加する
      */
     it("should add to existing JSDoc without @usedComponents", async () => {
@@ -552,6 +573,23 @@ export function MyComponent() {}`;
 export default function DashboardPage() {}`;
 
       const result = fixScreenAnnotation(content, "app/[locale]/dashboard/page.tsx");
+
+      expect(result.changed).toBe(false);
+      expect(result.content).toBe(content);
+    });
+
+    /**
+     * @testdoc 括弧を含むスクリーン名が既存の場合は変更しない (#1057)
+     */
+    it("should not change when @screen with parentheses exists", async () => {
+      const { fixScreenAnnotation } = await import("../../src/lint/annotation-lint.js");
+
+      const content = `/**
+ * @screen (dashboard)SettingsScreen
+ */
+export default function SettingsPage() {}`;
+
+      const result = fixScreenAnnotation(content, "app/[locale]/(dashboard)/settings/page.tsx");
 
       expect(result.changed).toBe(false);
       expect(result.content).toBe(content);
@@ -777,5 +815,47 @@ export default function DashboardPage() {
 
     expect(screenResult.valid).toBe(true);
     expect(comparison.valid).toBe(true);
+  });
+});
+
+describe("generateScreenName", () => {
+  /**
+   * @testdoc (dashboard) ルートグループをスクリーン名から除外する (#1067)
+   */
+  it("should exclude (dashboard) route group from screen name", () => {
+    const result = generateScreenName("app/[locale]/(dashboard)/settings/page.tsx");
+    expect(result).toBe("SettingsScreen");
+  });
+
+  /**
+   * @testdoc (marketing) 等の汎用ルートグループを除外する (#1067)
+   */
+  it("should exclude arbitrary route groups like (marketing)", () => {
+    const result = generateScreenName("app/[locale]/(marketing)/pricing/page.tsx");
+    expect(result).toBe("PricingScreen");
+  });
+
+  /**
+   * @testdoc (auth) / (main) の既存動作が維持される (#1067)
+   */
+  it("should still exclude (auth) and (main) route groups", () => {
+    expect(generateScreenName("app/[locale]/(auth)/login/page.tsx")).toBe("LoginScreen");
+    expect(generateScreenName("app/[locale]/(main)/dashboard/page.tsx")).toBe("DashboardScreen");
+  });
+
+  /**
+   * @testdoc ルートグループのみのパスで HomeScreen を返す (#1067)
+   */
+  it("should return HomeScreen when only route groups remain", () => {
+    const result = generateScreenName("app/[locale]/(main)/page.tsx");
+    expect(result).toBe("HomeScreen");
+  });
+
+  /**
+   * @testdoc ネストしたルートグループが複数除外される (#1067)
+   */
+  it("should exclude multiple nested route groups", () => {
+    const result = generateScreenName("app/[locale]/(dashboard)/admin/(settings)/page.tsx");
+    expect(result).toBe("AdminScreen");
   });
 });

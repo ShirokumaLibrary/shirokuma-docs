@@ -49,6 +49,7 @@ export function getAllRepoPairs(config?: GhConfig): RepoPairConfig[] {
     public: pair.public,
     exclude: pair.exclude ?? DEFAULT_EXCLUDE_PATTERNS,
     defaultBranch: pair.defaultBranch ?? "main",
+    ...(pair.sourceDir && { sourceDir: pair.sourceDir }),
   }));
 }
 

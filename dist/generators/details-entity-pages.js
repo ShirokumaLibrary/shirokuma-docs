@@ -11,6 +11,16 @@ import { extractJSDoc, parseJSDocForJson } from "../parsers/details-jsdoc.js";
 import { parseZodSchema } from "../parsers/details-zod.js";
 import { findTestCasesForElement, analyzeTestCoverage } from "../analyzers/details-test-analysis.js";
 import { generateDetailHTML } from "./details-html.js";
+/**
+ * ファイル名をサニタイズしてパストラバーサルを防止
+ */
+function sanitizeFileName(name) {
+    // パス区切り文字とパストラバーサルパターンを除去
+    return name
+        .replace(/[/\\]/g, "_")
+        .replace(/\.\./g, "_")
+        .replace(/^\./, "_");
+}
 // ===== JSON データ収集 =====
 /**
  * JSON用に詳細データを収集
@@ -155,9 +165,9 @@ export function generateScreenDetailPage(screen, detailsDir, projectPath, projec
         ],
         projectName,
     }, ctx);
-    const moduleDir = resolve(detailsDir, "screen", moduleName);
+    const moduleDir = resolve(detailsDir, "screen", sanitizeFileName(moduleName));
     ensureDir(moduleDir);
-    writeFile(resolve(moduleDir, `${screen.name}.html`), html);
+    writeFile(resolve(moduleDir, `${sanitizeFileName(screen.name)}.html`), html);
     collectDetailJsonItem(ctx, "screen", screen.name, moduleName, screen.description, screen.path, extractedCode, jsDoc, testCases, analysis, { usedInComponents: screen.usedComponents, usedInActions: screen.usedActions });
 }
 /**
@@ -187,9 +197,9 @@ export function generateComponentDetailPage(component, detailsDir, projectPath, 
         ],
         projectName,
     }, ctx);
-    const moduleDir = resolve(detailsDir, "component", moduleName);
+    const moduleDir = resolve(detailsDir, "component", sanitizeFileName(moduleName));
     ensureDir(moduleDir);
-    writeFile(resolve(moduleDir, `${component.name}.html`), html);
+    writeFile(resolve(moduleDir, `${sanitizeFileName(component.name)}.html`), html);
     collectDetailJsonItem(ctx, "component", component.name, moduleName, component.description, component.path, extractedCode, jsDoc, testCases, analysis, {
         usedInScreens: component.usedInScreens, usedInComponents: component.usedInComponents, usedInActions: component.usedActions,
     });
@@ -224,9 +234,9 @@ export function generateActionDetailPage(action, detailsDir, projectPath, projec
         projectName,
         actionType: action.actionType,
     }, ctx);
-    const moduleDir = resolve(detailsDir, "action", moduleName);
+    const moduleDir = resolve(detailsDir, "action", sanitizeFileName(moduleName));
     ensureDir(moduleDir);
-    writeFile(resolve(moduleDir, `${action.name}.html`), html);
+    writeFile(resolve(moduleDir, `${sanitizeFileName(action.name)}.html`), html);
     collectDetailJsonItem(ctx, "action", action.name, moduleName, action.description, action.path, extractedCode, jsDoc, testCases, analysis, {
         usedInScreens: action.usedInScreens, usedInComponents: action.usedInComponents, dbTables: action.dbTables,
     }, sourceCode);
@@ -254,9 +264,9 @@ export function generateTableDetailPage(table, detailsDir, projectPath, projectN
         related: [{ type: "Used in Actions", items: table.usedInActions || [], linkType: "action", sourcePath: table.path }],
         projectName,
     }, ctx);
-    const moduleDir = resolve(detailsDir, "table", moduleName);
+    const moduleDir = resolve(detailsDir, "table", sanitizeFileName(moduleName));
     ensureDir(moduleDir);
-    writeFile(resolve(moduleDir, `${table.name}.html`), html);
+    writeFile(resolve(moduleDir, `${sanitizeFileName(table.name)}.html`), html);
     collectDetailJsonItem(ctx, "table", table.name, moduleName, table.description, table.path, extractedCode, jsDoc, testCases, analysis, { usedInActions: table.usedInActions });
 }
 /**
@@ -290,9 +300,9 @@ export function generateModuleItemDetailPage(mod, featureName, detailsDir, proje
         ],
         projectName,
     }, ctx);
-    const moduleDir = resolve(detailsDir, "module", moduleName);
+    const moduleDir = resolve(detailsDir, "module", sanitizeFileName(moduleName));
     ensureDir(moduleDir);
-    writeFile(resolve(moduleDir, `${mod.name}.html`), html);
+    writeFile(resolve(moduleDir, `${sanitizeFileName(mod.name)}.html`), html);
     collectDetailJsonItem(ctx, "module", mod.name, moduleName, mod.description || "", mod.path, extractedCode, jsDoc, testCases, analysis, {
         usedInScreens: mod.usedInScreens, usedInComponents: mod.usedInComponents, usedInActions: mod.usedInActions,
         usedInMiddleware: mod.usedInMiddleware, usedInLayouts: mod.usedInLayouts, usedModules: mod.usedModules, usedInModules: mod.usedInModules,

@@ -24,6 +24,17 @@ import { parseZodSchema } from "../parsers/details-zod.js";
 import { findTestCasesForElement, analyzeTestCoverage } from "../analyzers/details-test-analysis.js";
 import { generateDetailHTML } from "./details-html.js";
 
+/**
+ * ファイル名をサニタイズしてパストラバーサルを防止
+ */
+function sanitizeFileName(name: string): string {
+  // パス区切り文字とパストラバーサルパターンを除去
+  return name
+    .replace(/[/\\]/g, "_")
+    .replace(/\.\./g, "_")
+    .replace(/^\./, "_");
+}
+
 // ===== JSON データ収集 =====
 
 /**
@@ -212,9 +223,9 @@ export function generateScreenDetailPage(
     projectName,
   }, ctx);
 
-  const moduleDir = resolve(detailsDir, "screen", moduleName);
+  const moduleDir = resolve(detailsDir, "screen", sanitizeFileName(moduleName));
   ensureDir(moduleDir);
-  writeFile(resolve(moduleDir, `${screen.name}.html`), html);
+  writeFile(resolve(moduleDir, `${sanitizeFileName(screen.name)}.html`), html);
 
   collectDetailJsonItem(ctx, "screen", screen.name, moduleName, screen.description, screen.path,
     extractedCode, jsDoc, testCases, analysis, { usedInComponents: screen.usedComponents, usedInActions: screen.usedActions });
@@ -255,9 +266,9 @@ export function generateComponentDetailPage(
     projectName,
   }, ctx);
 
-  const moduleDir = resolve(detailsDir, "component", moduleName);
+  const moduleDir = resolve(detailsDir, "component", sanitizeFileName(moduleName));
   ensureDir(moduleDir);
-  writeFile(resolve(moduleDir, `${component.name}.html`), html);
+  writeFile(resolve(moduleDir, `${sanitizeFileName(component.name)}.html`), html);
 
   collectDetailJsonItem(ctx, "component", component.name, moduleName, component.description, component.path,
     extractedCode, jsDoc, testCases, analysis, {
@@ -304,9 +315,9 @@ export function generateActionDetailPage(
     actionType: action.actionType,
   }, ctx);
 
-  const moduleDir = resolve(detailsDir, "action", moduleName);
+  const moduleDir = resolve(detailsDir, "action", sanitizeFileName(moduleName));
   ensureDir(moduleDir);
-  writeFile(resolve(moduleDir, `${action.name}.html`), html);
+  writeFile(resolve(moduleDir, `${sanitizeFileName(action.name)}.html`), html);
 
   collectDetailJsonItem(ctx, "action", action.name, moduleName, action.description, action.path,
     extractedCode, jsDoc, testCases, analysis, {
@@ -345,9 +356,9 @@ export function generateTableDetailPage(
     projectName,
   }, ctx);
 
-  const moduleDir = resolve(detailsDir, "table", moduleName);
+  const moduleDir = resolve(detailsDir, "table", sanitizeFileName(moduleName));
   ensureDir(moduleDir);
-  writeFile(resolve(moduleDir, `${table.name}.html`), html);
+  writeFile(resolve(moduleDir, `${sanitizeFileName(table.name)}.html`), html);
 
   collectDetailJsonItem(ctx, "table", table.name, moduleName, table.description, table.path,
     extractedCode, jsDoc, testCases, analysis, { usedInActions: table.usedInActions });
@@ -393,9 +404,9 @@ export function generateModuleItemDetailPage(
     projectName,
   }, ctx);
 
-  const moduleDir = resolve(detailsDir, "module", moduleName);
+  const moduleDir = resolve(detailsDir, "module", sanitizeFileName(moduleName));
   ensureDir(moduleDir);
-  writeFile(resolve(moduleDir, `${mod.name}.html`), html);
+  writeFile(resolve(moduleDir, `${sanitizeFileName(mod.name)}.html`), html);
 
   collectDetailJsonItem(ctx, "module", mod.name, moduleName, mod.description || "", mod.path,
     extractedCode, jsDoc, testCases, analysis, {

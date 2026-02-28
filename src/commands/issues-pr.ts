@@ -29,6 +29,7 @@ import {
 } from "../utils/repo-pairs.js";
 import { resolveAndUpdateStatus } from "../utils/issue-detail.js";
 import { getCurrentBranch } from "../utils/git-local.js";
+import { execFileAsync } from "../utils/spawn-async.js";
 
 // =============================================================================
 // Types
@@ -49,6 +50,8 @@ export interface IssuesPrOptions {
   merge?: boolean;
   rebase?: boolean;
   deleteBranch?: boolean;
+  checkout?: boolean;
+  deleteLocal?: boolean;
   head?: string;
   skipLinkCheck?: boolean;
   // reply/resolve options
@@ -482,10 +485,11 @@ export async function cmdMerge(
   const mergeMethod = parseMergeMethod(options);
   const deleteBranch = options.deleteBranch !== false; // default true
 
-  // Fetch PR body + head ref BEFORE merge (C2: post-merge fetch is fragile)
+  // Fetch PR body + head ref + base ref BEFORE merge (C2: post-merge fetch is fragile)
   const octokit = getOctokit();
   let linkedNumbers: number[] = [];
   let headRef: string | undefined;
+  let baseBranch: string | undefined;
 
   try {
     const { data: prData } = await octokit.rest.pulls.get({
@@ -495,6 +499,7 @@ export async function cmdMerge(
     });
     linkedNumbers = parseLinkedIssues(prData.body ?? undefined);
     headRef = prData.head.ref;
+    baseBranch = prData.base.ref;
   } catch {
     // Best-effort: if we can't get body, still try to merge
   }
@@ -575,12 +580,49 @@ export async function cmdMerge(
     }
   }
 
+  // Post-merge local git operations (best-effort)
+  let checkedOut = false;
+  let pulled = false;
+  let localBranchDeleted = false;
+
+  if (options.checkout !== false && baseBranch) {
+    try {
+      await execFileAsync("git", ["checkout", baseBranch]);
+      checkedOut = true;
+      logger.success(`Checked out ${baseBranch}`);
+    } catch {
+      logger.warn(`Failed to checkout ${baseBranch} (uncommitted changes may exist)`);
+    }
+
+    if (checkedOut) {
+      try {
+        await execFileAsync("git", ["pull", "origin", baseBranch]);
+        pulled = true;
+      } catch {
+        logger.warn(`Failed to pull origin/${baseBranch} (network issue?)`);
+      }
+    }
+
+    if (options.deleteLocal && headRef) {
+      try {
+        await execFileAsync("git", ["branch", "-d", headRef]);
+        localBranchDeleted = true;
+        logger.success(`Deleted local branch ${headRef}`);
+      } catch {
+        logger.warn(`Failed to delete local branch '${headRef}'. Try: git branch -D ${headRef}`);
+      }
+    }
+  }
+
   const output = {
     pr_number: prNumber,
     merged: true,
     merge_method: mergeMethod,
     branch_deleted: deleteBranch,
     linked_issues_updated: linkedIssuesUpdated,
+    checked_out: checkedOut,
+    pulled,
+    local_branch_deleted: localBranchDeleted,
   };
 
   console.log(JSON.stringify(output, null, 2));

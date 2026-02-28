@@ -44,11 +44,16 @@ export declare const pageHeaderCss = "\n.page-header {\n  margin-bottom: 2rem;\n
 export declare function getAllStyles(): string;
 /**
  * HTML ドキュメントをラップ
+ *
+ * **セキュリティ注意**: `styles` と `scripts` は内部生成の値のみ使用すること。
+ * ユーザー入力を含めた場合、`</style>` / `</script>` によるコンテキストブレイクアウトのリスクがある。
  */
 export declare function wrapHtmlDocument(options: {
     title: string;
     content: string;
+    /** 内部生成の CSS のみ。ユーザー入力を含めないこと */
     styles?: string;
+    /** 内部生成の JavaScript のみ。ユーザー入力を含めないこと */
     scripts?: string;
     lang?: string;
     /** head内に追加する外部リソース（link, script タグ） */

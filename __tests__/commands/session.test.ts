@@ -4,9 +4,10 @@
  * Tests for the unified session management command.
  * Subcommands: start (fetch context), end (save handover), check (integrity).
  *
- * Since the command relies on external API calls (octokit GraphQL/REST),
- * these tests focus on input validation, output structure contracts,
- * and status filtering logic.
+ * Tests focus on exported pure functions (classifyInconsistencies,
+ * classifyMetricsInconsistencies, getGitState, getPreflightGitState,
+ * generatePreflightWarnings, groupIssuesByAssignee, findMergedPrForIssue,
+ * getSessionBackups, cleanupSessionBackups) and input validation logic.
  *
  * @testdoc セッション管理コマンドのテスト
  */
@@ -30,17 +31,8 @@ import {
   findMergedPrForIssue,
   getSessionBackups,
   cleanupSessionBackups,
-  type GitState,
   type PreflightGitState,
-  type PreflightIssue,
-  type PreflightPr,
-  type PreflightOutput,
   type IssueData,
-  type SessionBackup,
-  type SessionOptions,
-  type Inconsistency,
-  type FixResult,
-  type CheckOutput,
 } from "../../src/commands/session.js";
 import { mkdirSync, writeFileSync, existsSync, readdirSync as fsReaddirSync, unlinkSync as fsUnlinkSync } from "node:fs";
 import { join } from "node:path";
@@ -74,135 +66,6 @@ function makeIssue(overrides: {
   };
 }
 
-// =============================================================================
-// session start - Output structure contracts
-// =============================================================================
-
-describe("session start - output structure", () => {
-  /**
-   * @testdoc session startの出力JSONにrepositoryフィールドが含まれる
-   * @purpose セッション開始時にリポジトリ情報が返されることの型契約
-   */
-  it("should define repository field in output", () => {
-    const output = {
-      repository: "owner/repo",
-      lastHandover: null,
-      issues: { columns: [], rows: [] },
-      total_issues: 0,
-    };
-
-    expect(output).toHaveProperty("repository");
-    expect(typeof output.repository).toBe("string");
-  });
-
-  /**
-   * @testdoc session startの出力にlastHandoverがnull許容で含まれる
-   * @purpose ハンドオーバーが存在しない場合にnullを返す契約
-   */
-  it("should allow null lastHandover when no handovers exist", () => {
-    const output = {
-      repository: "owner/repo",
-      lastHandover: null,
-      issues: { columns: [], rows: [] },
-      total_issues: 0,
-    };
-
-    expect(output.lastHandover).toBeNull();
-  });
-
-  /**
-   * @testdoc session startのlastHandoverにnumber, title, body, urlが含まれる
-   * @purpose ハンドオーバーオブジェクトの構造契約
-   */
-  it("should include handover fields when handover exists", () => {
-    const handover = {
-      number: 30,
-      title: "2026-02-01 - Plugin marketplace spec compliance",
-      body: "## Summary\n...",
-      url: "https://github.com/owner/repo/discussions/30",
-    };
-
-    expect(handover).toHaveProperty("number");
-    expect(handover).toHaveProperty("title");
-    expect(handover).toHaveProperty("body");
-    expect(handover).toHaveProperty("url");
-    expect(typeof handover.number).toBe("number");
-  });
-
-  /**
-   * @testdoc session startのissuesがTableJSON形式（columns + rows）で出力される
-   * @purpose Issues出力がコンパクトなTableJSON形式であることの契約
-   */
-  it("should output issues in TableJSON format with columns and rows", () => {
-    const issues = {
-      columns: ["number", "title", "status", "priority", "size", "labels"],
-      rows: [
-        [27, "Feature request", "In Progress", "High", "M", ["enhancement"]],
-      ],
-    };
-
-    expect(issues).toHaveProperty("columns");
-    expect(issues).toHaveProperty("rows");
-    expect(issues.columns).toContain("number");
-    expect(issues.columns).toContain("title");
-    expect(issues.columns).toContain("status");
-    expect(issues.columns).toContain("priority");
-    expect(issues.columns).toContain("size");
-    expect(issues.columns).toContain("labels");
-  });
-
-  /**
-   * @testdoc session startのissuesにurl/stateフィールドが含まれない
-   * @purpose url（number+repoから復元可能）とstate（statusと重複）の除外契約
-   */
-  it("should not include url or state in issues columns", () => {
-    const columns = ["number", "title", "status", "priority", "size", "labels"];
-
-    expect(columns).not.toContain("url");
-    expect(columns).not.toContain("state");
-  });
-
-  /**
-   * @testdoc session startの出力にtotal_issuesカウントが含まれる
-   * @purpose フィルタ後のIssue件数が返される契約
-   */
-  it("should include total_issues count matching issues rows length", () => {
-    const issues = {
-      columns: ["number", "title", "status"],
-      rows: [
-        [1, "A", "Backlog"],
-        [2, "B", "In Progress"],
-      ],
-    };
-    const output = {
-      repository: "owner/repo",
-      lastHandover: null,
-      issues,
-      total_issues: issues.rows.length,
-    };
-
-    expect(output.total_issues).toBe(output.issues.rows.length);
-  });
-
-  /**
-   * @testdoc session startのopenPRsがTableJSON形式で出力される
-   * @purpose PRリストもコンパクトなTableJSON形式であることの契約
-   */
-  it("should output openPRs in TableJSON format", () => {
-    const openPRs = {
-      columns: ["number", "title", "review_decision", "review_thread_count", "review_count"],
-      rows: [
-        [42, "feat: add feature", "APPROVED", 0, 1],
-      ],
-    };
-
-    expect(openPRs).toHaveProperty("columns");
-    expect(openPRs).toHaveProperty("rows");
-    expect(openPRs.columns).toContain("number");
-    expect(openPRs.columns).toContain("title");
-    expect(openPRs.columns).not.toContain("url");
-  });
-});
 
 // =============================================================================
 // session start - Status filtering logic
@@ -325,60 +188,6 @@ describe("session start - git state", () => {
     }
   });
 
-  /**
-   * @testdoc session startの出力にgitセクションが含まれる構造契約
-   * @purpose git状態がJSON出力に統合されることの型契約
-   */
-  it("should define git section in session start output", () => {
-    const gitState: GitState = {
-      currentBranch: "develop",
-      uncommittedChanges: [],
-      hasUncommittedChanges: false,
-    };
-
-    const output = {
-      repository: "owner/repo",
-      git: gitState,
-      lastHandover: null,
-      issues: { columns: [], rows: [] },
-      total_issues: 0,
-    };
-
-    expect(output).toHaveProperty("git");
-    expect(output.git).toHaveProperty("currentBranch");
-    expect(output.git).toHaveProperty("uncommittedChanges");
-    expect(output.git).toHaveProperty("hasUncommittedChanges");
-  });
-
-  /**
-   * @testdoc uncommittedChanges が空配列の場合 hasUncommittedChanges は false
-   * @purpose クリーンな作業ディレクトリの状態表現
-   */
-  it("should represent clean state with empty changes and false flag", () => {
-    const cleanState: GitState = {
-      currentBranch: "develop",
-      uncommittedChanges: [],
-      hasUncommittedChanges: false,
-    };
-
-    expect(cleanState.uncommittedChanges).toHaveLength(0);
-    expect(cleanState.hasUncommittedChanges).toBe(false);
-  });
-
-  /**
-   * @testdoc uncommittedChanges に変更がある場合 hasUncommittedChanges は true
-   * @purpose 未コミット変更がある場合の状態表現
-   */
-  it("should represent dirty state with changes and true flag", () => {
-    const dirtyState: GitState = {
-      currentBranch: "feat/42-some-feature",
-      uncommittedChanges: [" M src/commands/session.ts", "?? new-file.ts"],
-      hasUncommittedChanges: true,
-    };
-
-    expect(dirtyState.uncommittedChanges).toHaveLength(2);
-    expect(dirtyState.hasUncommittedChanges).toBe(true);
-  });
 });
 
 // =============================================================================
@@ -505,47 +314,6 @@ describe("session end - issue number options", () => {
 
 describe("session end --done - issue close behavior", () => {
   /**
-   * @testdoc --doneでStatus更新後にIssueがクローズされる
-   * @purpose Done設定時にIssue stateもCLOSED (COMPLETED)に更新される契約
-   */
-  it("should close issue after setting status to Done", () => {
-    // session end --done の処理順序:
-    // 1. updateIssueStatus() で Project Status を Done に設定
-    // 2. getIssueId() で Issue node ID を取得
-    // 3. closeIssueById() で Issue を CLOSED (COMPLETED) に設定
-    const operations = [
-      { step: 1, action: "updateIssueStatus", target: "Project Status → Done" },
-      { step: 2, action: "getIssueId", target: "Issue node ID 取得" },
-      { step: 3, action: "closeIssueById", target: "Issue state → CLOSED (COMPLETED)" },
-    ];
-
-    expect(operations).toHaveLength(3);
-    expect(operations[0].action).toBe("updateIssueStatus");
-    expect(operations[2].action).toBe("closeIssueById");
-  });
-
-  /**
-   * @testdoc closeIssueById失敗時はStatus更新のみ成功し警告を出力する
-   * @purpose close失敗はfatalではなくsession check --fixでリカバリ可能
-   */
-  it("should warn but not fail when close fails after status update", () => {
-    // Status更新成功 + close失敗 → updatedIssuesには追加される
-    const updatedIssues: Array<{ number: number; status: string }> = [];
-    const statusUpdateSuccess = true;
-    const closeSuccess = false;
-
-    if (statusUpdateSuccess) {
-      updatedIssues.push({ number: 42, status: "Done" });
-      // close失敗は警告のみ、updatedIssuesには影響しない
-    }
-
-    expect(updatedIssues).toHaveLength(1);
-    expect(updatedIssues[0].status).toBe("Done");
-    // close失敗はsession check --fixがフォールバックとして機能
-    expect(closeSuccess).toBe(false);
-  });
-
-  /**
    * @testdoc 既にクローズ済みのIssueはスキップされる
    * @purpose closedCacheにより二重クローズを防止
    */
@@ -592,200 +360,9 @@ describe("session end --done - issue close behavior", () => {
   });
 });
 
-// =============================================================================
-// session end - Output structure contracts
-// =============================================================================
 
-describe("session end - output structure", () => {
-  /**
-   * @testdoc session endの出力にhandoverオブジェクトが含まれる
-   * @purpose ハンドオーバー作成結果の構造契約
-   */
-  it("should include handover object in output", () => {
-    const output = {
-      handover: {
-        number: 31,
-        title: "2026-02-02 - Session summary",
-        url: "https://github.com/owner/repo/discussions/31",
-      },
-      updatedIssues: [],
-    };
 
-    expect(output.handover).toHaveProperty("number");
-    expect(output.handover).toHaveProperty("title");
-    expect(output.handover).toHaveProperty("url");
-  });
 
-  /**
-   * @testdoc session endの出力にupdatedIssues配列が含まれる
-   * @purpose Issue ステータス更新結果のリスト契約
-   */
-  it("should include updatedIssues array in output", () => {
-    const output = {
-      handover: {
-        number: 31,
-        title: "2026-02-02 - Summary",
-        url: "https://github.com/owner/repo/discussions/31",
-      },
-      updatedIssues: [
-        { number: 27, status: "Done" },
-        { number: 26, status: "Review" },
-      ],
-    };
-
-    expect(output.updatedIssues).toHaveLength(2);
-    expect(output.updatedIssues[0]).toHaveProperty("number");
-    expect(output.updatedIssues[0]).toHaveProperty("status");
-  });
-
-  /**
-   * @testdoc ステータス更新がない場合は空配列を返す
-   * @purpose --done/--reviewなしの場合の出力契約
-   */
-  it("should return empty updatedIssues when no status changes", () => {
-    const output = {
-      handover: {
-        number: 31,
-        title: "2026-02-02 - Summary",
-        url: "https://github.com/owner/repo/discussions/31",
-      },
-      updatedIssues: [],
-    };
-
-    expect(output.updatedIssues).toEqual([]);
-  });
-});
-
-// =============================================================================
-// session command - Action routing
-// =============================================================================
-
-describe("session command - action routing", () => {
-  /**
-   * @testdoc 有効なアクション（start, end, check）を定義
-   * @purpose サブコマンドの一覧定義
-   */
-  it("should define valid actions", () => {
-    const validActions = ["start", "end", "check"];
-    expect(validActions).toContain("start");
-    expect(validActions).toContain("end");
-    expect(validActions).toContain("check");
-  });
-
-  /**
-   * @testdoc 無効なアクションを検出する
-   * @purpose 存在しないサブコマンドが判別可能であることの確認
-   */
-  it("should detect invalid actions", () => {
-    const validActions = ["start", "end", "check"];
-    expect(validActions).not.toContain("save");
-    expect(validActions).not.toContain("context");
-    expect(validActions).not.toContain("list");
-  });
-});
-
-// =============================================================================
-// session command - Options structure
-// =============================================================================
-
-describe("session command - options", () => {
-  /**
-   * @testdoc session startのオプション構造を定義
-   * @purpose session startで使用可能なオプションの型契約
-   */
-  it("should define session start options", () => {
-    const startOptions = {
-      owner: undefined as string | undefined,
-      verbose: false,
-      format: "json" as const,
-    };
-
-    expect(startOptions).toHaveProperty("owner");
-    expect(startOptions).toHaveProperty("verbose");
-    expect(startOptions).toHaveProperty("format");
-  });
-
-  /**
-   * @testdoc session endのオプション構造を定義
-   * @purpose session endで使用可能なオプションの型契約
-   */
-  it("should define session end options", () => {
-    const endOptions = {
-      owner: undefined as string | undefined,
-      verbose: false,
-      title: "2026-02-02 - Summary",
-      body: "## Summary\n...",
-      done: ["27"] as string[],
-      review: ["26"] as string[],
-    };
-
-    expect(endOptions).toHaveProperty("title");
-    expect(endOptions).toHaveProperty("body");
-    expect(endOptions).toHaveProperty("done");
-    expect(endOptions).toHaveProperty("review");
-  });
-
-  /**
-   * @testdoc session endの--doneと--reviewが配列で受け取れる
-   * @purpose 複数Issue番号の一括指定に対応する型契約
-   */
-  it("should accept arrays for --done and --review options", () => {
-    const doneNumbers = ["27", "31"];
-    const reviewNumbers = ["26"];
-
-    expect(Array.isArray(doneNumbers)).toBe(true);
-    expect(Array.isArray(reviewNumbers)).toBe(true);
-    expect(doneNumbers.every((n) => isIssueNumber(n))).toBe(true);
-    expect(reviewNumbers.every((n) => isIssueNumber(n))).toBe(true);
-  });
-});
-
-// =============================================================================
-// GraphQL queries documentation
-// =============================================================================
-
-describe("session command - GraphQL queries", () => {
-  /**
-   * @testdoc session startは2つのGraphQLクエリを実行する
-   * @purpose 1コマンドで2つのデータソース（Discussions + Issues）を統合取得
-   */
-  it("should document required queries for session start", () => {
-    const requiredQueries = [
-      "GRAPHQL_QUERY_LATEST_HANDOVER", // Discussions: Handovers category, limit 1
-      "GRAPHQL_QUERY_ISSUES_WITH_PROJECTS", // Issues with Projects fields
-    ];
-
-    expect(requiredQueries).toHaveLength(2);
-  });
-
-  /**
-   * @testdoc session endは最大4種類のAPIコールを実行する
-   * @purpose ハンドオーバー作成 + ステータス更新の統合実行
-   */
-  it("should document required mutations for session end", () => {
-    const requiredMutations = [
-      "GRAPHQL_MUTATION_CREATE_DISCUSSION", // Create handover
-      "GRAPHQL_MUTATION_UPDATE_FIELD", // Update issue status (per issue)
-      "GRAPHQL_QUERY_FIELDS", // Get field definitions (once)
-      "GRAPHQL_MUTATION_CLOSE_ISSUE", // Close --done issues (#838)
-    ];
-
-    expect(requiredMutations).toHaveLength(4);
-  });
-
-  /**
-   * @testdoc session checkはIssues取得 + 必要に応じてclose mutationを実行する
-   * @purpose 整合性チェックに必要なAPIコールの文書化
-   */
-  it("should document required queries/mutations for session check", () => {
-    const requiredOps = [
-      "GRAPHQL_QUERY_ISSUES_WITH_PROJECTS", // Fetch all open issues
-      "GRAPHQL_MUTATION_CLOSE_ISSUE", // Close inconsistent issues (--fix)
-    ];
-
-    expect(requiredOps).toHaveLength(2);
-  });
-});
 
 // =============================================================================
 // session check - Inconsistency classification
@@ -1040,121 +617,6 @@ describe("session check - inconsistency classification", () => {
   });
 });
 
-// =============================================================================
-// session check - Output structure contracts
-// =============================================================================
-
-describe("session check - output structure", () => {
-  /**
-   * @testdoc session check の出力に summary が含まれる
-   * @purpose チェック結果サマリーの構造契約
-   */
-  it("should define check output structure with summary", () => {
-    const output: CheckOutput = {
-      repository: "owner/repo",
-      inconsistencies: [],
-      fixes: [],
-      summary: {
-        total_checked: 10,
-        total_inconsistencies: 0,
-        errors: 0,
-        info: 0,
-        fixed: 0,
-        fix_failures: 0,
-      },
-    };
-    expect(output).toHaveProperty("repository");
-    expect(output).toHaveProperty("inconsistencies");
-    expect(output).toHaveProperty("fixes");
-    expect(output.summary).toHaveProperty("total_checked");
-    expect(output.summary).toHaveProperty("total_inconsistencies");
-    expect(output.summary).toHaveProperty("errors");
-    expect(output.summary).toHaveProperty("info");
-    expect(output.summary).toHaveProperty("fixed");
-    expect(output.summary).toHaveProperty("fix_failures");
-  });
-
-  /**
-   * @testdoc fix results に success/error が含まれる
-   * @purpose --fix 実行結果の構造契約
-   */
-  it("should define fix result structure", () => {
-    const fix: FixResult = {
-      number: 1,
-      action: "close",
-      success: true,
-    };
-    expect(fix).toHaveProperty("number");
-    expect(fix).toHaveProperty("action");
-    expect(fix).toHaveProperty("success");
-  });
-
-  /**
-   * @testdoc fix失敗時にerrorフィールドが含まれる
-   * @purpose 失敗理由の構造契約
-   */
-  it("should include error field in failed fix result", () => {
-    const fix: FixResult = {
-      number: 1,
-      action: "close",
-      success: false,
-      error: "GraphQL mutation failed",
-    };
-    expect(fix.error).toBeDefined();
-    expect(fix.success).toBe(false);
-  });
-
-  /**
-   * @testdoc inconsistency にseverityフィールドが含まれる
-   * @purpose severity レベルの型契約
-   */
-  it("should define inconsistency structure with severity", () => {
-    const item: Inconsistency = {
-      number: 1,
-      title: "Test issue",
-      url: "https://github.com/owner/repo/issues/1",
-      issueState: "OPEN",
-      projectStatus: "Done",
-      severity: "error",
-      description: 'Issue is OPEN but Project Status is "Done"',
-    };
-    expect(item).toHaveProperty("severity");
-    expect(["error", "info"]).toContain(item.severity);
-  });
-});
-
-// =============================================================================
-// session check - Options structure
-// =============================================================================
-
-describe("session check - options", () => {
-  /**
-   * @testdoc session checkのオプション構造を定義
-   * @purpose session checkで使用可能なオプションの型契約
-   */
-  it("should define session check options", () => {
-    const checkOptions = {
-      owner: undefined as string | undefined,
-      verbose: false,
-      fix: false,
-    };
-
-    expect(checkOptions).toHaveProperty("fix");
-    expect(typeof checkOptions.fix).toBe("boolean");
-  });
-
-  /**
-   * @testdoc --fixオプションがデフォルトでfalse
-   * @purpose 明示的に指定しない限り自動修正しない確認
-   */
-  it("should default fix to false", () => {
-    const checkOptions = {
-      fix: undefined as boolean | undefined,
-    };
-
-    expect(checkOptions.fix ?? false).toBe(false);
-  });
-});
 
 // =============================================================================
 // session start --team - Team dashboard
@@ -1222,103 +684,6 @@ describe("session start --team - groupIssuesByAssignee", () => {
   });
 });
 
-describe("session start --team - output structure", () => {
-  /**
-   * @testdoc チームダッシュボード出力にmode: "team"が含まれる
-   * @purpose 通常モードとチームモードの出力を区別する契約
-   */
-  it("should include mode field set to 'team'", () => {
-    const output = {
-      repository: "owner/repo",
-      mode: "team",
-      members: {},
-      total_members: 0,
-      total_issues: 0,
-      openPRs: { columns: [], rows: [] },
-    };
-
-    expect(output.mode).toBe("team");
-  });
-
-  /**
-   * @testdoc メンバーダッシュボードにhandoverとissuesが含まれる
-   * @purpose 各メンバーの情報構造契約
-   */
-  it("should include handover and issues per member", () => {
-    const memberDashboard = {
-      handover: {
-        number: 30,
-        title: "2026-02-01 [alice] - Session summary",
-        body: "## Summary\n...",
-        url: "https://github.com/owner/repo/discussions/30",
-      },
-      issues: {
-        columns: ["number", "title", "status", "priority", "size"],
-        rows: [[1, "Feature A", "In Progress", "High", "M"]],
-      },
-      issue_count: 1,
-    };
-
-    expect(memberDashboard).toHaveProperty("handover");
-    expect(memberDashboard).toHaveProperty("issues");
-    expect(memberDashboard).toHaveProperty("issue_count");
-    expect(memberDashboard.handover).toHaveProperty("number");
-    expect(memberDashboard.handover).toHaveProperty("body");
-    expect(memberDashboard.issues.columns).toContain("number");
-    expect(memberDashboard.issues.columns).toContain("status");
-  });
-
-  /**
-   * @testdoc ハンドオーバーがないメンバーはhandover: nullになる
-   * @purpose ハンドオーバー未作成メンバーの表現
-   */
-  it("should allow null handover for members without handovers", () => {
-    const memberDashboard = {
-      handover: null,
-      issues: { columns: [], rows: [] },
-      issue_count: 0,
-    };
-
-    expect(memberDashboard.handover).toBeNull();
-  });
-
-  /**
-   * @testdoc チーム出力にtotal_membersカウントが含まれる
-   * @purpose チームサイズの確認契約
-   */
-  it("should include total_members count", () => {
-    const output = {
-      repository: "owner/repo",
-      mode: "team",
-      members: {
-        alice: { handover: null, issues: { columns: [], rows: [] }, issue_count: 0 },
-        bob: { handover: null, issues: { columns: [], rows: [] }, issue_count: 0 },
-      },
-      total_members: 2,
-      total_issues: 0,
-      openPRs: { columns: [], rows: [] },
-    };
-
-    expect(output.total_members).toBe(2);
-    expect(Object.keys(output.members)).toHaveLength(2);
-  });
-
-  /**
-   * @testdoc --teamオプションがSessionOptionsに定義される
-   * @purpose session startにteamフラグが追加されていることの確認
-   */
-  it("should define team option in SessionOptions", () => {
-    const options = {
-      team: true as boolean | undefined,
-      verbose: false,
-      format: "json" as const,
-    };
-
-    expect(options).toHaveProperty("team");
-    expect(options.team).toBe(true);
-  });
-});
-
 // =============================================================================
 // session end - PR merge auto-detection (#220)
 // =============================================================================
@@ -1347,53 +712,6 @@ describe("session end - PR merge auto-detection (#220)", () => {
     expect(result).toBeNull();
   });
 
-  /**
-   * @testdoc updatedIssues に Done ステータスが含まれうる（PRマージ時の昇格）
-   * @purpose --review 指定でもPRマージ済みの場合は Done になる出力契約
-   */
-  it("should allow Done status in updatedIssues for review items (PR merged)", () => {
-    const output = {
-      handover: {
-        number: 50,
-        title: "2026-02-07 - Session summary",
-        url: "https://github.com/owner/repo/discussions/50",
-      },
-      updatedIssues: [
-        { number: 220, status: "Done" },   // PR merged → auto-promoted
-        { number: 221, status: "Review" },  // PR not merged → stays Review
-      ],
-    };
-
-    // updatedIssues can contain both Done and Review
-    const doneItems = output.updatedIssues.filter((i) => i.status === "Done");
-    const reviewItems = output.updatedIssues.filter((i) => i.status === "Review");
-    expect(doneItems).toHaveLength(1);
-    expect(reviewItems).toHaveLength(1);
-    expect(doneItems[0].number).toBe(220);
-    expect(reviewItems[0].number).toBe(221);
-  });
-
-  /**
-   * @testdoc findMergedPrForIssue が関数としてエクスポートされている
-   * @purpose セッションモジュールからPRマージ検出関数がアクセス可能
-   */
-  it("should export findMergedPrForIssue function", () => {
-    expect(typeof findMergedPrForIssue).toBe("function");
-  });
-
-  /**
-   * @testdoc --review で Done 昇格された場合のログメッセージ契約
-   * @purpose ログメッセージにPR番号が含まれることの構造確認
-   */
-  it("should define log format for auto-promoted issues", () => {
-    const prNumber = 226;
-    const issueNumber = 224;
-    const logMessage = `Issue #${issueNumber} → Done (PR #${prNumber} merged)`;
-
-    expect(logMessage).toContain("Done");
-    expect(logMessage).toContain(`PR #${prNumber}`);
-    expect(logMessage).toContain("merged");
-  });
 });
 
 // =============================================================================
@@ -1426,14 +744,6 @@ describe("session backup - getSessionBackups", () => {
         fsUnlinkSync(join(testSessionsDir, f));
       }
     }
-  });
-
-  /**
-   * @testdoc getSessionBackups がエクスポートされている
-   * @purpose セッションバックアップ関数がアクセス可能であることの確認
-   */
-  it("should export getSessionBackups function", () => {
-    expect(typeof getSessionBackups).toBe("function");
   });
 
   /**
@@ -1523,14 +833,6 @@ describe("session backup - cleanupSessionBackups", () => {
         fsUnlinkSync(join(testSessionsDir, f));
       }
     }
-  });
-
-  /**
-   * @testdoc cleanupSessionBackups がエクスポートされている
-   * @purpose セッションクリーンアップ関数がアクセス可能であることの確認
-   */
-  it("should export cleanupSessionBackups function", () => {
-    expect(typeof cleanupSessionBackups).toBe("function");
   });
 
   /**
@@ -1843,94 +1145,6 @@ describe("session end - handover title auto-insert (#754)", () => {
   });
 });
 
-describe("session start - multi-developer options (#754)", () => {
-  /**
-   * @testdoc SessionOptions に --user, --all, --team オプションが定義される
-   * @purpose マルチ開発者モードのオプション型契約
-   */
-  it("should define --user, --all, --team options in SessionOptions", () => {
-    // --user: 特定ユーザーの引き継ぎをフィルタ
-    const userOptions: SessionOptions = { user: "alice" };
-    expect(userOptions).toHaveProperty("user");
-    expect(typeof userOptions.user).toBe("string");
-
-    // --all: フィルタなし（全メンバー）
-    const allOptions: SessionOptions = { all: true };
-    expect(allOptions).toHaveProperty("all");
-    expect(allOptions.all).toBe(true);
-
-    // --team: チームダッシュボードモード
-    const teamOptions: SessionOptions = { team: true };
-    expect(teamOptions).toHaveProperty("team");
-    expect(teamOptions.team).toBe(true);
-  });
-
-  /**
-   * @testdoc --user と --all の相互排他を型で表現できる
-   * @purpose 同時指定は意味をなさない（--all が優先）ことの文書化
-   */
-  it("should allow both --user and --all to coexist in SessionOptions type", () => {
-    // 型上は共存可能だが、実装では --all が優先される
-    const options: SessionOptions = { user: "alice", all: true };
-    expect(options.user).toBe("alice");
-    expect(options.all).toBe(true);
-  });
-
-  /**
-   * @testdoc author フィルタロジック: authorFilter=null は全件返す
-   * @purpose --all モードでフィルタなし動作の確認
-   */
-  it("should return all handovers when authorFilter is null (--all mode)", () => {
-    const handovers = [
-      { number: 1, author: "alice" },
-      { number: 2, author: "bob" },
-      { number: 3, author: "charlie" },
-    ];
-
-    const authorFilter: string | null = null;
-    const filtered = authorFilter
-      ? handovers.filter((h) => h.author === authorFilter)
-      : handovers;
-
-    expect(filtered).toHaveLength(3);
-  });
-
-  /**
-   * @testdoc author フィルタロジック: 特定ユーザー指定で一致のみ返す
-   * @purpose --user {username} でのフィルタリング確認
-   */
-  it("should filter handovers by author when authorFilter is set", () => {
-    const handovers = [
-      { number: 1, author: "alice" },
-      { number: 2, author: "bob" },
-      { number: 3, author: "alice" },
-    ];
-
-    const authorFilter = "alice";
-    const filtered = authorFilter
-      ? handovers.filter((h) => h.author === authorFilter)
-      : handovers;
-
-    expect(filtered).toHaveLength(2);
-    expect(filtered.map((h) => h.number)).toEqual([1, 3]);
-  });
-
-  /**
-   * @testdoc author フィルタロジック: 一致なしは空配列
-   * @purpose 対象ユーザーのハンドオーバーがない場合の動作
-   */
-  it("should return empty array when no handovers match the author filter", () => {
-    const handovers = [
-      { number: 1, author: "alice" },
-      { number: 2, author: "bob" },
-    ];
-
-    const authorFilter = "charlie";
-    const filtered = handovers.filter((h) => h.author === authorFilter);
-
-    expect(filtered).toHaveLength(0);
-  });
-});
 
 describe("session start --team - fetchTeamHandovers grouping logic (#754)", () => {
   /**
@@ -2116,30 +1330,6 @@ describe("session preflight - getPreflightGitState (#861)", () => {
     ).toBe(true);
   });
 
-  /**
-   * @testdoc protected ブランチ上では isFeatureBranch が false
-   * @purpose main/develop はフィーチャーブランチでないことの確認
-   */
-  it("should set isFeatureBranch to false on protected branches", () => {
-    // 直接テスト（純粋ロジックの検証）
-    const protectedBranches = ["main", "develop"];
-    for (const branch of protectedBranches) {
-      expect(protectedBranches.includes(branch)).toBe(true);
-    }
-  });
-
-  /**
-   * @testdoc フィーチャーブランチでは isFeatureBranch が true
-   * @purpose feat/xxx 等がフィーチャーブランチとして判定される確認
-   */
-  it("should identify feature branch patterns as isFeatureBranch=true", () => {
-    const protectedBranches = ["main", "develop"];
-    const featureBranches = ["feat/42-some-feature", "fix/10-bugfix", "chore/99-cleanup"];
-
-    for (const branch of featureBranches) {
-      expect(protectedBranches.includes(branch)).toBe(false);
-    }
-  });
 });
 
 // =============================================================================
@@ -2256,103 +1446,3 @@ describe("session preflight - generatePreflightWarnings (#861)", () => {
   });
 });
 
-// =============================================================================
-// session preflight - Output structure contracts (#861)
-// =============================================================================
-
-describe("session preflight - output structure (#861)", () => {
-  /**
-   * @testdoc preflight 出力に必須フィールドがすべて含まれる
-   * @purpose PreflightOutput の構造契約
-   */
-  it("should define PreflightOutput structure with all required fields", () => {
-    const output: PreflightOutput = {
-      repository: "owner/repo",
-      git: {
-        branch: "feat/42-xxx",
-        baseBranch: "develop",
-        isFeatureBranch: true,
-        uncommittedChanges: ["M src/foo.ts"],
-        hasUncommittedChanges: true,
-        unpushedCommits: 2,
-        recentCommits: [{ hash: "abc1234", message: "feat: add feature (#42)" }],
-      },
-      issues: [
-        { number: 42, title: "Feature", status: "In Progress", hasMergedPr: false, labels: ["area:cli"], priority: "High" },
-      ],
-      prs: [
-        { number: 50, title: "feat: add feature", reviewDecision: "APPROVED" },
-      ],
-      sessionBackups: 0,
-      warnings: [],
-    };
-
-    expect(output).toHaveProperty("repository");
-    expect(output).toHaveProperty("git");
-    expect(output).toHaveProperty("issues");
-    expect(output).toHaveProperty("prs");
-    expect(output).toHaveProperty("sessionBackups");
-    expect(output).toHaveProperty("warnings");
-  });
-
-  /**
-   * @testdoc issues がフラット JSON（TableJSON ではない）
-   * @purpose スキルがプログラム的に消費できるフラット構造の確認
-   */
-  it("should use flat JSON for issues (not TableJSON)", () => {
-    const issues: PreflightIssue[] = [
-      { number: 42, title: "Feature A", status: "In Progress", hasMergedPr: false, labels: ["area:cli"], priority: "High" },
-      { number: 43, title: "Feature B", status: "Review", hasMergedPr: true, labels: [], priority: null },
-    ];
-
-    // TableJSON とは異なり columns/rows ではなくオブジェクト配列
-    expect(Array.isArray(issues)).toBe(true);
-    expect(issues[0]).toHaveProperty("number");
-    expect(issues[0]).toHaveProperty("title");
-    expect(issues[0]).toHaveProperty("status");
-    expect(issues[0]).toHaveProperty("hasMergedPr");
-    expect(issues[0]).toHaveProperty("labels");
-    expect(issues[0]).toHaveProperty("priority");
-  });
-
-  /**
-   * @testdoc hasMergedPr が In Progress / Review の Issue のみで検出される
-   * @purpose 他ステータスでは常に false の仕様確認
-   */
-  it("should set hasMergedPr only for In Progress / Review issues", () => {
-    const issues: PreflightIssue[] = [
-      { number: 1, title: "A", status: "In Progress", hasMergedPr: true, labels: [], priority: null },
-      { number: 2, title: "B", status: "Review", hasMergedPr: true, labels: [], priority: null },
-      { number: 3, title: "C", status: "Backlog", hasMergedPr: false, labels: [], priority: null },
-      { number: 4, title: "D", status: "Pending", hasMergedPr: false, labels: [], priority: null },
-    ];
-
-    const hasMergedIssues = issues.filter((i) => i.hasMergedPr);
-    expect(hasMergedIssues.every(
-      (i) => i.status === "In Progress" || i.status === "Review"
-    )).toBe(true);
-  });
-
-  /**
-   * @testdoc prs がフラット JSON で reviewDecision を含む
-   * @purpose PR 情報の構造契約
-   */
-  it("should include reviewDecision in flat PR structure", () => {
-    const prs: PreflightPr[] = [
-      { number: 50, title: "feat: xxx", reviewDecision: "APPROVED" },
-      { number: 51, title: "fix: yyy", reviewDecision: null },
-    ];
-
-    expect(prs[0]).toHaveProperty("reviewDecision");
-    expect(prs[1].reviewDecision).toBeNull();
-  });
-
-  /**
-   * @testdoc session command のルーティングに preflight が含まれる
-   * @purpose サブコマンドの一覧に preflight が追加されていることの確認
-   */
-  it("should include preflight in valid actions", () => {
-    const validActions = ["start", "end", "check", "preflight"];
-    expect(validActions).toContain("preflight");
-  });
-});

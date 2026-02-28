@@ -82,6 +82,34 @@ describe("details-jsdoc", () => {
       expect(result).toContain("<p>First paragraph</p>");
       expect(result).toContain("<p>Second paragraph</p>");
     });
+
+    it("should escape HTML in inline code to prevent XSS", () => {
+      const result = simpleMarkdown("Use `<img src=x onerror=\"alert('XSS')\">` keyword");
+      expect(result).not.toContain("<img");
+      expect(result).toContain("&lt;img");
+      expect(result).toContain("<code>");
+    });
+
+    it("should escape HTML in paragraph text to prevent XSS", () => {
+      const result = simpleMarkdown("Some <script>alert('XSS')</script> text");
+      expect(result).not.toContain("<script>");
+      expect(result).toContain("&lt;script&gt;");
+    });
+
+    it("should escape HTML in mixed inline code and paragraph text", () => {
+      const result = simpleMarkdown("Use `<b>bold</b>` and <img src=x onerror=alert(1)> here");
+      expect(result).toContain("<code>&lt;b&gt;bold&lt;/b&gt;</code>");
+      expect(result).not.toContain("<img");
+      expect(result).toContain("&lt;img");
+    });
+
+    it("should preserve code block escaping while escaping paragraphs", () => {
+      const result = simpleMarkdown("Dangerous <div>text</div>\n\n```ts\nconst x = 1;\n```\n\nMore <b>text</b>");
+      expect(result).toContain("&lt;div&gt;text&lt;/div&gt;");
+      expect(result).toContain("&lt;b&gt;text&lt;/b&gt;");
+      expect(result).toContain("<pre");
+      expect(result).toContain("const x = 1;");
+    });
   });
 
   describe("parseJSDoc", () => {

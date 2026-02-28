@@ -10,6 +10,7 @@
 import { jest } from "@jest/globals";
 import type { ProjectField } from "../../src/utils/project-fields.js";
 import type { Logger } from "../../src/utils/logger.js";
+import { createMockLogger } from "../helpers/command-test-utils.js";
 
 // =============================================================================
 // Mocks (ESM: unstable_mockModule + dynamic import)
@@ -84,16 +85,6 @@ const { updateProjectStatus, getIssueDetail, resolveProjectItem, resolveAndUpdat
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function createMockLogger(): Logger {
-  return {
-    info: jest.fn(),
-    warn: jest.fn(),
-    error: jest.fn(),
-    success: jest.fn(),
-    debug: jest.fn(),
-  } as unknown as Logger;
-}
 
 const mockFields: Record<string, ProjectField> = {
   Status: {

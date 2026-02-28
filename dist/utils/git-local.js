@@ -51,7 +51,7 @@ function resolveGitDir(cwd) {
                 }
                 // commondir がない場合は worktreeGitDir の親の親を推定
                 // 例: /repo/.git/worktrees/foo → /repo/.git
-                return { gitDir: worktreeGitDir, commonDir: worktreeGitDir };
+                return { gitDir: worktreeGitDir, commonDir: resolve(worktreeGitDir, "..", "..") };
             }
         }
         catch {

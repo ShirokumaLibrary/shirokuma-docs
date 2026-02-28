@@ -60,8 +60,8 @@ export function remarkNormalizeHeadings(
       // Clear deeper levels
       headingStack.splice(level);
 
-      // Build hierarchical text
-      const hierarchy = headingStack.slice(0, level).join(separator);
+      // Build hierarchical text (filter out undefined slots from skipped levels)
+      const hierarchy = headingStack.slice(0, level).filter(x => x !== undefined).join(separator);
 
       // Replace heading text with hierarchical version
       node.children = [{ type: 'text', value: hierarchy }];

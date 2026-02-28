@@ -823,7 +823,7 @@ export async function withMarketplaceVersion(clonePath, tag, fn) {
     // 指定タグにチェックアウト
     await git.checkout(tag);
     try {
-        return fn();
+        return await fn();
     }
     finally {
         // main ブランチに復帰

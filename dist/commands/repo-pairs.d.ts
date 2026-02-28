@@ -14,6 +14,7 @@ export interface RepoPairsOptions {
     exclude?: string[];
     tag?: string;
     dryRun?: boolean;
+    sourceDir?: string;
 }
 export declare function repoPairsCommand(action: string, alias: string | undefined, options: RepoPairsOptions): Promise<void>;
 //# sourceMappingURL=repo-pairs.d.ts.map

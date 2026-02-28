@@ -104,6 +104,7 @@ export function generateDetailHTML(data: DetailHTMLData, ctx: DetailsContext): s
   const content = `
     ${cdnScripts}
     <div class="container">
+      ${breadcrumb}
       <div class="page-header">
         <h1 class="page-title">
           <span class="page-module-prefix">${escapeHtml(data.moduleName)}/</span>${escapeHtml(data.name)}

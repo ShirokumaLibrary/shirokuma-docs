@@ -596,6 +596,8 @@ export interface ShirokumaConfig {
         exclude?: string[];
         /** Default branch name (defaults to "main") */
         defaultBranch?: string;
+        /** Source directory within private repo (release only this subdirectory) */
+        sourceDir?: string;
     }>;
     /** プラグイン設定 */
     plugins?: {

@@ -37,10 +37,5 @@ export declare function extractDescribeDocComment(lines: string[], describeLineI
     purpose?: string;
     priority?: "high" | "medium" | "low";
 } | null;
-/**
- * 行内の括弧のバランスを計算
- * { は +1、} は -1 として合計を返す
- * 文字列リテラル内の括弧は無視する
- */
-export declare function countBraces(line: string): number;
+export { countBraces } from "../utils/brace-matching.js";
 //# sourceMappingURL=test-annotations.d.ts.map

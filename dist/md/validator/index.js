@@ -5,6 +5,7 @@ import { loadTemplate, findMissingHeadings, findUnsubstitutedVariables, template
 import { FileCollector } from '../utils/file-collector.js';
 import { DEFAULT_MAX_HEADING_DEPTH } from '../constants.js';
 import { safeRegExp } from '../../utils/sanitize.js';
+import { CodeBlockTracker } from '../utils/code-blocks.js';
 /**
  * Document validator
  * Validates documents against schemas and rules
@@ -212,9 +213,13 @@ export class Validator {
     extractHeadings(content) {
         const lines = content.split('\n');
         const headings = [];
+        const tracker = new CodeBlockTracker();
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i];
             if (line) {
+                tracker.processLine(line);
+                if (tracker.isInCodeBlock())
+                    continue;
                 const match = line.match(/^(#{1,6})\s+(.+)$/);
                 if (match && match[1] && match[2]) {
                     headings.push({

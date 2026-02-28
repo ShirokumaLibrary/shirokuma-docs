@@ -15,6 +15,8 @@ export interface RepoPairConfig {
     exclude: string[];
     /** Default branch name */
     defaultBranch: string;
+    /** Source directory within private repo (default: project root) */
+    sourceDir?: string;
 }
 /** Metrics configuration for automatic timestamp recording */
 export interface MetricsConfig {
@@ -55,6 +57,7 @@ export interface GhConfig {
         public: string;
         exclude?: string[];
         defaultBranch?: string;
+        sourceDir?: string;
     }>;
     /** Cross-repository references (alias → owner/repo) */
     crossRepos?: Record<string, string>;

@@ -43,6 +43,7 @@ export function getAllRepoPairs(config) {
         public: pair.public,
         exclude: pair.exclude ?? DEFAULT_EXCLUDE_PATTERNS,
         defaultBranch: pair.defaultBranch ?? "main",
+        ...(pair.sourceDir && { sourceDir: pair.sourceDir }),
     }));
 }
 /**

@@ -165,6 +165,44 @@ describe("Validator", () => {
   });
 
   /**
+   * @testdoc validator: コードブロック内の見出し行を見出しとして検出しない
+   */
+  it("should not detect headings inside code blocks", async () => {
+    const dir = path.join(tmpDir, "codeblock-headings");
+    await fs.mkdir(dir, { recursive: true });
+    // コードブロック内に深い見出し（######）を配置
+    // extractHeadings がコードブロックを無視しなければ余計な見出しが検出される
+    await fs.writeFile(
+      path.join(dir, "test.md"),
+      [
+        "---",
+        "title: Test",
+        "---",
+        "",
+        "## Real Heading",
+        "",
+        "```markdown",
+        "## Fake Heading Inside Code",
+        "```",
+        "",
+        "## Second Real",
+        "",
+      ].join("\n")
+    );
+
+    const config = createTestConfig();
+    const validator = new Validator(config);
+    const result = await validator.validate(dir);
+
+    // コードブロック内の見出しが max-heading-depth の集計に含まれないことを確認
+    // 正しく動作すれば warning は出ない（h2 のみ）
+    const depthWarnings = result.warnings.filter(
+      (w) => w.rule === "max-heading-depth"
+    );
+    expect(depthWarnings).toHaveLength(0);
+  });
+
+  /**
    * @testdoc validator: 深すぎる見出しに警告を報告する
    */
   it("should warn on headings exceeding max depth", async () => {

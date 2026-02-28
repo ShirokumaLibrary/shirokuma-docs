@@ -499,12 +499,12 @@ program
   .option("--status-only", "Only update Status field (for setup)")
   .option("--dry-run", "Preview changes without executing (for setup)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action((action, target, options) => {
+  .action(async (action, target, options) => {
     if (!resolveBodyFileOption(options)) return;
     // エイリアスオプションのマージ (#587)
     options.priority ??= options.fieldPriority;
     options.size ??= options.fieldSize;
-    projectsCommand(action, target, options);
+    await projectsCommand(action, target, options);
   });
 
 // GitHub Issues 管理 (メインコマンド - Issues + Projects 統合)
@@ -548,6 +548,9 @@ program
   .option("--rebase", "Use rebase merge (for merge)")
   .option("--delete-branch", "Delete branch after merge (default: true)", true)
   .option("--no-delete-branch", "Do not delete branch after merge")
+  .option("--checkout", "Checkout base branch after merge (default: true)", true)
+  .option("--no-checkout", "Do not checkout base branch after merge")
+  .option("--delete-local", "Delete merged local branch after merge")
   .option("--base <branch>", "Target branch (for pr-create)")
   .option("--head <branch>", "Source branch (for pr-create, merge)")
   .option("--skip-link-check", "Skip N:N link graph verification (for merge)")
@@ -556,7 +559,7 @@ program
   .option("--parent <number>", "Link as sub-issue of parent (for create)", parseInt)
   .option("--replace-parent", "Replace existing parent when adding sub-issue (for sub-add)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action((action, target, subTarget, options) => {
+  .action(async (action, target, subTarget, options) => {
     if (!resolveBodyFileOption(options)) return;
     // エイリアスオプションのマージ (#587)
     options.priority ??= options.fieldPriority;
@@ -570,7 +573,7 @@ program
     if ((action === "sub-add" || action === "sub-remove") && subTarget) {
       options._subTarget = subTarget;
     }
-    issuesCommand(action, target, options);
+    await issuesCommand(action, target, options);
   });
 
 // GitHub Discussions 管理
@@ -586,13 +589,13 @@ program
   .option("--public", "Target the public repository (from repoPairs config)")
   .option("--repo <alias>", "Target a cross-repo by alias (from crossRepos config)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action((action, target, options) => {
+  .action(async (action, target, options) => {
     if (!resolveBodyFileOption(options)) return;
     // For search action, treat target as query
     if (action === "search" && target) {
       options.query = target;
     }
-    discussionsCommand(action, target, options);
+    await discussionsCommand(action, target, options);
   });
 
 // 統合検索 (Issues + Discussions 横断)
@@ -649,9 +652,9 @@ program
   .option("--fix", "不整合を自動修正 (check用)")
   .option("--setup", "GitHub手動設定の検証 (check用)")
   .option("-v, --verbose", "詳細ログ出力")
-  .action((action, options) => {
+  .action(async (action, options) => {
     if (!resolveBodyFileOption(options)) return;
-    sessionCommand(action, options);
+    await sessionCommand(action, options);
   });
 
 // Discussion テンプレート生成
@@ -672,6 +675,7 @@ program
   .option("--private <repo>", "Private リポジトリ (owner/name, init用)")
   .option("--public <repo>", "Public リポジトリ (owner/name, init用)")
   .option("--exclude <patterns...>", "リリース時の除外パターン (init用)")
+  .option("--source-dir <dir>", "ソースディレクトリ (init用、release は config 参照)")
   .option("--tag <version>", "リリースタグ (release用)")
   .option("--dry-run", "変更せずにプレビュー (release用)")
   .option("-v, --verbose", "詳細ログ出力")

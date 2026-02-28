@@ -181,11 +181,12 @@ describe("init command", () => {
 
       expect(result.status).toBe(0);
       const output = extractJson<InitResult>(result.stdout);
-      expect(output.skills_installed).toHaveLength(24);
+      expect(output.skills_installed).toHaveLength(25);
 
       // スキル名リストで検証（ファイルは marketplace + cache にあるためローカルには存在しない）
       expect(output.skills_installed).toContain("managing-agents");
       expect(output.skills_installed).toContain("coding-nextjs");
+      expect(output.skills_installed).toContain("coding-on-issue");
       expect(output.skills_installed).toContain("reviewing-on-issue");
       expect(output.skills_installed).toContain("publishing");
     });

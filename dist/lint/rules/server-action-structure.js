@@ -9,6 +9,7 @@
  * @module lint/rules/server-action-structure
  */
 import { escapeRegExp } from "../../utils/sanitize.js";
+import { findMatchingBrace } from "../../utils/brace-matching.js";
 /**
  * 認証関数のパターン
  */
@@ -45,19 +46,11 @@ function extractFunctionBody(content, functionName) {
     if (!match) {
         return null;
     }
-    const startIndex = match.index + match[0].length;
-    let braceCount = 1;
-    let i = startIndex;
-    while (i < content.length && braceCount > 0) {
-        if (content[i] === "{") {
-            braceCount++;
-        }
-        else if (content[i] === "}") {
-            braceCount--;
-        }
-        i++;
-    }
-    return content.slice(startIndex, i - 1);
+    const openBraceIndex = match.index + match[0].length - 1;
+    const closingBrace = findMatchingBrace(content, openBraceIndex);
+    if (closingBrace === null)
+        return null;
+    return content.slice(openBraceIndex + 1, closingBrace);
 }
 /**
  * パターンの最初の出現位置を取得

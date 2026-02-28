@@ -1,68 +1,188 @@
 /**
  * issues Sub-Issue Commands Tests
  *
- * Tests for Sub-Issue subcommands: sub-list, sub-add, sub-remove.
- * Since these commands rely on external API calls (octokit GraphQL/REST),
- * tests focus on input validation, helper functions, and output structure contracts.
+ * Sub-Issue サブコマンド（sub-list, sub-add, sub-remove）のテスト。
+ * ESM 環境のため jest.unstable_mockModule + dynamic import を使用。
  *
  * @testdoc Sub-Issue 関連サブコマンドのテスト（sub-list, sub-add, sub-remove）
  */
 
-import {
-  isIssueNumber,
-  parseIssueNumber,
-} from "../../src/utils/github.js";
+import { jest } from "@jest/globals";
+import { createMockLogger, captureConsoleJson } from "../helpers/command-test-utils.js";
+import type { Logger } from "../../src/utils/logger.js";
 
 // =============================================================================
-// sub-list - Input validation
+// Mocks (ESM: unstable_mockModule + dynamic import)
 // =============================================================================
 
-describe("sub-list - input validation", () => {
-  /**
-   * @testdoc 有効な親 Issue 番号を認識する
-   * @purpose 親 Issue 番号が正しく検証されることの確認
-   */
-  it("should accept valid parent issue numbers", () => {
-    expect(isIssueNumber("958")).toBe(true);
-    expect(isIssueNumber("#958")).toBe(true);
-    expect(isIssueNumber("1")).toBe(true);
-  });
+const mockRunGraphQL = jest.fn<(...args: any[]) => any>();
+const mockIsIssueNumber = jest.fn<(v: string) => boolean>();
+const mockParseIssueNumber = jest.fn<(v: string) => number>();
+const mockResolveTargetRepo = jest.fn<(...args: any[]) => any>();
+const mockGetOctokit = jest.fn<() => any>();
 
-  /**
-   * @testdoc 無効な親 Issue 番号を拒否する
-   * @purpose 非数値入力が拒否されることの確認
-   */
-  it("should reject invalid parent issue numbers", () => {
-    expect(isIssueNumber("")).toBe(false);
-    expect(isIssueNumber("abc")).toBe(false);
-    expect(isIssueNumber("#")).toBe(false);
-  });
+jest.unstable_mockModule("../../src/utils/github.js", () => ({
+  runGraphQL: mockRunGraphQL,
+  isIssueNumber: mockIsIssueNumber,
+  parseIssueNumber: mockParseIssueNumber,
+  getRepoInfo: jest.fn(),
+  getOwner: jest.fn(),
+  getRepoName: jest.fn(),
+  validateTitle: jest.fn(),
+  validateBody: jest.fn(),
+  parseGitRemoteUrl: jest.fn(),
+  readBodyFile: jest.fn(),
+  checkGitHubAuth: jest.fn(),
+  diagnoseRepoFailure: jest.fn(),
+  MAX_TITLE_LENGTH: 256,
+  MAX_BODY_LENGTH: 65536,
+  ITEMS_PER_PAGE: 100,
+  FIELDS_PER_PAGE: 20,
+}));
 
-  /**
-   * @testdoc Issue 番号を正しくパースする
-   * @purpose #付き番号が数値に変換されることの確認
-   */
-  it("should parse issue numbers correctly", () => {
-    expect(parseIssueNumber("958")).toBe(958);
-    expect(parseIssueNumber("#958")).toBe(958);
-  });
-});
+jest.unstable_mockModule("../../src/utils/repo-pairs.js", () => ({
+  resolveTargetRepo: mockResolveTargetRepo,
+}));
+
+jest.unstable_mockModule("../../src/utils/octokit-client.js", () => ({
+  getOctokit: mockGetOctokit,
+  resolveAuthToken: jest.fn(() => "test-token"),
+  resetOctokit: jest.fn(),
+  setOctokit: jest.fn(),
+}));
+
+// Dynamic import after mocks
+const { cmdSubList, cmdSubAdd, cmdSubRemove, getIssueInternalId } =
+  await import("../../src/commands/issues-sub.js");
 
 // =============================================================================
-// sub-list - Output structure contracts
+// Helpers
 // =============================================================================
 
-describe("sub-list - output structure", () => {
-  /**
-   * @testdoc sub-list の出力 JSON に親 Issue 情報と子 Issue 一覧が含まれる
-   * @purpose 親 Issue 情報・子 Issue 一覧・サマリーが返される契約
-   */
-  it("should include parent info, sub issues, and summary in output", () => {
-    const output = {
-      parent: {
-        number: 958,
-        title: "octokit 移行",
+/** isIssueNumber のデフォルト実装（テスト用） */
+function setupDefaultValidation() {
+  mockIsIssueNumber.mockImplementation((v: string) => /^#?\d+$/.test(v));
+  mockParseIssueNumber.mockImplementation((v: string) =>
+    parseInt(v.replace("#", ""), 10)
+  );
+}
+
+function makeGraphQLSubIssuesResponse(
+  parentNumber: number,
+  parentTitle: string,
+  subIssueNodes: any[],
+  summary: { total: number; completed: number; percentCompleted: number }
+) {
+  return {
+    success: true,
+    data: {
+      data: {
+        repository: {
+          issue: {
+            number: parentNumber,
+            title: parentTitle,
+            subIssues: { totalCount: subIssueNodes.length, nodes: subIssueNodes },
+            subIssuesSummary: summary,
+          },
+        },
       },
+    },
+  };
+}
+
+// =============================================================================
+// cmdSubList
+// =============================================================================
+
+describe("cmdSubList", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockResolveTargetRepo.mockReturnValue({ owner: "test-owner", name: "test-repo" });
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+
+  /**
+   * @testdoc 無効な Issue 番号でエラーを返す
+   * @purpose 入力バリデーション
+   */
+  it("should return 1 for invalid issue number", async () => {
+    mockIsIssueNumber.mockReturnValue(false);
+
+    const result = await cmdSubList("abc", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid issue number"));
+  });
+
+  /**
+   * @testdoc リポジトリ解決失敗でエラーを返す
+   * @purpose resolveTargetRepo 失敗時のハンドリング
+   */
+  it("should return 1 when repo resolution fails", async () => {
+    mockResolveTargetRepo.mockReturnValue(null);
+
+    const result = await cmdSubList("958", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Could not determine repository"));
+  });
+
+  /**
+   * @testdoc GraphQL 失敗時にエラーを返す
+   * @purpose API 呼び出し失敗のハンドリング
+   */
+  it("should return 1 when GraphQL fails", async () => {
+    mockRunGraphQL.mockResolvedValue({ success: false });
+
+    const result = await cmdSubList("958", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("not found"));
+  });
+
+  /**
+   * @testdoc 子 Issue 一覧を正しく JSON 出力する
+   * @purpose 正常系: 出力に parent, sub_issues, summary が含まれる
+   */
+  it("should output JSON with parent, sub_issues, and summary", async () => {
+    mockRunGraphQL.mockResolvedValue(
+      makeGraphQLSubIssuesResponse(958, "octokit 移行", [
+        {
+          number: 952,
+          title: "Issues コマンドの octokit 移行",
+          url: "https://github.com/example/repo/issues/952",
+          state: "OPEN",
+          labels: { nodes: [{ name: "area:github" }] },
+          projectItems: {
+            nodes: [
+              {
+                id: "item-1",
+                project: { title: "test-repo" },
+                status: { name: "In Progress" },
+                priority: { name: "Medium" },
+                size: { name: "M" },
+              },
+            ],
+          },
+        },
+      ], { total: 5, completed: 2, percentCompleted: 40 })
+    );
+
+    const result = await cmdSubList("958", {}, logger);
+    const output = captureConsoleJson(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output).toEqual({
+      parent: { number: 958, title: "octokit 移行" },
       sub_issues: [
         {
           number: 952,
@@ -70,134 +190,293 @@ describe("sub-list - output structure", () => {
           url: "https://github.com/example/repo/issues/952",
           state: "OPEN",
           labels: ["area:github"],
-          status: "Backlog",
+          status: "In Progress",
           priority: "Medium",
           size: "M",
         },
       ],
-      summary: {
-        total: 5,
-        completed: 2,
-        percent_completed: 40,
-      },
-    };
-
-    expect(output).toHaveProperty("parent");
-    expect(output.parent).toHaveProperty("number");
-    expect(output.parent).toHaveProperty("title");
-    expect(output).toHaveProperty("sub_issues");
-    expect(Array.isArray(output.sub_issues)).toBe(true);
-    expect(output).toHaveProperty("summary");
-    expect(output.summary).toHaveProperty("total");
-    expect(output.summary).toHaveProperty("completed");
-    expect(output.summary).toHaveProperty("percent_completed");
+      summary: { total: 5, completed: 2, percent_completed: 40 },
+    });
   });
 
   /**
-   * @testdoc 子 Issue に Project フィールドが含まれる
-   * @purpose Status, Priority, Size が取得できることの確認
+   * @testdoc 子 Issue が 0 件の場合に空の配列を返す
+   * @purpose エッジケース: サブ Issue なし
    */
-  it("should include project fields in sub issues", () => {
-    const subIssue = {
-      number: 952,
-      title: "Issues コマンドの octokit 移行",
-      url: "https://github.com/example/repo/issues/952",
-      state: "OPEN",
-      labels: ["area:github"],
-      status: "In Progress",
-      priority: "Medium",
-      size: "M",
-    };
+  it("should output empty sub_issues when none exist", async () => {
+    mockRunGraphQL.mockResolvedValue(
+      makeGraphQLSubIssuesResponse(42, "Test issue", [], {
+        total: 0,
+        completed: 0,
+        percentCompleted: 0,
+      })
+    );
 
-    expect(subIssue).toHaveProperty("status");
-    expect(subIssue).toHaveProperty("priority");
-    expect(subIssue).toHaveProperty("size");
+    const result = await cmdSubList("42", {}, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.sub_issues).toEqual([]);
+    expect(output.summary.total).toBe(0);
   });
-});
 
-// =============================================================================
-// sub-add - Output structure contracts
-// =============================================================================
-
-describe("sub-add - output structure", () => {
   /**
-   * @testdoc sub-add の出力 JSON に親子 Issue 番号と成功フラグが含まれる
-   * @purpose 紐付け結果が正しい構造で返される契約
+   * @testdoc Project フィールドが null の場合に null を返す
+   * @purpose projectItems が空の子 Issue
    */
-  it("should include parent, child, and added flag in output", () => {
-    const output = {
-      parent: 958,
-      child: 952,
-      added: true,
-    };
+  it("should handle sub issues without project fields", async () => {
+    mockRunGraphQL.mockResolvedValue(
+      makeGraphQLSubIssuesResponse(958, "Parent", [
+        {
+          number: 100,
+          title: "Orphan issue",
+          url: "https://github.com/example/repo/issues/100",
+          state: "OPEN",
+          labels: { nodes: [] },
+          projectItems: { nodes: [] },
+        },
+      ], { total: 1, completed: 0, percentCompleted: 0 })
+    );
 
-    expect(output).toHaveProperty("parent");
-    expect(output).toHaveProperty("child");
-    expect(output).toHaveProperty("added");
-    expect(typeof output.parent).toBe("number");
-    expect(typeof output.child).toBe("number");
-    expect(typeof output.added).toBe("boolean");
+    const result = await cmdSubList("958", {}, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.sub_issues[0].status).toBeNull();
+    expect(output.sub_issues[0].priority).toBeNull();
+    expect(output.sub_issues[0].size).toBeNull();
   });
 });
 
 // =============================================================================
-// sub-remove - Output structure contracts
+// cmdSubAdd
 // =============================================================================
 
-describe("sub-remove - output structure", () => {
-  /**
-   * @testdoc sub-remove の出力 JSON に親子 Issue 番号と削除フラグが含まれる
-   * @purpose 解除結果が正しい構造で返される契約
-   */
-  it("should include parent, child, and removed flag in output", () => {
-    const output = {
-      parent: 958,
-      child: 952,
-      removed: true,
-    };
+describe("cmdSubAdd", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+  const mockOctokitRequest = jest.fn<(...args: any[]) => any>();
+  const mockOctokitIssuesGet = jest.fn<(...args: any[]) => any>();
 
-    expect(output).toHaveProperty("parent");
-    expect(output).toHaveProperty("child");
-    expect(output).toHaveProperty("removed");
-    expect(typeof output.parent).toBe("number");
-    expect(typeof output.child).toBe("number");
-    expect(typeof output.removed).toBe("boolean");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockResolveTargetRepo.mockReturnValue({ owner: "test-owner", name: "test-repo" });
+    mockGetOctokit.mockReturnValue({
+      request: mockOctokitRequest,
+      rest: { issues: { get: mockOctokitIssuesGet } },
+    });
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
+  });
+
+  /**
+   * @testdoc 無効な親 Issue 番号でエラーを返す
+   */
+  it("should return 1 for invalid parent issue number", async () => {
+    mockIsIssueNumber.mockReturnValue(false);
+
+    const result = await cmdSubAdd("abc", "952", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid parent issue number"));
+  });
+
+  /**
+   * @testdoc 子 Issue 番号なしでエラーを返す
+   */
+  it("should return 1 when child issue number is missing", async () => {
+    mockIsIssueNumber.mockImplementation((v: string) => v === "958");
+
+    const result = await cmdSubAdd("958", undefined, {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Child issue number is required"));
+  });
+
+  /**
+   * @testdoc 正常に子 Issue を紐付けして JSON を出力する
+   */
+  it("should add sub-issue and output JSON on success", async () => {
+    mockOctokitIssuesGet.mockResolvedValue({ data: { id: 12345 } });
+    mockOctokitRequest.mockResolvedValue({});
+
+    const result = await cmdSubAdd("958", "952", {}, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output).toEqual({ parent: 958, child: 952, added: true });
+    expect(logger.success).toHaveBeenCalledWith(expect.stringContaining("Added #952"));
+    expect(mockOctokitRequest).toHaveBeenCalledWith(
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
+      expect.objectContaining({
+        owner: "test-owner",
+        repo: "test-repo",
+        issue_number: 958,
+        sub_issue_id: 12345,
+      })
+    );
+  });
+
+  /**
+   * @testdoc 内部 ID 取得失敗でエラーを返す
+   */
+  it("should return 1 when internal ID resolution fails", async () => {
+    mockOctokitIssuesGet.mockRejectedValue(new Error("Not found"));
+
+    const result = await cmdSubAdd("958", "952", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Could not resolve internal ID"));
+  });
+
+  /**
+   * @testdoc 422 エラー時に親 Issue 上書きの案内を表示
+   */
+  it("should suggest --replace-parent on 422 error", async () => {
+    mockOctokitIssuesGet.mockResolvedValue({ data: { id: 12345 } });
+    mockOctokitRequest.mockRejectedValue(new Error("422 already has a parent"));
+
+    const result = await cmdSubAdd("958", "952", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--replace-parent"));
+  });
+
+  /**
+   * @testdoc --replace-parent オプションが REST API に渡される
+   */
+  it("should pass replace_parent_issue when replaceParent is true", async () => {
+    mockOctokitIssuesGet.mockResolvedValue({ data: { id: 12345 } });
+    mockOctokitRequest.mockResolvedValue({});
+
+    await cmdSubAdd("958", "952", { replaceParent: true }, logger);
+
+    expect(mockOctokitRequest).toHaveBeenCalledWith(
+      "POST /repos/{owner}/{repo}/issues/{issue_number}/sub_issues",
+      expect.objectContaining({ replace_parent_issue: true })
+    );
   });
 });
 
 // =============================================================================
-// issues show - subIssuesSummary output contract
+// cmdSubRemove
 // =============================================================================
 
-describe("issues show - sub issues summary", () => {
-  /**
-   * @testdoc 子 Issue がある場合に sub_issues フィールドが出力に含まれる
-   * @purpose subIssuesSummary が正しくフォーマットされることの確認
-   */
-  it("should format sub issues summary correctly", () => {
-    const total = 5;
-    const completed = 2;
-    const percentCompleted = 40;
+describe("cmdSubRemove", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+  const mockOctokitRequest = jest.fn<(...args: any[]) => any>();
+  const mockOctokitIssuesGet = jest.fn<(...args: any[]) => any>();
 
-    const formatted = `${total} 件 (${completed}/${total} 完了, ${percentCompleted}%)`;
-    expect(formatted).toBe("5 件 (2/5 完了, 40%)");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockResolveTargetRepo.mockReturnValue({ owner: "test-owner", name: "test-repo" });
+    mockGetOctokit.mockReturnValue({
+      request: mockOctokitRequest,
+      rest: { issues: { get: mockOctokitIssuesGet } },
+    });
+  });
+
+  afterEach(() => {
+    consoleSpy.mockRestore();
   });
 
   /**
-   * @testdoc 子 Issue がない場合に sub_issues フィールドが出力に含まれない
-   * @purpose total=0 の場合はフィールドが省略されることの確認
+   * @testdoc 正常に子 Issue を解除して JSON を出力する
    */
-  it("should omit sub_issues when total is 0", () => {
-    const output: Record<string, unknown> = {
-      number: 42,
-      title: "Test issue",
-    };
+  it("should remove sub-issue and output JSON on success", async () => {
+    mockOctokitIssuesGet.mockResolvedValue({ data: { id: 12345 } });
+    mockOctokitRequest.mockResolvedValue({});
 
-    const subSummary = { total: 0, completed: 0, percentCompleted: 0 };
-    if (subSummary.total > 0) {
-      output.sub_issues = `${subSummary.total} 件`;
-    }
+    const result = await cmdSubRemove("958", "952", {}, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
 
-    expect(output).not.toHaveProperty("sub_issues");
+    expect(result).toBe(0);
+    expect(output).toEqual({ parent: 958, child: 952, removed: true });
+    expect(logger.success).toHaveBeenCalledWith(expect.stringContaining("Removed #952"));
+    expect(mockOctokitRequest).toHaveBeenCalledWith(
+      "DELETE /repos/{owner}/{repo}/issues/{issue_number}/sub_issue",
+      expect.objectContaining({
+        owner: "test-owner",
+        repo: "test-repo",
+        issue_number: 958,
+        sub_issue_id: 12345,
+      })
+    );
+  });
+
+  /**
+   * @testdoc REST API エラー時にエラーメッセージを返す
+   */
+  it("should return 1 on API error", async () => {
+    mockOctokitIssuesGet.mockResolvedValue({ data: { id: 12345 } });
+    mockOctokitRequest.mockRejectedValue(new Error("Server error"));
+
+    const result = await cmdSubRemove("958", "952", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Failed to remove"));
+  });
+
+  /**
+   * @testdoc 無効な親 Issue 番号でエラーを返す
+   */
+  it("should return 1 for invalid parent issue number", async () => {
+    mockIsIssueNumber.mockReturnValue(false);
+
+    const result = await cmdSubRemove("abc", "952", {}, logger);
+
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid parent issue number"));
+  });
+});
+
+// =============================================================================
+// getIssueInternalId
+// =============================================================================
+
+describe("getIssueInternalId", () => {
+  const mockOctokitIssuesGet = jest.fn<(...args: any[]) => any>();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetOctokit.mockReturnValue({
+      rest: { issues: { get: mockOctokitIssuesGet } },
+    });
+  });
+
+  /**
+   * @testdoc 正常時に Issue の内部 ID を返す
+   */
+  it("should return internal ID on success", async () => {
+    mockOctokitIssuesGet.mockResolvedValue({ data: { id: 12345 } });
+
+    const result = await getIssueInternalId("owner", "repo", 42);
+
+    expect(result).toBe(12345);
+    expect(mockOctokitIssuesGet).toHaveBeenCalledWith({
+      owner: "owner",
+      repo: "repo",
+      issue_number: 42,
+    });
+  });
+
+  /**
+   * @testdoc API エラー時に null を返す
+   */
+  it("should return null on error", async () => {
+    mockOctokitIssuesGet.mockRejectedValue(new Error("Not found"));
+
+    const result = await getIssueInternalId("owner", "repo", 999);
+
+    expect(result).toBeNull();
   });
 });

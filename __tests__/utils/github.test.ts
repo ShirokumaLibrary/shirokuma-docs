@@ -396,14 +396,30 @@ describe("readBodyFile", () => {
    * @purpose stdin 対応（#598）— ファイルパスではなく fd 0 から読む
    */
   it('should attempt to read from stdin when source is "-"', () => {
+    // Jest では isTTY の値と fd 0 の状態が環境依存
+    // TTY → "stdin is a TTY" エラー、非 TTY → 成功 or EAGAIN
     try {
       const result = readBodyFile("-");
-      // Jest 環境では stdin が空パイプのため空文字列を返す
       expect(typeof result).toBe("string");
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       // ファイル "-" の ENOENT ではなく stdin 関連エラーであることを確認
       expect(message).not.toContain("ENOENT");
+    }
+  });
+
+  /**
+   * @testdoc TTY 環境で "--body-file -" を使用するとエラーをスローする
+   * @purpose TTY stdin ブロック防止（#1071）
+   */
+  it("should throw error when stdin is TTY", () => {
+    const originalIsTTY = process.stdin.isTTY;
+    try {
+      Object.defineProperty(process.stdin, "isTTY", { value: true, configurable: true });
+      expect(() => readBodyFile("-")).toThrow("stdin is a TTY");
+      expect(() => readBodyFile("-")).toThrow("--body-file -");
+    } finally {
+      Object.defineProperty(process.stdin, "isTTY", { value: originalIsTTY, configurable: true });
     }
   });
 

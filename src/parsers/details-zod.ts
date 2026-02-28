@@ -6,6 +6,7 @@
 
 import type { ZodParameter } from "../commands/details-types.js";
 import { escapeRegExp } from "../utils/sanitize.js";
+import { findMatchingBrace } from "../utils/brace-matching.js";
 
 /**
  * Zodスキーマを解析してパラメータ情報を抽出
@@ -28,17 +29,11 @@ export function parseZodSchema(
     return null;
   }
 
-  const startIndex = startMatch.index + startMatch[0].length;
-  let braceCount = 1;
-  let endIndex = startIndex;
+  const openBraceIndex = startMatch.index + startMatch[0].length - 1;
+  const closingBrace = findMatchingBrace(fileContent, openBraceIndex);
+  if (closingBrace === null) return null;
 
-  for (let i = startIndex; i < fileContent.length && braceCount > 0; i++) {
-    if (fileContent[i] === "{") braceCount++;
-    else if (fileContent[i] === "}") braceCount--;
-    endIndex = i;
-  }
-
-  const schemaBody = fileContent.slice(startIndex, endIndex);
+  const schemaBody = fileContent.slice(openBraceIndex + 1, closingBrace);
   const parameters: ZodParameter[] = [];
 
   const fieldPattern = /(\w+)\s*:\s*z\s*((?:\.\w+\s*\([^)]*\)\s*)+)/g;

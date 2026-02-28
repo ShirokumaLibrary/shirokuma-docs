@@ -7,6 +7,7 @@
 
 import { extractDescription } from "./feature-map-utils.js";
 import type { TypeItem, UtilityItem } from "../commands/feature-map-types.js";
+import { findMatchingBrace } from "../utils/brace-matching.js";
 
 /**
  * エクスポートされた型定義を抽出
@@ -22,10 +23,11 @@ export function extractExportedTypes(content: string): TypeItem[] {
     const braceStart = startIndex + match[0].length - 1; // '{' の位置
 
     // ブレースマッチングで本体を抽出
-    const fullMatch = extractBracedBlock(content, braceStart);
-    if (!fullMatch) continue;
+    const closingBrace = findMatchingBrace(content, braceStart);
+    if (closingBrace === null) continue;
 
-    const body = fullMatch.slice(1, -1); // { と } を除去
+    const fullMatch = content.slice(braceStart, closingBrace + 1);
+    const body = content.slice(braceStart + 1, closingBrace);
     const matchText = match[0].slice(0, -1) + fullMatch; // 完全なマッチテキスト
 
     // 直前のJSDocを抽出
@@ -49,10 +51,11 @@ export function extractExportedTypes(content: string): TypeItem[] {
     const startIndex = match.index!;
     const braceStart = startIndex + match[0].length - 1; // '{' の位置
 
-    const fullMatch = extractBracedBlock(content, braceStart);
-    if (!fullMatch) continue;
+    const closingBrace = findMatchingBrace(content, braceStart);
+    if (closingBrace === null) continue;
 
-    const body = fullMatch.slice(1, -1);
+    const fullMatch = content.slice(braceStart, closingBrace + 1);
+    const body = content.slice(braceStart + 1, closingBrace);
     const matchText = match[0].slice(0, -1) + fullMatch;
 
     const { jsdoc, sourceCode } = extractPrecedingJSDoc(content, startIndex, matchText);
@@ -93,10 +96,11 @@ export function extractExportedTypes(content: string): TypeItem[] {
     const startIndex = match.index!;
     const braceStart = startIndex + match[0].length - 1;
 
-    const fullMatch = extractBracedBlock(content, braceStart);
-    if (!fullMatch) continue;
+    const closingBrace = findMatchingBrace(content, braceStart);
+    if (closingBrace === null) continue;
 
-    const body = fullMatch.slice(1, -1);
+    const fullMatch = content.slice(braceStart, closingBrace + 1);
+    const body = content.slice(braceStart + 1, closingBrace);
     const matchText = match[0].slice(0, -1) + fullMatch;
 
     const { jsdoc, sourceCode } = extractPrecedingJSDoc(content, startIndex, matchText);
@@ -123,71 +127,9 @@ export function extractExportedTypes(content: string): TypeItem[] {
  * @returns ブレース含む完全なブロック、または null
  */
 export function extractBracedBlock(content: string, startIndex: number): string | null {
-  if (content[startIndex] !== "{") return null;
-
-  let depth = 0;
-  let inString = false;
-  let stringChar = "";
-  let inComment = false;
-  let commentType: "line" | "block" | null = null;
-
-  for (let i = startIndex; i < content.length; i++) {
-    const char = content[i];
-    const nextChar = content[i + 1] || "";
-    const prevChar = content[i - 1] || "";
-
-    // コメント処理
-    if (!inString && !inComment) {
-      if (char === "/" && nextChar === "/") {
-        inComment = true;
-        commentType = "line";
-        continue;
-      }
-      if (char === "/" && nextChar === "*") {
-        inComment = true;
-        commentType = "block";
-        continue;
-      }
-    }
-
-    if (inComment) {
-      if (commentType === "line" && char === "\n") {
-        inComment = false;
-        commentType = null;
-      } else if (commentType === "block" && prevChar === "*" && char === "/") {
-        inComment = false;
-        commentType = null;
-      }
-      continue;
-    }
-
-    // 文字列処理
-    if (!inString && (char === '"' || char === "'" || char === "`")) {
-      inString = true;
-      stringChar = char;
-      continue;
-    }
-
-    if (inString) {
-      if (char === stringChar && prevChar !== "\\") {
-        inString = false;
-        stringChar = "";
-      }
-      continue;
-    }
-
-    // ブレースカウント
-    if (char === "{") {
-      depth++;
-    } else if (char === "}") {
-      depth--;
-      if (depth === 0) {
-        return content.slice(startIndex, i + 1);
-      }
-    }
-  }
-
-  return null; // マッチしなかった
+  const closingBrace = findMatchingBrace(content, startIndex);
+  if (closingBrace === null) return null;
+  return content.slice(startIndex, closingBrace + 1);
 }
 
 /**

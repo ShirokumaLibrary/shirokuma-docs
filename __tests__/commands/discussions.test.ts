@@ -1,16 +1,17 @@
 /**
  * discussions Command Tests
  *
- * Tests for GitHub Discussions management command.
- * Since the command relies heavily on external API calls (octokit GraphQL/REST),
- * these tests focus on input validation and command routing logic.
- *
- * For full integration testing, use actual GitHub API in CI environment.
+ * Pure function tests for validateTitle/validateBody (static import)
+ * and integration tests for discussionsCommand (ESM mock + dynamic import).
  *
  * @testdoc GitHub Discussions管理コマンドのテスト
  */
 
-// Re-export test utilities from github.js for validation testing
+import { jest } from "@jest/globals";
+import type { Logger } from "../../src/utils/logger.js";
+import { createMockLogger } from "../helpers/command-test-utils.js";
+
+// Static import for pure function tests (uses real implementations)
 import {
   validateTitle,
   validateBody,
@@ -18,25 +19,86 @@ import {
   MAX_BODY_LENGTH,
 } from "../../src/utils/github.js";
 
-describe("discussions command validation", () => {
-  // ===========================================================================
-  // Input validation tests (pure functions from github.js)
-  // ===========================================================================
+// =============================================================================
+// Mocks (ESM: unstable_mockModule + dynamic import)
+// =============================================================================
 
+const mockRunGraphQL = jest.fn<(...args: any[]) => any>();
+const mockResolveTargetRepo = jest.fn<(...args: any[]) => any>();
+const mockValidateCrossRepoAlias = jest.fn<(...args: any[]) => any>();
+const mockLoadGhConfig = jest.fn<(...args: any[]) => any>();
+const mockGetDefaultCategory = jest.fn<(...args: any[]) => any>();
+const mockGetDefaultLimit = jest.fn<(...args: any[]) => any>();
+const mockFormatOutput = jest.fn<(...args: any[]) => any>();
+const mockGetRepoId = jest.fn<(...args: any[]) => any>();
+const mockStripDoubleQuotes = jest.fn<(...args: any[]) => any>();
+const mockCreateLogger = jest.fn<(...args: any[]) => any>();
+const mockValidateTitle = jest.fn<(...args: any[]) => any>();
+const mockValidateBody = jest.fn<(...args: any[]) => any>();
+
+jest.unstable_mockModule("../../src/utils/github.js", () => ({
+  runGraphQL: mockRunGraphQL,
+  getRepoInfo: jest.fn(),
+  validateTitle: mockValidateTitle,
+  validateBody: mockValidateBody,
+}));
+
+jest.unstable_mockModule("../../src/utils/repo-pairs.js", () => ({
+  resolveTargetRepo: mockResolveTargetRepo,
+  validateCrossRepoAlias: mockValidateCrossRepoAlias,
+}));
+
+jest.unstable_mockModule("../../src/utils/gh-config.js", () => ({
+  loadGhConfig: mockLoadGhConfig,
+  getDefaultCategory: mockGetDefaultCategory,
+  getDefaultLimit: mockGetDefaultLimit,
+}));
+
+jest.unstable_mockModule("../../src/utils/formatters.js", () => ({
+  formatOutput: mockFormatOutput,
+  GH_DISCUSSIONS_LIST_COLUMNS: [],
+}));
+
+jest.unstable_mockModule("../../src/utils/graphql-queries.js", () => ({
+  getRepoId: mockGetRepoId,
+  GRAPHQL_MUTATION_CREATE_DISCUSSION: "mutation CreateDiscussion {}",
+}));
+
+jest.unstable_mockModule("../../src/utils/sanitize.js", () => ({
+  stripDoubleQuotes: mockStripDoubleQuotes,
+}));
+
+jest.unstable_mockModule("../../src/utils/logger.js", () => ({
+  createLogger: mockCreateLogger,
+}));
+
+const { discussionsCommand } = await import("../../src/commands/discussions.js");
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+function mockGQLSuccess<T>(data: T) {
+  return { success: true, data: { data } };
+}
+
+// =============================================================================
+// Pure Function Tests
+// =============================================================================
+
+describe("discussions command validation", () => {
   describe("Title validation", () => {
     /**
      * @testdoc 有効なDiscussionタイトルを受け入れる
-     * @purpose 通常のタイトル文字列が受け入れられることを確認
      */
     it("should accept valid discussion titles", () => {
       expect(validateTitle("Session Handover 2025-01-26")).toBeNull();
       expect(validateTitle("Question about feature implementation")).toBeNull();
-      expect(validateTitle("a")).toBeNull(); // minimum valid
+      expect(validateTitle("a")).toBeNull();
     });
 
     /**
      * @testdoc [discussions] 空のタイトルを拒否する
-     * @purpose 空文字列がエラーを返すことを確認
      */
     it("should reject empty title", () => {
       expect(validateTitle("")).toBe("Title cannot be empty");
@@ -44,7 +106,6 @@ describe("discussions command validation", () => {
 
     /**
      * @testdoc [discussions] 空白のみのタイトルを拒否する
-     * @purpose ホワイトスペースのみがエラーを返すことを確認
      */
     it("should reject whitespace-only title", () => {
       expect(validateTitle("   ")).toBe("Title cannot be empty");
@@ -53,7 +114,6 @@ describe("discussions command validation", () => {
 
     /**
      * @testdoc [discussions] 最大長のタイトルを受け入れる
-     * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept title at max length", () => {
       const title = "a".repeat(MAX_TITLE_LENGTH);
@@ -62,7 +122,6 @@ describe("discussions command validation", () => {
 
     /**
      * @testdoc [discussions] 最大長を超えるタイトルを拒否する
-     * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject title exceeding max length", () => {
       const title = "a".repeat(MAX_TITLE_LENGTH + 1);
@@ -73,7 +132,6 @@ describe("discussions command validation", () => {
 
     /**
      * @testdoc セッションハンドオーバー形式のタイトルを受け入れる
-     * @purpose Handoversカテゴリで使用される典型的なタイトル形式を確認
      */
     it("should accept handover-style titles", () => {
       expect(validateTitle("[Handover] 2025-01-26 Session Summary")).toBeNull();
@@ -85,7 +143,6 @@ describe("discussions command validation", () => {
   describe("Body validation", () => {
     /**
      * @testdoc [discussions] undefinedのボディを受け入れる
-     * @purpose ボディが省略可能であることを確認
      */
     it("should accept undefined body", () => {
       expect(validateBody(undefined)).toBeNull();
@@ -93,7 +150,6 @@ describe("discussions command validation", () => {
 
     /**
      * @testdoc [discussions] 空のボディを受け入れる
-     * @purpose 空文字列が許可されることを確認
      */
     it("should accept empty body", () => {
       expect(validateBody("")).toBeNull();
@@ -101,7 +157,6 @@ describe("discussions command validation", () => {
 
     /**
      * @testdoc 有効なDiscussionボディを受け入れる
-     * @purpose 通常のボディ文字列が受け入れられることを確認
      */
     it("should accept valid discussion body", () => {
       expect(validateBody("This is a discussion topic")).toBeNull();
@@ -110,7 +165,6 @@ describe("discussions command validation", () => {
 
     /**
      * @testdoc [discussions] Markdown形式のボディを受け入れる
-     * @purpose Markdown構文が受け入れられることを確認
      */
     it("should accept markdown body", () => {
       const markdown = `## Session Summary
@@ -118,9 +172,6 @@ describe("discussions command validation", () => {
 ### Completed
 - Task 1
 - Task 2
-
-### In Progress
-- Task 3
 
 ### Notes
 \`\`\`typescript
@@ -132,7 +183,6 @@ const session = await startSession();
 
     /**
      * @testdoc [discussions] 最大長のボディを受け入れる
-     * @purpose 境界値（最大長ちょうど）が受け入れられることを確認
      */
     it("should accept body at max length", () => {
       const body = "a".repeat(MAX_BODY_LENGTH);
@@ -141,7 +191,6 @@ const session = await startSession();
 
     /**
      * @testdoc [discussions] 最大長を超えるボディを拒否する
-     * @purpose 境界値（最大長超過）がエラーを返すことを確認
      */
     it("should reject body exceeding max length", () => {
       const body = "a".repeat(MAX_BODY_LENGTH + 1);
@@ -152,1014 +201,325 @@ const session = await startSession();
   });
 });
 
-describe("discussions command options", () => {
+// =============================================================================
+// Integration Tests
+// =============================================================================
+
+describe("discussionsCommand", () => {
+  let logSpy: jest.SpiedFunction<typeof console.log>;
+  let exitSpy: jest.SpiedFunction<typeof process.exit>;
+  let mockLogger: Logger;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockLogger = createMockLogger();
+    mockCreateLogger.mockReturnValue(mockLogger);
+    mockValidateTitle.mockReturnValue(null);
+    mockValidateBody.mockReturnValue(null);
+    mockValidateCrossRepoAlias.mockReturnValue(null);
+    mockResolveTargetRepo.mockReturnValue({ owner: "o", name: "r" });
+    mockLoadGhConfig.mockReturnValue({});
+    mockGetDefaultCategory.mockReturnValue(null);
+    mockGetDefaultLimit.mockReturnValue(20);
+    mockFormatOutput.mockImplementation((data: unknown) => JSON.stringify(data, null, 2));
+    mockStripDoubleQuotes.mockImplementation((s: string) => s);
+    logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    exitSpy = jest.spyOn(process, "exit").mockImplementation(() => undefined as never);
+  });
+
+  afterEach(() => {
+    logSpy.mockRestore();
+    exitSpy.mockRestore();
+  });
+
   // ===========================================================================
-  // DiscussionsOptions type tests
+  // categories action
   // ===========================================================================
 
-  /**
-   * @testdoc DiscussionsOptionsの型定義を検証
-   * @purpose オプション構造が期待通りであることを確認
-   */
-  describe("DiscussionsOptions structure", () => {
-    it("should support list action options", () => {
-      const options = {
-        verbose: false,
-        category: "Handovers",
-        limit: 20,
-      };
+  describe("categories action", () => {
+    /**
+     * @testdoc categories アクションがカテゴリ一覧を JSON 出力する
+     */
+    it("should output categories as JSON", async () => {
+      mockRunGraphQL.mockResolvedValue(mockGQLSuccess({
+        repository: {
+          discussionCategories: {
+            nodes: [
+              { id: "DIC_1", name: "Handovers", description: "Session notes", emoji: ":handshake:", isAnswerable: false },
+              { id: "DIC_2", name: "Q&A", description: "Questions", emoji: ":question:", isAnswerable: true },
+            ],
+          },
+        },
+      }));
 
-      expect(options.verbose).toBe(false);
-      expect(options.category).toBe("Handovers");
-      expect(options.limit).toBe(20);
+      await discussionsCommand("categories", undefined, {});
+
+      expect(exitSpy).not.toHaveBeenCalled();
+      const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+      expect(output.repository).toBe("o/r");
+      expect(output.categories).toHaveLength(2);
+      expect(output.categories[0].name).toBe("Handovers");
+      expect(output.categories[1].is_answerable).toBe(true);
+      expect(output.total_count).toBe(2);
     });
 
-    it("should support create action options", () => {
-      const options = {
-        verbose: true,
-        category: "Handovers",
-        title: "Session Handover 2025-01-26",
-        bodyFile: "## Summary\n- Completed tasks\n- Next steps",
-      };
+    /**
+     * @testdoc カテゴリが0件の場合に warn を出力する
+     */
+    it("should warn when no categories found", async () => {
+      mockRunGraphQL.mockResolvedValue(mockGQLSuccess({
+        repository: {
+          discussionCategories: { nodes: [] },
+        },
+      }));
 
-      expect(options.category).toBe("Handovers");
-      expect(options.title).toBe("Session Handover 2025-01-26");
-      expect(options.bodyFile).toContain("## Summary");
+      await discussionsCommand("categories", undefined, {});
+
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        expect.stringContaining("No discussion categories found")
+      );
+      expect(exitSpy).not.toHaveBeenCalled();
     });
 
-    it("should support categories action options", () => {
-      const options = {
-        verbose: true,
-      };
+    /**
+     * @testdoc resolveTargetRepo が null で exit(1)
+     */
+    it("should exit(1) when repo is unavailable", async () => {
+      mockResolveTargetRepo.mockReturnValue(null);
 
-      expect(options.verbose).toBe(true);
-    });
+      await discussionsCommand("categories", undefined, {});
 
-    it("should support get action options", () => {
-      const options = {
-        verbose: false,
-      };
-
-      expect(options.verbose).toBe(false);
-    });
-
-    it("should support default values when options are omitted", () => {
-      const options: {
-        verbose?: boolean;
-        category?: string;
-        limit?: number;
-        title?: string;
-        bodyFile?: string;
-      } = {};
-
-      expect(options.verbose).toBeUndefined();
-      expect(options.category).toBeUndefined();
-      expect(options.limit).toBeUndefined();
-      expect(options.title).toBeUndefined();
-      expect(options.bodyFile).toBeUndefined();
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Could not determine repository")
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
-});
 
-describe("discussions command actions", () => {
   // ===========================================================================
-  // Action routing validation tests
+  // list action
   // ===========================================================================
 
-  describe("Action routing", () => {
+  describe("list action", () => {
     /**
-     * @testdoc [discussions] サポートされるアクション一覧
-     * @purpose 利用可能なアクションを文書化
+     * @testdoc list アクションが Discussion 一覧を出力する
      */
-    it("should document supported actions", () => {
-      const supportedActions = ["categories", "list", "get", "show", "create", "update", "search", "comment"];
+    it("should list discussions", async () => {
+      mockRunGraphQL.mockResolvedValue(mockGQLSuccess({
+        repository: {
+          discussions: {
+            pageInfo: { hasNextPage: false, endCursor: null },
+            nodes: [
+              {
+                id: "D_1", number: 42, title: "Test Discussion",
+                url: "https://github.com/o/r/discussions/42",
+                createdAt: "2025-01-01T00:00:00Z", updatedAt: "2025-01-02T00:00:00Z",
+                author: { login: "user1" }, category: { name: "Handovers" },
+              },
+            ],
+          },
+        },
+      }));
 
-      // These actions are supported by the command
-      supportedActions.forEach((action) => {
-        expect(typeof action).toBe("string");
+      await discussionsCommand("list", undefined, {});
+
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(mockFormatOutput).toHaveBeenCalledWith(
+        expect.objectContaining({
+          repository: "o/r",
+          total_count: 1,
+        }),
+        "json",
+        expect.any(Object)
+      );
+    });
+
+    /**
+     * @testdoc カテゴリが見つからない場合に exit(1)
+     */
+    it("should exit(1) when category not found", async () => {
+      mockRunGraphQL
+        .mockResolvedValueOnce(mockGQLSuccess({
+          repository: { discussionCategories: { nodes: [] } },
+        }))
+        .mockResolvedValueOnce(mockGQLSuccess({
+          repository: { discussionCategories: { nodes: [] } },
+        }));
+
+      await discussionsCommand("list", undefined, { category: "NonExistent" });
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("'NonExistent' not found")
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  // ===========================================================================
+  // get/show action
+  // ===========================================================================
+
+  describe("get/show action", () => {
+    /**
+     * @testdoc get アクションが Discussion 詳細を出力する
+     */
+    it("should get discussion by number", async () => {
+      mockRunGraphQL.mockResolvedValue(mockGQLSuccess({
+        repository: {
+          discussion: {
+            id: "D_1", number: 42, title: "Test Discussion",
+            body: "Body content", url: "https://github.com/o/r/discussions/42",
+            createdAt: "2025-01-01T00:00:00Z", updatedAt: "2025-01-02T00:00:00Z",
+            author: { login: "user1" }, category: { name: "Handovers" },
+          },
+        },
+      }));
+
+      await discussionsCommand("get", "42", {});
+
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(mockFormatOutput).toHaveBeenCalledWith(
+        expect.objectContaining({ number: 42, title: "Test Discussion" }),
+        "frontmatter"
+      );
+    });
+
+    /**
+     * @testdoc target 未指定で exit(1)
+     */
+    it("should exit(1) when target is missing", async () => {
+      await discussionsCommand("get", undefined, {});
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("Discussion ID or number required")
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    /**
+     * @testdoc Discussion が見つからない場合に exit(1)
+     */
+    it("should exit(1) when discussion not found", async () => {
+      mockRunGraphQL.mockResolvedValue(mockGQLSuccess({
+        repository: { discussion: null },
+      }));
+
+      await discussionsCommand("get", "999", {});
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        expect.stringContaining("'999' not found")
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+
+    /**
+     * @testdoc show アクションの usage メッセージに 'show' を表示 (#761)
+     */
+    it("should show usage message with 'show' action name", async () => {
+      await discussionsCommand("show", undefined, {});
+
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        expect.stringContaining("discussions show")
+      );
+      expect(exitSpy).toHaveBeenCalledWith(1);
+    });
+  });
+
+  // ===========================================================================
+  // create action
+  // ===========================================================================
+
+  describe("create action", () => {
+    /**
+     * @testdoc create アクションで Discussion を作成する
+     */
+    it("should create a discussion", async () => {
+      mockGetRepoId.mockResolvedValue("R_abc123");
+      mockRunGraphQL
+        .mockResolvedValueOnce(mockGQLSuccess({
+          repository: {
+            discussionCategories: {
+              nodes: [{ id: "DIC_1", name: "Handovers", description: "", emoji: "", isAnswerable: false }],
+            },
+          },
+        }))
+        .mockResolvedValueOnce(mockGQLSuccess({
+          createDiscussion: {
+            discussion: { id: "D_new", number: 100, url: "https://github.com/o/r/discussions/100", title: "New Discussion" },
+          },
+        }));
+
+      await discussionsCommand("create", undefined, {
+        title: "New Discussion",
+        bodyFile: "Discussion body",
+        category: "Handovers",
       });
 
-      expect(supportedActions).toContain("categories");
-      expect(supportedActions).toContain("list");
-      expect(supportedActions).toContain("get");
-      expect(supportedActions).toContain("show");
-      expect(supportedActions).toContain("create");
-      expect(supportedActions).toContain("update");
-      expect(supportedActions).toContain("search");
-      expect(supportedActions).toContain("comment");
+      expect(exitSpy).not.toHaveBeenCalled();
+      expect(mockLogger.success).toHaveBeenCalledWith(expect.stringContaining("#100"));
+      const output = JSON.parse(logSpy.mock.calls[0][0] as string);
+      expect(output.number).toBe(100);
+      expect(output.category).toBe("Handovers");
     });
 
     /**
-     * @testdoc categoriesアクションはターゲットを必要としない
-     * @purpose targetがundefinedでも動作することを確認
+     * @testdoc --title 未指定で exit(1)
      */
-    it("categories action should not require target", () => {
-      const action = "categories";
-      const target = undefined;
+    it("should exit(1) when title is missing", async () => {
+      await discussionsCommand("create", undefined, { bodyFile: "body", category: "Handovers" });
 
-      expect(action).toBe("categories");
-      expect(target).toBeUndefined();
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining("--title is required"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     /**
-     * @testdoc listアクションはターゲットを必要としない
-     * @purpose targetがundefinedでも動作することを確認
+     * @testdoc --body-file 未指定で exit(1)
      */
-    it("list action should not require target", () => {
-      const action = "list";
-      const target = undefined;
+    it("should exit(1) when body is missing", async () => {
+      await discussionsCommand("create", undefined, { title: "Title", category: "Handovers" });
 
-      expect(action).toBe("list");
-      expect(target).toBeUndefined();
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining("--body-file is required"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     /**
-     * @testdoc listアクションは--categoryオプションをサポート
-     * @purpose カテゴリでフィルタリングできることを文書化
+     * @testdoc --category 未指定（設定デフォルトなし）で exit(1)
      */
-    it("list action should support --category option", () => {
-      const options = {
-        category: "Handovers",
-        limit: 10,
-      };
+    it("should exit(1) when category is missing and no config default", async () => {
+      await discussionsCommand("create", undefined, { title: "Title", bodyFile: "body" });
 
-      expect(options.category).toBe("Handovers");
-      expect(options.limit).toBe(10);
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining("--category is required"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
 
     /**
-     * @testdoc getアクションはDiscussion IDまたは番号を必要とする
-     * @purpose targetが必須であることを文書化
+     * @testdoc リポジトリ ID 取得失敗で exit(1)
      */
-    it("get action should require discussion ID or number", () => {
-      const action = "get";
-      const validTargets = ["1", "42", "D_kwDOABC123", "MDEwOkRpc2N1c3Npb24x"];
-      const invalidTargets = [undefined, ""];
+    it("should exit(1) when repo ID not available", async () => {
+      mockGetRepoId.mockResolvedValue(null);
 
-      validTargets.forEach((target) => {
-        expect(target).toBeTruthy();
+      await discussionsCommand("create", undefined, {
+        title: "Title", bodyFile: "body", category: "Handovers",
       });
 
-      invalidTargets.forEach((target) => {
-        expect(target).toBeFalsy();
-      });
-    });
-
-    /**
-     * @testdoc createアクションは--titleと--body-fileを必要とする
-     * @purpose 必須オプションを文書化
-     */
-    it("create action should require --title and --body-file", () => {
-      const action = "create";
-      const validOptions = {
-        title: "New Discussion",
-        bodyFile: "Discussion content",
-        category: "Handovers",
-      };
-      const invalidOptions = {
-        title: undefined,
-        bodyFile: undefined,
-        category: "Handovers",
-      };
-
-      expect(validOptions.title).toBeDefined();
-      expect(validOptions.bodyFile).toBeDefined();
-      expect(validOptions.category).toBeDefined();
-      expect(invalidOptions.title).toBeUndefined();
-      expect(invalidOptions.bodyFile).toBeUndefined();
-    });
-
-    /**
-     * @testdoc createアクションは--categoryを必要とする（設定ファイルのデフォルトがない場合）
-     * @purpose カテゴリオプションが必須であることを文書化
-     */
-    it("create action should require --category (or config default)", () => {
-      const optionsWithCategory = {
-        title: "New Discussion",
-        bodyFile: "Content",
-        category: "Handovers",
-      };
-      const optionsWithoutCategory = {
-        title: "New Discussion",
-        bodyFile: "Content",
-        category: undefined,
-      };
-
-      expect(optionsWithCategory.category).toBe("Handovers");
-      expect(optionsWithoutCategory.category).toBeUndefined();
-    });
-
-    /**
-     * @testdoc updateアクションはDiscussion番号/IDと--title/--body-fileを必要とする
-     * @purpose 必須オプションを文書化
-     */
-    it("update action should require target and at least --title or --body-file", () => {
-      const action = "update";
-      const validTarget = "30";
-      const validOptions = {
-        title: "Updated Title",
-        bodyFile: "Updated body content",
-      };
-      const titleOnlyOptions = {
-        title: "Updated Title",
-        bodyFile: undefined,
-      };
-      const bodyOnlyOptions = {
-        title: undefined,
-        bodyFile: "Updated body content",
-      };
-      const invalidOptions = {
-        title: undefined,
-        bodyFile: undefined,
-      };
-
-      expect(action).toBe("update");
-      expect(validTarget).toBeTruthy();
-      expect(validOptions.title).toBeDefined();
-      expect(validOptions.bodyFile).toBeDefined();
-      expect(titleOnlyOptions.title).toBeDefined();
-      expect(bodyOnlyOptions.bodyFile).toBeDefined();
-      // At least one must be defined
-      expect(invalidOptions.title || invalidOptions.bodyFile).toBeFalsy();
-    });
-
-    /**
-     * @testdoc searchアクションはキーワードまたはカテゴリを必要とする
-     * @purpose 検索オプションを文書化
-     */
-    it("search action should require query or category", () => {
-      const action = "search";
-      const validQueryOptions = {
-        query: "Radix hydration",
-        category: undefined,
-      };
-      const validCategoryOptions = {
-        query: undefined,
-        category: "Knowledge",
-      };
-      const validBothOptions = {
-        query: "Radix hydration",
-        category: "Knowledge",
-      };
-      const invalidOptions = {
-        query: undefined,
-        category: undefined,
-      };
-
-      expect(action).toBe("search");
-      expect(validQueryOptions.query).toBeDefined();
-      expect(validCategoryOptions.category).toBeDefined();
-      expect(validBothOptions.query).toBeDefined();
-      expect(validBothOptions.category).toBeDefined();
-      // At least one must be defined
-      expect(invalidOptions.query || invalidOptions.category).toBeFalsy();
-    });
-
-    /**
-     * @testdoc commentアクションはDiscussion番号/IDと--body-fileを必要とする
-     * @purpose 必須オプションを文書化
-     */
-    it("comment action should require target and --body-file", () => {
-      const action = "comment";
-      const validTarget = "30";
-      const validOptions = {
-        bodyFile: "追加情報...",
-      };
-      const invalidOptions = {
-        bodyFile: undefined,
-      };
-
-      expect(action).toBe("comment");
-      expect(validTarget).toBeTruthy();
-      expect(validOptions.bodyFile).toBeDefined();
-      expect(invalidOptions.bodyFile).toBeUndefined();
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining("Could not get repository ID"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
-});
 
-describe("discussions Handovers category", () => {
   // ===========================================================================
-  // Handovers category documentation
+  // unknown action
   // ===========================================================================
 
-  describe("Handovers category purpose", () => {
+  describe("unknown action", () => {
     /**
-     * @testdoc Handoversカテゴリはセッション管理に使用される
-     * @purpose 主な用途を文書化
+     * @testdoc 不明なアクションで exit(1)
      */
-    it("should document Handovers category primary use case", () => {
-      const handoversPurpose = {
-        category: "Handovers",
-        purpose: "Session management and handover documentation",
-        useCases: [
-          "Session start/end notes",
-          "Progress handover between agents",
-          "Context preservation",
-          "Team communication",
-        ],
-      };
-
-      expect(handoversPurpose.category).toBe("Handovers");
-      expect(handoversPurpose.useCases).toContain("Session start/end notes");
-      expect(handoversPurpose.useCases).toContain("Progress handover between agents");
-    });
-
-    /**
-     * @testdoc Handover Discussionの典型的な構造
-     * @purpose ハンドオーバーボディの推奨フォーマットを文書化
-     */
-    it("should document typical handover discussion structure", () => {
-      const handoverTemplate = `## Session Summary
-
-### Completed
-- [ ] Task 1
-- [ ] Task 2
-
-### In Progress
-- [ ] Current task
-
-### Blockers
-- None
-
-### Next Steps
-1. Continue with...
-2. Review...
-
-### Notes
-Additional context for the next agent.
-`;
-
-      expect(handoverTemplate).toContain("## Session Summary");
-      expect(handoverTemplate).toContain("### Completed");
-      expect(handoverTemplate).toContain("### In Progress");
-      expect(handoverTemplate).toContain("### Next Steps");
-    });
-
-    /**
-     * @testdoc shirokuma-docs.config.yamlでデフォルトカテゴリを設定可能
-     * @purpose 設定ファイルによるデフォルト値を文書化
-     */
-    it("should document config-based default category", () => {
-      const configExample = {
-        github: {
-          discussionsCategory: "Handovers",
-          defaultLimit: 20,
-        },
-      };
-
-      expect(configExample.github.discussionsCategory).toBe("Handovers");
-      expect(configExample.github.defaultLimit).toBe(20);
-    });
-  });
-});
-
-describe("discussions output format", () => {
-  // ===========================================================================
-  // Output structure validation tests
-  // ===========================================================================
-
-  describe("categories output structure", () => {
-    /**
-     * @testdoc categories出力のJSON構造
-     * @purpose 出力形式を文書化
-     */
-    it("should document categories output structure", () => {
-      const expectedOutput = {
-        repository: "owner/repo",
-        categories: [
-          {
-            id: "DIC_kwDOABC123",
-            name: "Announcements",
-            description: "Important announcements",
-            emoji: ":mega:",
-            is_answerable: false,
-          },
-          {
-            id: "DIC_kwDOABC456",
-            name: "Handovers",
-            description: "Session handover notes",
-            emoji: ":handshake:",
-            is_answerable: false,
-          },
-          {
-            id: "DIC_kwDOABC789",
-            name: "Q&A",
-            description: "Ask questions",
-            emoji: ":question:",
-            is_answerable: true,
-          },
-        ],
-        total_count: 3,
-      };
-
-      expect(expectedOutput.repository).toBeDefined();
-      expect(expectedOutput.categories).toBeInstanceOf(Array);
-      expect(expectedOutput.total_count).toBe(3);
-
-      const handovers = expectedOutput.categories.find((c) => c.name === "Handovers");
-      expect(handovers).toBeDefined();
-      expect(handovers?.id).toBeDefined();
-      expect(handovers?.is_answerable).toBe(false);
-    });
-  });
-
-  describe("list output structure", () => {
-    /**
-     * @testdoc [discussions] list出力のJSON構造
-     * @purpose 出力形式を文書化
-     */
-    it("should document list output structure", () => {
-      const expectedOutput = {
-        repository: "owner/repo",
-        category: "Handovers",
-        discussions: [
-          {
-            id: "D_kwDOABC123",
-            number: 42,
-            title: "Session Handover 2025-01-26",
-            url: "https://github.com/owner/repo/discussions/42",
-            created_at: "2025-01-26T10:00:00Z",
-            updated_at: "2025-01-26T12:00:00Z",
-            author: "username",
-            category: "Handovers",
-            answer_chosen: false,
-          },
-        ],
-        total_count: 1,
-      };
-
-      expect(expectedOutput.repository).toBeDefined();
-      expect(expectedOutput.category).toBe("Handovers");
-      expect(expectedOutput.discussions).toBeInstanceOf(Array);
-      expect(expectedOutput.total_count).toBe(1);
-
-      const discussion = expectedOutput.discussions[0];
-      expect(discussion.id).toBeDefined();
-      expect(discussion.number).toBe(42);
-      expect(discussion.category).toBe("Handovers");
-      expect(discussion.answer_chosen).toBe(false);
-    });
-
-    /**
-     * @testdoc list出力でcategoryがnullの場合（全カテゴリ取得）
-     * @purpose カテゴリフィルターなしの場合を文書化
-     */
-    it("should document list output without category filter", () => {
-      const expectedOutput = {
-        repository: "owner/repo",
-        category: null,
-        discussions: [],
-        total_count: 0,
-      };
-
-      expect(expectedOutput.category).toBeNull();
-    });
-  });
-
-  describe("get output structure", () => {
-    /**
-     * @testdoc [discussions] get出力のJSON構造
-     * @purpose 出力形式を文書化
-     */
-    it("should document get output structure", () => {
-      const expectedOutput = {
-        id: "D_kwDOABC123",
-        number: 42,
-        title: "Session Handover 2025-01-26",
-        body: "## Session Summary\n\n### Completed\n- Task 1\n- Task 2",
-        url: "https://github.com/owner/repo/discussions/42",
-        created_at: "2025-01-26T10:00:00Z",
-        updated_at: "2025-01-26T12:00:00Z",
-        author: "username",
-        category: "Handovers",
-        answer_chosen: false,
-      };
-
-      expect(expectedOutput.id).toBeDefined();
-      expect(expectedOutput.number).toBe(42);
-      expect(expectedOutput.title).toBeDefined();
-      expect(expectedOutput.body).toBeDefined();
-      expect(expectedOutput.url).toContain("/discussions/42");
-      expect(expectedOutput.author).toBeDefined();
-      expect(expectedOutput.category).toBe("Handovers");
-    });
-
-    /**
-     * @testdoc getアクションは番号とGraphQL IDの両方を受け入れる
-     * @purpose 2つの識別子形式を文書化
-     */
-    it("should document both number and ID as valid identifiers", () => {
-      const byNumber = "42";
-      const byGraphQLId = "D_kwDOABC123";
-
-      // Number format: digits only
-      expect(/^\d+$/.test(byNumber)).toBe(true);
-
-      // GraphQL ID format: starts with D_ or base64-like
-      expect(byGraphQLId.startsWith("D_") || /^[A-Za-z0-9+/=]+$/.test(byGraphQLId)).toBe(true);
-    });
-  });
-
-  describe("create output structure", () => {
-    /**
-     * @testdoc [discussions] create出力のJSON構造
-     * @purpose 出力形式を文書化
-     */
-    it("should document create output structure", () => {
-      const expectedOutput = {
-        id: "D_kwDOABC123",
-        number: 100,
-        title: "New Discussion",
-        url: "https://github.com/owner/repo/discussions/100",
-        category: "Handovers",
-      };
-
-      expect(expectedOutput.id).toBeDefined();
-      expect(expectedOutput.number).toBe(100);
-      expect(expectedOutput.title).toBe("New Discussion");
-      expect(expectedOutput.url).toContain("/discussions/100");
-      expect(expectedOutput.category).toBe("Handovers");
-    });
-  });
-
-  describe("update output structure", () => {
-    /**
-     * @testdoc update出力のJSON構造
-     * @purpose 出力形式を文書化
-     */
-    it("should document update output structure", () => {
-      const expectedOutput = {
-        id: "D_kwDOABC123",
-        number: 30,
-        title: "Updated Title",
-        url: "https://github.com/owner/repo/discussions/30",
-      };
-
-      expect(expectedOutput.id).toBeDefined();
-      expect(expectedOutput.number).toBe(30);
-      expect(expectedOutput.title).toBe("Updated Title");
-      expect(expectedOutput.url).toContain("/discussions/30");
-    });
-
-    /**
-     * @testdoc updateアクションは番号とGraphQL IDの両方を受け入れる
-     * @purpose 2つの識別子形式を文書化
-     */
-    it("should accept both number and GraphQL ID", () => {
-      const byNumber = "30";
-      const byGraphQLId = "D_kwDOABC123";
-
-      expect(/^\d+$/.test(byNumber)).toBe(true);
-      expect(byGraphQLId.startsWith("D_")).toBe(true);
-    });
-  });
-
-  describe("search output structure", () => {
-    /**
-     * @testdoc [discussions] search出力のJSON構造
-     * @purpose 出力形式を文書化
-     */
-    it("should document search output structure", () => {
-      const expectedOutput = {
-        repository: "owner/repo",
-        query: "Radix hydration",
-        category: "Knowledge",
-        discussions: [
-          {
-            id: "D_kwDOABC123",
-            number: 42,
-            title: "Radix UI Hydration Issue",
-            url: "https://github.com/owner/repo/discussions/42",
-            created_at: "2025-01-26T10:00:00Z",
-            updated_at: "2025-01-26T12:00:00Z",
-            author: "username",
-            category: "Knowledge",
-            answer_chosen: false,
-          },
-        ],
-        total_count: 1,
-      };
-
-      expect(expectedOutput.repository).toBeDefined();
-      expect(expectedOutput.query).toBe("Radix hydration");
-      expect(expectedOutput.category).toBe("Knowledge");
-      expect(expectedOutput.discussions).toBeInstanceOf(Array);
-      expect(expectedOutput.total_count).toBe(1);
-    });
-
-    /**
-     * @testdoc searchアクションはカテゴリでフィルタリング可能
-     * @purpose カテゴリフィルター機能を文書化
-     */
-    it("should support category filtering in search", () => {
-      const optionsWithCategory = {
-        query: "hydration",
-        category: "Knowledge",
-      };
-      const optionsWithoutCategory = {
-        query: "hydration",
-        category: undefined,
-      };
-
-      expect(optionsWithCategory.category).toBe("Knowledge");
-      expect(optionsWithoutCategory.category).toBeUndefined();
-    });
-  });
-
-  describe("comment output structure", () => {
-    /**
-     * @testdoc comment出力のJSON構造
-     * @purpose 出力形式を文書化
-     */
-    it("should document comment output structure", () => {
-      const expectedOutput = {
-        discussion_id: "D_kwDOABC123",
-        discussion_number: 30,
-        comment_id: "DC_kwDOABC456",
-        comment_url: "https://github.com/owner/repo/discussions/30#discussioncomment-789",
-      };
-
-      expect(expectedOutput.discussion_id).toBeDefined();
-      expect(expectedOutput.discussion_number).toBe(30);
-      expect(expectedOutput.comment_id).toBeDefined();
-      expect(expectedOutput.comment_url).toContain("/discussions/30");
-    });
-
-    /**
-     * @testdoc commentアクションは番号とGraphQL IDの両方を受け入れる
-     * @purpose 2つの識別子形式を文書化
-     */
-    it("should accept both number and GraphQL ID for comment target", () => {
-      const byNumber = "30";
-      const byGraphQLId = "D_kwDOABC123";
-
-      expect(/^\d+$/.test(byNumber)).toBe(true);
-      expect(byGraphQLId.startsWith("D_")).toBe(true);
-    });
-  });
-});
-
-describe("discussions error handling", () => {
-  // ===========================================================================
-  // Error condition documentation tests
-  // ===========================================================================
-
-  describe("Error conditions", () => {
-    /**
-     * @testdoc [discussions] リポジトリ情報が取得できない場合
-     * @purpose getRepoInfoがnullを返す場合のエラー条件を文書化
-     */
-    it("should document repository unavailable error", () => {
-      const errorCondition = {
-        cause: "Not in a git repository or GitHub API not configured",
-        expectedError: "Could not determine repository",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc Discussionが見つからない場合
-     * @purpose 存在しないDiscussion番号/IDのエラー条件を文書化
-     */
-    it("should document discussion not found error", () => {
-      const errorCondition = {
-        cause: "Discussion number or ID does not exist",
-        expectedError: "Discussion '999' not found",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc [discussions] タイトルが指定されていない場合
-     * @purpose createアクションでタイトル未指定のエラー条件を文書化
-     */
-    it("should document title required error", () => {
-      const errorCondition = {
-        cause: "--title option not provided for create action",
-        expectedError: "--title is required",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc ボディが指定されていない場合
-     * @purpose createアクションでbody未指定のエラー条件を文書化
-     */
-    it("should document body required error", () => {
-      const errorCondition = {
-        cause: "--body-file option not provided for create action",
-        expectedError: "--body-file is required",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc カテゴリが指定されていない場合
-     * @purpose createアクションでcategory未指定のエラー条件を文書化
-     */
-    it("should document category required error", () => {
-      const errorCondition = {
-        cause: "--category option not provided and no config default",
-        expectedError: "--category is required (or set github.discussionsCategory in shirokuma-docs.config.yaml)",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc カテゴリが存在しない場合
-     * @purpose 無効なカテゴリ名のエラー条件を文書化
-     */
-    it("should document category not found error", () => {
-      const errorCondition = {
-        cause: "Category name does not exist in repository",
-        expectedError: "Category 'InvalidCategory' not found",
-        additionalInfo: "Available categories: Announcements, Handovers, Q&A",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-      expect(errorCondition.additionalInfo).toContain("Available categories");
-    });
-
-    /**
-     * @testdoc [discussions] 不明なアクションが指定された場合
-     * @purpose サポートされていないアクションのエラー条件を文書化
-     */
-    it("should document unknown action error", () => {
-      const errorCondition = {
-        cause: "Action not in [categories, list, get, create, update, search, comment]",
-        expectedError: "Unknown action: invalid",
-        additionalInfo: "Available actions: categories, list, get, create, update, search, comment",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc updateアクションで更新フィールドが指定されていない場合
-     * @purpose --title も --body-file も指定されていない場合のエラー条件を文書化
-     */
-    it("should document update requires title or body error", () => {
-      const errorCondition = {
-        cause: "Neither --title nor --body-file provided for update action",
-        expectedError: "At least --title or --body-file is required for update",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc updateアクションでターゲットが指定されていない場合
-     * @purpose ID/番号未指定のエラー条件を文書化
-     */
-    it("should document target required for update error", () => {
-      const errorCondition = {
-        cause: "Discussion ID or number not provided for update action",
-        expectedError: "Discussion ID or number required",
-        usage: "shirokuma-docs discussions update <id-or-number> --title ... --body-file ...",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc searchアクションでクエリもカテゴリも指定されていない場合
-     * @purpose 検索条件未指定のエラー条件を文書化
-     */
-    it("should document search requires query or category error", () => {
-      const errorCondition = {
-        cause: "Neither search query nor --category provided for search action",
-        expectedError: "Either search query or --category is required",
-        usage: "shirokuma-docs discussions search <query> [--category ...]",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc commentアクションでターゲットが指定されていない場合
-     * @purpose ID/番号未指定のエラー条件を文書化
-     */
-    it("should document target required for comment error", () => {
-      const errorCondition = {
-        cause: "Discussion ID or number not provided for comment action",
-        expectedError: "Discussion ID or number required",
-        usage: "shirokuma-docs discussions comment <id-or-number> --body-file ...",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc commentアクションでボディが指定されていない場合
-     * @purpose --body-file未指定のエラー条件を文書化
-     */
-    it("should document body required for comment error", () => {
-      const errorCondition = {
-        cause: "--body-file option not provided for comment action",
-        expectedError: "--body-file is required for comment",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc getアクションでターゲットが指定されていない場合
-     * @purpose ID/番号未指定のエラー条件を文書化
-     */
-    it("should document target required for get error", () => {
-      const errorCondition = {
-        cause: "Discussion ID or number not provided for get action",
-        expectedError: "Discussion ID or number required",
-        usage: "shirokuma-docs discussions get <id-or-number>",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc showアクションでターゲットが指定されていない場合（getのエイリアス） (#761)
-     * @purpose show使用時のエラーメッセージにshowが表示されることを文書化
-     */
-    it("should document target required for show error (#761)", () => {
-      const action = "show";
-      const errorCondition = {
-        cause: "Discussion ID or number not provided for show action",
-        expectedError: "Discussion ID or number required",
-        usage: `shirokuma-docs discussions ${action} <id-or-number>`,
-        exitCode: 1,
-      };
-
-      expect(errorCondition.usage).toContain("show");
-      expect(errorCondition.usage).not.toContain("get");
-      expect(errorCondition.exitCode).toBe(1);
-    });
-
-    /**
-     * @testdoc Discussionsが有効化されていない場合
-     * @purpose リポジトリでDiscussionsが無効の場合を文書化
-     */
-    it("should document discussions not enabled warning", () => {
-      const warningCondition = {
-        cause: "Discussions feature not enabled for repository",
-        expectedWarning: "No discussion categories found. Discussions may not be enabled for this repository.",
-        exitCode: 0, // Warning, not error
-      };
-
-      expect(warningCondition.exitCode).toBe(0);
-    });
-
-    /**
-     * @testdoc リポジトリIDが取得できない場合
-     * @purpose GraphQLでリポジトリIDが取得できない場合を文書化
-     */
-    it("should document repository ID unavailable error", () => {
-      const errorCondition = {
-        cause: "Could not fetch repository ID via GraphQL",
-        expectedError: "Could not get repository ID",
-        exitCode: 1,
-      };
-
-      expect(errorCondition.exitCode).toBe(1);
-    });
-  });
-});
-
-describe("discussions GraphQL queries", () => {
-  // ===========================================================================
-  // GraphQL query documentation tests
-  // ===========================================================================
-
-  describe("Query documentation", () => {
-    /**
-     * @testdoc 使用されるGraphQLクエリ一覧
-     * @purpose 内部で使用されるクエリを文書化
-     */
-    it("should document GraphQL queries used", () => {
-      const queries = [
-        {
-          name: "GRAPHQL_QUERY_CATEGORIES",
-          purpose: "Fetch discussion categories for a repository",
-          variables: ["owner", "name"],
-        },
-        {
-          name: "GRAPHQL_QUERY_DISCUSSIONS",
-          purpose: "List discussions with optional category filter and pagination",
-          variables: ["owner", "name", "first", "categoryId", "cursor"],
-        },
-        {
-          name: "GRAPHQL_QUERY_DISCUSSION",
-          purpose: "Get discussion details by number",
-          variables: ["owner", "name", "number"],
-        },
-        {
-          name: "GRAPHQL_QUERY_DISCUSSION_BY_ID",
-          purpose: "Get discussion details by GraphQL ID",
-          variables: ["id"],
-        },
-        {
-          name: "GRAPHQL_QUERY_REPO_ID",
-          purpose: "Get repository ID for mutations",
-          variables: ["owner", "name"],
-        },
-        {
-          name: "GRAPHQL_MUTATION_CREATE_DISCUSSION",
-          purpose: "Create a new discussion",
-          variables: ["repositoryId", "categoryId", "title", "body"],
-        },
-        {
-          name: "GRAPHQL_MUTATION_UPDATE_DISCUSSION",
-          purpose: "Update discussion title and/or body",
-          variables: ["discussionId", "title", "body"],
-        },
-        {
-          name: "GRAPHQL_MUTATION_ADD_DISCUSSION_COMMENT",
-          purpose: "Add a comment to a discussion",
-          variables: ["discussionId", "body"],
-        },
-        {
-          name: "GRAPHQL_QUERY_SEARCH_DISCUSSIONS",
-          purpose: "Search discussions by keyword and optional category",
-          variables: ["query", "first"],
-        },
-      ];
-
-      expect(queries.length).toBe(9);
-
-      const createMutation = queries.find((q) => q.name === "GRAPHQL_MUTATION_CREATE_DISCUSSION");
-      expect(createMutation).toBeDefined();
-      expect(createMutation?.variables).toContain("repositoryId");
-      expect(createMutation?.variables).toContain("categoryId");
-
-      const updateMutation = queries.find((q) => q.name === "GRAPHQL_MUTATION_UPDATE_DISCUSSION");
-      expect(updateMutation).toBeDefined();
-      expect(updateMutation?.variables).toContain("discussionId");
-
-      const commentMutation = queries.find((q) => q.name === "GRAPHQL_MUTATION_ADD_DISCUSSION_COMMENT");
-      expect(commentMutation).toBeDefined();
-      expect(commentMutation?.variables).toContain("body");
-
-      const searchQuery = queries.find((q) => q.name === "GRAPHQL_QUERY_SEARCH_DISCUSSIONS");
-      expect(searchQuery).toBeDefined();
-      expect(searchQuery?.variables).toContain("query");
-    });
-
-    /**
-     * @testdoc DiscussionCategoryの構造
-     * @purpose カテゴリの内部データ構造を文書化
-     */
-    it("should document DiscussionCategory structure", () => {
-      const categoryStructure = {
-        id: "GraphQL ID (e.g., DIC_kwDOABC123)",
-        name: "Category name (e.g., Handovers)",
-        description: "Category description",
-        emoji: "Emoji string (e.g., :handshake:)",
-        isAnswerable: "Whether discussions can have answers marked",
-      };
-
-      expect(Object.keys(categoryStructure)).toContain("id");
-      expect(Object.keys(categoryStructure)).toContain("name");
-      expect(Object.keys(categoryStructure)).toContain("isAnswerable");
-    });
-
-    /**
-     * @testdoc Discussionの構造
-     * @purpose ディスカッションの内部データ構造を文書化
-     */
-    it("should document Discussion structure", () => {
-      const discussionStructure = {
-        id: "GraphQL ID",
-        number: "Discussion number (integer)",
-        title: "Discussion title",
-        body: "Discussion body (optional in list, included in get)",
-        url: "GitHub URL",
-        createdAt: "ISO 8601 timestamp",
-        updatedAt: "ISO 8601 timestamp",
-        author: "Author login name",
-        category: "Category name",
-        answerChosenAt: "Timestamp if answer chosen (Q&A category)",
-      };
-
-      expect(Object.keys(discussionStructure)).toContain("id");
-      expect(Object.keys(discussionStructure)).toContain("number");
-      expect(Object.keys(discussionStructure)).toContain("answerChosenAt");
+    it("should exit(1) for unknown action", async () => {
+      await discussionsCommand("invalid", undefined, {});
+
+      expect(mockLogger.error).toHaveBeenCalledWith(expect.stringContaining("Unknown action: invalid"));
+      expect(exitSpy).toHaveBeenCalledWith(1);
     });
   });
 });

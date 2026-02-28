@@ -80,4 +80,45 @@ describe("remarkNormalizeHeadings", () => {
     const output = await process(input);
     expect(output).toContain("Root / Child / Grandchild");
   });
+
+  /**
+   * @testdoc normalizeHeadings: h1→h3 のレベルスキップで空セグメントを生成しない
+   */
+  it("should not produce empty segments when heading levels are skipped (h1→h3)", async () => {
+    const input = "# Intro\n\n### Deep\n";
+    const output = await process(input);
+    expect(output).toContain("Intro / Deep");
+    expect(output).not.toContain("Intro /  / Deep");
+  });
+
+  /**
+   * @testdoc normalizeHeadings: h2→h4 のレベルスキップで空セグメントを生成しない
+   */
+  it("should not produce empty segments when heading levels are skipped (h2→h4)", async () => {
+    const input = "## Parent\n\n#### GrandChild\n";
+    const output = await process(input);
+    expect(output).toContain("Parent / GrandChild");
+    expect(output).not.toContain("Parent /  / GrandChild");
+  });
+
+  /**
+   * @testdoc normalizeHeadings: h1→h4 の2レベルスキップで空セグメントを生成しない
+   */
+  it("should not produce empty segments when skipping two levels (h1→h4)", async () => {
+    const input = "# Root\n\n#### Leaf\n";
+    const output = await process(input);
+    expect(output).toContain("Root / Leaf");
+    expect(output).not.toMatch(/Root \/ {2,}/);
+  });
+
+  /**
+   * @testdoc normalizeHeadings: 先頭が h2 の場合に先頭区切り文字を生成しない
+   */
+  it("should not produce leading separator when first heading is h2", async () => {
+    const input = "## Config\n\n### Setting\n";
+    const output = await process(input);
+    // h2 が先頭の場合、h1 が未定義でも先頭に " / " が付かない
+    expect(output).not.toMatch(/^\s*\//m);
+    expect(output).toContain("Config / Setting");
+  });
 });

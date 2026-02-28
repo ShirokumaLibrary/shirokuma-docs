@@ -9,6 +9,8 @@
 import { basename } from "node:path";
 import { readFile, listFiles } from "../utils/file.js";
 import { createLogger } from "../utils/logger.js";
+import { findMatchingBrace } from "../utils/brace-matching.js";
+import { camelToSnake } from "../utils/string-transforms.js";
 // =============================================================================
 // メインパーサー
 // =============================================================================
@@ -45,6 +47,13 @@ export function parseDrizzleSchema(sourceCode, filePath, logger) {
     const log = logger || createLogger(false);
     const tables = [];
     const fileName = basename(filePath);
+    // プリスキャン: variableName → tableName のマッピングを構築（前方参照対応）
+    const tableMap = new Map();
+    const prescanRegex = /export\s+const\s+(\w+)\s*=\s*pgTable\s*\(\s*["'](\w+)["']/g;
+    let prescanMatch;
+    while ((prescanMatch = prescanRegex.exec(sourceCode)) !== null) {
+        tableMap.set(prescanMatch[1], prescanMatch[2]);
+    }
     // pgTable 定義を検出
     // パターン: export const varName = pgTable("table_name", { ... }, (table) => [...])
     const pgTableRegex = /(?:\/\*\*[\s\S]*?\*\/\s*)?export\s+const\s+(\w+)\s*=\s*pgTable\s*\(\s*["'](\w+)["']\s*,\s*\{/g;
@@ -67,7 +76,7 @@ export function parseDrizzleSchema(sourceCode, filePath, logger) {
         // インデックスを抽出
         const indexes = extractIndexes(tableBody.indexesBody);
         // 外部キーを抽出（カラムの references から）
-        const foreignKeys = extractForeignKeys(tableBody.columnsBody, sourceCode, defStart);
+        const foreignKeys = extractForeignKeys(tableBody.columnsBody, sourceCode, defStart, tableMap);
         tables.push({
             name: tableName,
             variableName,
@@ -89,18 +98,10 @@ export function parseDrizzleSchema(sourceCode, filePath, logger) {
  * pgTable の本体を抽出（カラム定義とインデックス定義）
  */
 function extractTableBody(sourceCode, startIndex) {
-    // { から開始して対応する } を見つける
-    let depth = 1;
-    let pos = startIndex + 1;
-    while (pos < sourceCode.length && depth > 0) {
-        const char = sourceCode[pos];
-        if (char === "{")
-            depth++;
-        else if (char === "}")
-            depth--;
-        pos++;
-    }
-    const columnsEnd = pos - 1;
+    // { から開始して対応する } を見つける（文字列・コメント考慮）
+    const columnsEnd = findMatchingBrace(sourceCode, startIndex);
+    if (columnsEnd === null)
+        return null;
     const columnsBody = sourceCode.substring(startIndex + 1, columnsEnd);
     // インデックス定義部分を抽出 }, (table) => [...])
     let indexesBody = "";
@@ -173,7 +174,7 @@ function extractColumns(columnsBody, fullSource, tableStart) {
 /**
  * 外部キーを抽出
  */
-function extractForeignKeys(columnsBody, fullSource, tableStart) {
+function extractForeignKeys(columnsBody, fullSource, tableStart, tableMap) {
     const foreignKeys = [];
     // references(() => table.column) パターンを検出
     // 例: .references(() => users.id, { onDelete: 'cascade' })
@@ -182,15 +183,15 @@ function extractForeignKeys(columnsBody, fullSource, tableStart) {
     while ((match = refRegex.exec(columnsBody)) !== null) {
         const columnName = match[2]; // SQL カラム名
         const refTable = match[3]; // 参照テーブル変数名
-        const refColumn = match[4]; // 参照カラム名
+        const refColumn = match[4]; // 参照カラム名（JS プロパティ名）
         // onDelete オプションを抽出
         const afterRef = columnsBody.substring(match.index + match[0].length, match.index + match[0].length + 100);
         const onDeleteMatch = afterRef.match(/onDelete\s*:\s*["'](\w+)["']/);
         foreignKeys.push({
             column: columnName,
             references: {
-                table: mapVariableToTableName(refTable),
-                column: refColumn,
+                table: tableMap.get(refTable) ?? refTable,
+                column: camelToSnake(refColumn),
             },
             onDelete: onDeleteMatch ? onDeleteMatch[1] : undefined,
         });
@@ -294,20 +295,6 @@ function mapDrizzleTypeToSql(drizzleType, restDef) {
         macaddr: "macaddr",
     };
     return typeMap[drizzleType] || drizzleType;
-}
-/**
- * 変数名をテーブル名にマッピング
- */
-function mapVariableToTableName(variableName) {
-    // users, sessions, accounts などはそのまま
-    // 単数形→複数形の変換は不要（変数名がそのままテーブル名の場合が多い）
-    return variableName;
-}
-/**
- * camelCase を snake_case に変換
- */
-function camelToSnake(str) {
-    return str.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase());
 }
 /**
  * ファイル名からカテゴリを推論

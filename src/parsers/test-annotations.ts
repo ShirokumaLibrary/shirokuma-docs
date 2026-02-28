@@ -13,6 +13,7 @@ import type {
   BddAnnotation,
   TestCategory,
 } from "../commands/test-cases-types.js";
+import { countBraces } from "../utils/brace-matching.js";
 
 /**
  * テストファイルからテストケースを抽出
@@ -423,40 +424,5 @@ export function extractDescribeDocComment(
   return Object.keys(result).length > 0 ? result : null;
 }
 
-/**
- * 行内の括弧のバランスを計算
- * { は +1、} は -1 として合計を返す
- * 文字列リテラル内の括弧は無視する
- */
-export function countBraces(line: string): number {
-  let count = 0;
-  let inString = false;
-  let stringChar = "";
-  let escaped = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const char = line[i];
-
-    if (escaped) {
-      escaped = false;
-      continue;
-    }
-
-    if (char === "\\") {
-      escaped = true;
-      continue;
-    }
-
-    if (!inString && (char === '"' || char === "'" || char === "`")) {
-      inString = true;
-      stringChar = char;
-    } else if (inString && char === stringChar) {
-      inString = false;
-    } else if (!inString) {
-      if (char === "{") count++;
-      else if (char === "}") count--;
-    }
-  }
-
-  return count;
-}
+// countBraces は共通ユーティリティから re-export
+export { countBraces } from "../utils/brace-matching.js";

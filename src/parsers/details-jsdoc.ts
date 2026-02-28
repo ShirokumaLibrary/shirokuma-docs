@@ -40,7 +40,7 @@ export function formatCode(code: string): string {
 export function simpleMarkdown(text: string): string {
   if (!text) return "";
 
-  // コードブロックを一時的にプレースホルダーに置換
+  // コードブロックを一時的にプレースホルダーに置換（escapeHtml 適用済み）
   const codeBlocks: string[] = [];
   let result = text.replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) => {
     const index = codeBlocks.length;
@@ -51,8 +51,16 @@ export function simpleMarkdown(text: string): string {
     return `\n\n__CODE_BLOCK_${index}__\n\n`;
   });
 
-  // インラインコードを変換
-  result = result.replace(/`([^`]+)`/g, "<code>$1</code>");
+  // インラインコードをプレースホルダーに置換（escapeHtml 適用済み）
+  const inlineCodes: string[] = [];
+  result = result.replace(/`([^`]+)`/g, (_, code) => {
+    const index = inlineCodes.length;
+    inlineCodes.push(`<code>${escapeHtml(code)}</code>`);
+    return `__INLINE_CODE_${index}__`;
+  });
+
+  // 残りのテキストを HTML エスケープ（プレースホルダーは安全な文字列のため影響なし）
+  result = escapeHtml(result);
 
   // 段落分割（空行で区切る）
   const paragraphs = result.split(/\n\n+/);
@@ -65,6 +73,11 @@ export function simpleMarkdown(text: string): string {
     })
     .filter(Boolean)
     .join("\n");
+
+  // インラインコードを復元
+  inlineCodes.forEach((code, i) => {
+    result = result.replace(`__INLINE_CODE_${i}__`, code);
+  });
 
   // コードブロックを復元
   codeBlocks.forEach((block, i) => {

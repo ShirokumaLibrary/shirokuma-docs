@@ -75,6 +75,16 @@ describe("workflow-commit-format", () => {
     });
 
     /**
+     * @testdoc Revert コミットはスキップする
+     */
+    it("should skip revert commits", () => {
+      const commits: CommitEntry[] = [
+        { hash: "abc1234", subject: 'Revert "feat: add login (#42)"' },
+      ];
+      expect(validateCommitFormat(commits)).toEqual([]);
+    });
+
+    /**
      * @testdoc subject 行が72文字超の場合に info issue を返す
      */
     it("should return info issue for subject line exceeding 72 characters", () => {

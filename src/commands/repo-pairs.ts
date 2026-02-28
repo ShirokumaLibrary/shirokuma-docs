@@ -35,6 +35,7 @@ export interface RepoPairsOptions {
   exclude?: string[];
   tag?: string;
   dryRun?: boolean;
+  sourceDir?: string;
 }
 
 interface Logger {
@@ -89,6 +90,9 @@ function cmdList(logger: Logger): number {
     logger.info(`    Private: ${pair.private}`);
     logger.info(`    Public:  ${pair.public}`);
     logger.info(`    Branch:  ${pair.defaultBranch}`);
+    if (pair.sourceDir) {
+      logger.info(`    Source:  ${pair.sourceDir}`);
+    }
     if (pair.exclude.length > 0) {
       logger.info(`    Exclude: ${pair.exclude.join(", ")}`);
     }
@@ -181,6 +185,7 @@ async function cmdInit(alias: string, options: RepoPairsOptions, logger: Logger)
     private: privateRepo,
     public: publicRepo,
     exclude: options.exclude ?? DEFAULT_EXCLUDE_PATTERNS,
+    ...(options.sourceDir && { sourceDir: options.sourceDir }),
   };
   config.repoPairs = repoPairs;
 
@@ -190,6 +195,9 @@ async function cmdInit(alias: string, options: RepoPairsOptions, logger: Logger)
   logger.success(`Repo pair "${alias}" added to ${configPath}`);
   logger.info(`  Private: ${privateRepo}`);
   logger.info(`  Public:  ${publicRepo}`);
+  if (options.sourceDir) {
+    logger.info(`  Source:  ${options.sourceDir}`);
+  }
 
   return 0;
 }
@@ -286,11 +294,30 @@ async function cmdRelease(alias: string, options: RepoPairsOptions, logger: Logg
 
   const tag = options.tag.startsWith("v") ? options.tag : `v${options.tag}`;
   const projectPath = process.cwd();
-  const excludePatterns = getMergedExcludePatterns(alias, projectPath);
+
+  // sourceDir が指定されている場合、basePath をサブディレクトリに設定
+  const basePath = pair.sourceDir ? resolve(projectPath, pair.sourceDir) : projectPath;
+
+  // sourceDir 指定時のバリデーション
+  if (pair.sourceDir) {
+    if (!basePath.startsWith(projectPath)) {
+      logger.error(`sourceDir must be within project root: ${pair.sourceDir}`);
+      return 1;
+    }
+    if (!existsSync(basePath)) {
+      logger.error(`Source directory not found: ${pair.sourceDir} (resolved: ${basePath})`);
+      return 1;
+    }
+  }
+
+  const excludePatterns = getMergedExcludePatterns(alias, basePath);
 
   logger.info(chalk.bold(`Release: ${pair.alias} → ${tag}`));
   logger.info(`  From: ${pair.private}`);
   logger.info(`  To:   ${pair.public}`);
+  if (pair.sourceDir) {
+    logger.info(`  Source: ${pair.sourceDir}`);
+  }
   logger.info(`  Exclude: ${excludePatterns.join(", ")}`);
 
   const publicParsedRepo = parseRepoFullName(pair.public);
@@ -299,19 +326,23 @@ async function cmdRelease(alias: string, options: RepoPairsOptions, logger: Logg
     return 1;
   }
 
+  // 1. ローカルファイルを収集（除外パターン適用）
+  logger.verbose(`Collecting files from ${basePath}`);
+  const allExcludes = [...excludePatterns, ".git/", "node_modules/"];
+  const localFiles = collectLocalFiles(basePath, allExcludes);
+  logger.info(`  Files: ${localFiles.length}`);
+
   if (options.dryRun) {
     logger.info(chalk.yellow("\n[DRY RUN] No changes will be made."));
+    logger.info(chalk.gray("\nFiles to be released:"));
+    for (const file of localFiles) {
+      logger.info(chalk.gray(`  ${file.path}`));
+    }
     return 0;
   }
 
   const octokit = getOctokit();
   const { owner: pubOwner, name: pubRepo } = publicParsedRepo;
-
-  // 1. ローカルファイルを収集（除外パターン適用）
-  logger.verbose(`Collecting files from ${projectPath}`);
-  const allExcludes = [...excludePatterns, ".git/", "node_modules/"];
-  const localFiles = collectLocalFiles(projectPath, allExcludes);
-  logger.verbose(`Collected ${localFiles.length} files`);
 
   // 2. octokit Git Data API で tree を作成
   // base_tree なし = 完全置換（rsync --delete と同等）
@@ -324,7 +355,7 @@ async function cmdRelease(alias: string, options: RepoPairsOptions, logger: Logg
   }> = [];
 
   for (const file of localFiles) {
-    const fullPath = join(projectPath, file.path);
+    const fullPath = join(basePath, file.path);
     const isExecutable = (statSync(fullPath).mode & 0o111) !== 0;
 
     if (file.isBinary) {
@@ -373,7 +404,7 @@ async function cmdRelease(alias: string, options: RepoPairsOptions, logger: Logg
   }
 
   // 4. changelog を生成
-  const changelog = await generateChangelog(pubOwner, pubRepo, tag, octokit);
+  const changelog = await generateChangelog(pubOwner, pubRepo, tag, octokit, pair.defaultBranch);
 
   // 5. コミットを作成
   const commitMsg = `release: ${tag}\n\n${changelog}`;
@@ -502,7 +533,8 @@ async function generateChangelog(
   owner: string,
   repo: string,
   tag: string,
-  octokit: ReturnType<typeof getOctokit>
+  octokit: ReturnType<typeof getOctokit>,
+  defaultBranch = "main"
 ): Promise<string> {
   try {
     // 前回のタグを取得
@@ -523,7 +555,7 @@ async function generateChangelog(
       owner,
       repo,
       base: prevTag,
-      head: tags.length > 0 ? tags[0].commit.sha : "HEAD",
+      head: defaultBranch,
     });
 
     const commitMessages = comparison.commits.map(c => c.commit.message.split("\n")[0]);

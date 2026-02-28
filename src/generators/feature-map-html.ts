@@ -55,7 +55,7 @@ export function buildModuleListSection(
       : '';
 
     // モジュール詳細ページへのリンク
-    const moduleDetailHref = `details/${type}/${escapeHtml(moduleName)}.html`;
+    const moduleDetailHref = `details/${type}/${encodeURIComponent(moduleName)}.html`;
 
     sections.push(`
       <div class="module-group" data-module="${escapeHtml(moduleName)}">
@@ -85,7 +85,7 @@ export function buildListItem(
 ): string {
   const name = item.name;
   const description = item.description || '';
-  const href = `details/${type}/${escapeHtml(moduleName)}/${escapeHtml(name)}.html`;
+  const href = `details/${type}/${encodeURIComponent(moduleName)}/${encodeURIComponent(name)}.html`;
 
   // 追加情報
   let meta = '';
@@ -490,7 +490,7 @@ export function buildFeatureDetail(name: string, group: FeatureGroup, _featureMa
 export function buildScreenCard(screen: ScreenItem): string {
   const moduleName = extractModuleName(screen.path);
   return `
-    <a href="details/screens/${escapeHtml(moduleName)}/${escapeHtml(screen.name)}.html" class="detail-card screen" data-type="screen" data-name="${escapeHtml(screen.name)}" data-module="${escapeHtml(moduleName)}">
+    <a href="details/screens/${encodeURIComponent(moduleName)}/${encodeURIComponent(screen.name)}.html" class="detail-card screen" data-type="screen" data-name="${escapeHtml(screen.name)}" data-module="${escapeHtml(moduleName)}">
       <div class="card-icon">${icons.screen}</div>
       <div class="card-body">
         <h3 class="card-name">${escapeHtml(screen.name)}</h3>
@@ -513,7 +513,7 @@ export function buildScreenCard(screen: ScreenItem): string {
 export function buildComponentCard(comp: ComponentItem): string {
   const moduleName = extractModuleName(comp.path);
   return `
-    <a href="details/components/${escapeHtml(moduleName)}/${escapeHtml(comp.name)}.html" class="detail-card component" data-type="component" data-name="${escapeHtml(comp.name)}" data-module="${escapeHtml(moduleName)}">
+    <a href="details/components/${encodeURIComponent(moduleName)}/${encodeURIComponent(comp.name)}.html" class="detail-card component" data-type="component" data-name="${escapeHtml(comp.name)}" data-module="${escapeHtml(moduleName)}">
       <div class="card-icon">${icons.component}</div>
       <div class="card-body">
         <h3 class="card-name">${escapeHtml(comp.name)}</h3>
@@ -535,7 +535,7 @@ export function buildComponentCard(comp: ComponentItem): string {
 export function buildActionCard(action: ActionItem): string {
   const moduleName = extractModuleName(action.path);
   return `
-    <a href="details/actions/${escapeHtml(moduleName)}/${escapeHtml(action.name)}.html" class="detail-card action" data-type="action" data-name="${escapeHtml(action.name)}" data-module="${escapeHtml(moduleName)}">
+    <a href="details/actions/${encodeURIComponent(moduleName)}/${encodeURIComponent(action.name)}.html" class="detail-card action" data-type="action" data-name="${escapeHtml(action.name)}" data-module="${escapeHtml(moduleName)}">
       <div class="card-icon">${icons.action}</div>
       <div class="card-body">
         <h3 class="card-name">${escapeHtml(action.name)}</h3>
@@ -557,7 +557,7 @@ export function buildActionCard(action: ActionItem): string {
 export function buildTableCard(table: TableItem): string {
   const moduleName = extractModuleName(table.path);
   return `
-    <a href="details/tables/${escapeHtml(moduleName)}/${escapeHtml(table.name)}.html" class="detail-card table" data-type="table" data-name="${escapeHtml(table.name)}" data-module="${escapeHtml(moduleName)}">
+    <a href="details/tables/${encodeURIComponent(moduleName)}/${encodeURIComponent(table.name)}.html" class="detail-card table" data-type="table" data-name="${escapeHtml(table.name)}" data-module="${escapeHtml(moduleName)}">
       <div class="card-icon">${icons.table}</div>
       <div class="card-body">
         <h3 class="card-name">${escapeHtml(table.name)}</h3>

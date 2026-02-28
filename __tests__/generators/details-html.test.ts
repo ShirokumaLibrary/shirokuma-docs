@@ -411,4 +411,19 @@ describe("generateDetailHTML", () => {
     const result = generateDetailHTML(data, ctx);
     expect(result).toContain("DashboardPage - Screen | MyApp");
   });
+
+  /**
+   * @testdoc パンくずナビゲーションが HTML に含まれる
+   */
+  it("should include breadcrumb navigation in generated HTML", () => {
+    const data = createMinimalHTMLData();
+    const ctx = createEmptyContext();
+    const result = generateDetailHTML(data, ctx);
+    expect(result).toContain('<nav class="breadcrumb"');
+    expect(result).toContain("Portal");
+    expect(result).toContain("Screens");
+    expect(result).toContain("breadcrumb-module");
+    expect(result).toContain("dashboard");
+    expect(result).toContain("DashboardPage");
+  });
 });

@@ -322,7 +322,7 @@ export declare function resolveVersionByChannel(channel: PluginChannel, clonePat
  * @param tag - チェックアウトするタグ
  * @param fn - タグチェックアウト中に実行する関数
  */
-export declare function withMarketplaceVersion<T>(clonePath: string, tag: string, fn: () => T): Promise<T>;
+export declare function withMarketplaceVersion<T>(clonePath: string, tag: string, fn: () => T | Promise<T>): Promise<T>;
 /**
  * Plugin identifier for Claude Code's plugin registry
  */

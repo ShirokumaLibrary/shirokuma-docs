@@ -39,13 +39,24 @@ export declare function updateSelectField(projectId: string, itemId: string, fie
  */
 export declare function updateTextField(projectId: string, itemId: string, fieldId: string, text: string, logger?: Logger): Promise<boolean>;
 /**
+ * Update project item Number field.
+ * Logs GraphQL errors as warnings if present.
+ */
+export declare function updateNumberField(projectId: string, itemId: string, fieldId: string, value: number, logger?: Logger): Promise<boolean>;
+/**
+ * Update project item Date field.
+ * Logs GraphQL errors as warnings if present.
+ */
+export declare function updateDateField(projectId: string, itemId: string, fieldId: string, date: string, logger?: Logger): Promise<boolean>;
+/**
  * Add an item to a project by content ID (Issue/PR GraphQL ID).
  * Returns the project item ID on success, or null on failure.
  */
 export declare function addItemToProject(projectId: string, contentId: string, logger?: Logger): Promise<string | null>;
 /**
  * Set multiple project fields on an item.
- * Dispatches to SingleSelect or Text mutation based on field type.
+ * Dispatches to the appropriate mutation based on field type
+ * (TEXT, NUMBER, DATE, SINGLE_SELECT).
  *
  * Features (#380):
  * - Case-insensitive option ID resolution with warning

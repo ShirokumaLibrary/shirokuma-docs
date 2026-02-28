@@ -7,6 +7,7 @@
 import { resolve } from "node:path";
 import { existsSync, readFileSync } from "node:fs";
 import { escapeRegExp } from "../utils/sanitize.js";
+import { findMatchingBrace } from "../utils/brace-matching.js";
 // ===== コンテキスト作成 =====
 /**
  * 空の DetailsContext を作成
@@ -158,33 +159,9 @@ export function extractFunctionCode(sourceCode, targetName) {
                     }
                 }
             }
-            // 関数本体の括弧の深さで終了位置を特定
-            let braceDepth = 0;
-            let inString = false;
-            let stringChar = "";
-            let endIndex = bodyStartIndex;
-            for (let i = bodyStartIndex; i < sourceCode.length; i++) {
-                const char = sourceCode[i];
-                const prevChar = sourceCode[i - 1];
-                if (!inString && (char === '"' || char === "'" || char === "`") && prevChar !== "\\") {
-                    inString = true;
-                    stringChar = char;
-                }
-                else if (inString && char === stringChar && prevChar !== "\\") {
-                    inString = false;
-                }
-                else if (!inString) {
-                    if (char === "{")
-                        braceDepth++;
-                    else if (char === "}") {
-                        braceDepth--;
-                        if (braceDepth === 0) {
-                            endIndex = i + 1;
-                            break;
-                        }
-                    }
-                }
-            }
+            // 関数本体の括弧の深さで終了位置を特定（文字列・コメント考慮）
+            const closingBrace = findMatchingBrace(sourceCode, bodyStartIndex);
+            const endIndex = closingBrace !== null ? closingBrace + 1 : bodyStartIndex;
             if (endIndex > bodyStartIndex) {
                 return sourceCode.slice(startIndex, endIndex).trim();
             }

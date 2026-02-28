@@ -8,6 +8,8 @@
  */
 
 import { escapeRegExp } from "../utils/sanitize.js";
+import { findMatchingBrace } from "../utils/brace-matching.js";
+import { camelToSnake } from "../utils/string-transforms.js";
 
 // =============================================================================
 // 型定義
@@ -739,17 +741,11 @@ function extractTableJsDocs(
   const openBraceIndex = sourceCode.indexOf("{", tableDefStart);
   if (openBraceIndex === -1) return { columns, indexes };
 
-  // 対応する } を探す（ネストを考慮）
-  let depth = 1;
-  let closeBraceIndex = openBraceIndex + 1;
-  while (closeBraceIndex < sourceCode.length && depth > 0) {
-    const char = sourceCode[closeBraceIndex];
-    if (char === "{") depth++;
-    else if (char === "}") depth--;
-    closeBraceIndex++;
-  }
+  // 対応する } を探す（文字列・コメント考慮）
+  const closeBraceIndex = findMatchingBrace(sourceCode, openBraceIndex);
+  if (closeBraceIndex === null) return { columns, indexes };
 
-  const tableContent = sourceCode.substring(openBraceIndex + 1, closeBraceIndex - 1);
+  const tableContent = sourceCode.substring(openBraceIndex + 1, closeBraceIndex);
 
   // カラム定義: /** comment */ name: type(...) または /** comment */ name,
   const columnRegex = /\/\*\*\s*([^*]*(?:\*(?!\/)[^*]*)*)\s*\*\/\s*(\w+)\s*[,:]/g;
@@ -762,14 +758,14 @@ function extractTableJsDocs(
     // id カラムは除外（共通定義のため）
     if (comment && columnName !== "id") {
       // キャメルケースをスネークケースに変換（userId -> user_id）
-      const snakeCaseName = columnName.replace(/[A-Z]/g, (m) => "_" + m.toLowerCase());
+      const snakeCaseName = camelToSnake(columnName);
       columns.set(snakeCaseName, comment);
     }
   }
 
   // インデックス定義を抽出: (table) => [...] の部分
   // } の後ろから ); までを検索
-  const afterColumns = sourceCode.substring(closeBraceIndex);
+  const afterColumns = sourceCode.substring(closeBraceIndex + 1);
   const indexBlockMatch = afterColumns.match(/^\s*,\s*\(\s*\w*\s*\)\s*=>\s*\[([\s\S]*?)\]\s*\)/);
 
   if (indexBlockMatch) {

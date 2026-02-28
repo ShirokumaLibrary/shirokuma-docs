@@ -12,7 +12,7 @@ interface MermaidDiagramProps {
 mermaid.initialize({
   startOnLoad: false,
   theme: "dark",
-  securityLevel: "loose",
+  securityLevel: "strict",
   fontFamily: "ui-sans-serif, system-ui, sans-serif",
   themeVariables: {
     // Dark theme colors
@@ -33,7 +33,7 @@ mermaid.initialize({
     clusterBorder: "#3b82f6",
   },
   flowchart: {
-    htmlLabels: true,
+    htmlLabels: false,
     curve: "basis",
   },
 });

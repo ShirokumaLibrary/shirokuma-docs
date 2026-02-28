@@ -58,6 +58,15 @@ describe("workflow-branch-naming", () => {
       expect(validateBranchName("chore/7-update-deps")).toEqual([]);
       expect(validateBranchName("docs/12-add-readme")).toEqual([]);
       expect(validateBranchName("hotfix/99-critical-fix")).toEqual([]);
+      expect(validateBranchName("epic/958-octokit-migration")).toEqual([]);
+    });
+
+    /**
+     * @testdoc バッチブランチ（複数 Issue 番号）は有効
+     */
+    it("should accept batch branch names", () => {
+      expect(validateBranchName("chore/794-batch-docs-fixes")).toEqual([]);
+      expect(validateBranchName("feat/101-batch-button-components")).toEqual([]);
     });
 
     /**

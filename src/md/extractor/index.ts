@@ -436,8 +436,8 @@ export class Extractor {
     // Convert unmapped map to array
     batchResult.unmappedValues = Array.from(unmappedMap.entries())
       .map(([key, data]) => {
-        const parts = key.split(':');
-        const value = parts[1];
+        const colonIdx = key.indexOf(':');
+        const value = colonIdx >= 0 ? key.substring(colonIdx + 1) : undefined;
         if (!value) return null;
         return {
           field: data.field,

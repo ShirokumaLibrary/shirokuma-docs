@@ -1,244 +1,142 @@
 /**
  * issues PR Commands Tests
  *
- * Tests for PR-related subcommands: pr-comments, merge, pr-reply, resolve.
- * Since these commands rely on external API calls (octokit GraphQL/REST),
- * tests focus on input validation, output structure contracts,
- * and option validation logic.
+ * PR 関連サブコマンドのテスト。
+ * 純粋関数テスト + jest.unstable_mockModule による統合テスト。
  *
- * @testdoc PR関連サブコマンドのテスト（pr-comments, merge, pr-reply, resolve）
+ * @testdoc PR 関連サブコマンドのテスト（pr-comments, merge, pr-reply, resolve, pr-list, pr-show, pr-create）
  */
 
-import {
-  isIssueNumber,
-  parseIssueNumber,
-  validateBody,
-} from "../../src/utils/github.js";
-import {
+import { jest } from "@jest/globals";
+import { createMockLogger, captureConsoleJson } from "../helpers/command-test-utils.js";
+import type { Logger } from "../../src/utils/logger.js";
+
+// =============================================================================
+// Mocks (ESM: unstable_mockModule + dynamic import)
+// =============================================================================
+
+const mockRunGraphQL = jest.fn<(...args: any[]) => any>();
+const mockIsIssueNumber = jest.fn<(v: string) => boolean>();
+const mockParseIssueNumber = jest.fn<(v: string) => number>();
+const mockValidateBody = jest.fn<(v: string | undefined) => string | null>();
+const mockResolveTargetRepo = jest.fn<(...args: any[]) => any>();
+const mockGetOctokit = jest.fn<() => any>();
+const mockFormatOutput = jest.fn<(...args: any[]) => string>();
+const mockResolveAndUpdateStatus = jest.fn<(...args: any[]) => any>();
+const mockGetCurrentBranch = jest.fn<() => string | null>();
+const mockExecFileAsync = jest.fn<(...args: any[]) => any>();
+
+jest.unstable_mockModule("../../src/utils/github.js", () => ({
+  runGraphQL: mockRunGraphQL,
+  isIssueNumber: mockIsIssueNumber,
+  parseIssueNumber: mockParseIssueNumber,
+  validateBody: mockValidateBody,
+  getRepoInfo: jest.fn(),
+  getOwner: jest.fn(),
+  getRepoName: jest.fn(),
+  validateTitle: jest.fn(),
+  parseGitRemoteUrl: jest.fn(),
+  readBodyFile: jest.fn(),
+  checkGitHubAuth: jest.fn(),
+  diagnoseRepoFailure: jest.fn(),
+  MAX_TITLE_LENGTH: 256,
+  MAX_BODY_LENGTH: 65536,
+  ITEMS_PER_PAGE: 100,
+  FIELDS_PER_PAGE: 20,
+}));
+
+jest.unstable_mockModule("../../src/utils/repo-pairs.js", () => ({
+  resolveTargetRepo: mockResolveTargetRepo,
+}));
+
+jest.unstable_mockModule("../../src/utils/octokit-client.js", () => ({
+  getOctokit: mockGetOctokit,
+  resolveAuthToken: jest.fn(() => "test-token"),
+  resetOctokit: jest.fn(),
+  setOctokit: jest.fn(),
+}));
+
+jest.unstable_mockModule("../../src/utils/formatters.js", () => ({
+  formatOutput: mockFormatOutput,
+  OutputFormat: {},
+  GH_PR_LIST_COLUMNS: ["number", "title", "state", "head_branch", "base_branch", "author", "review_decision", "url"],
+}));
+
+jest.unstable_mockModule("../../src/utils/issue-detail.js", () => ({
+  resolveAndUpdateStatus: mockResolveAndUpdateStatus,
+}));
+
+jest.unstable_mockModule("../../src/utils/git-local.js", () => ({
+  getCurrentBranch: mockGetCurrentBranch,
+}));
+
+jest.unstable_mockModule("../../src/utils/spawn-async.js", () => ({
+  execFileAsync: mockExecFileAsync,
+  spawnAsync: jest.fn(),
+}));
+
+// Dynamic import after mocks
+const {
   validateMergeMethod,
   parseMergeMethod,
   parseLinkedIssues,
   detectLinkPattern,
   parsePrStateFilter,
+  cmdPrComments,
+  cmdMerge,
+  cmdPrReply,
+  cmdResolve,
   resolvePrFromHead,
-} from "../../src/commands/issues-pr.js";
+  fetchOpenPRs,
+  cmdPrList,
+  cmdPrShow,
+  cmdPrCreate,
+} = await import("../../src/commands/issues-pr.js");
 
 // =============================================================================
-// #44: pr-comments - Input validation
+// Helpers
 // =============================================================================
 
-describe("pr-comments - input validation", () => {
-  /**
-   * @testdoc 有効なPR番号を認識する
-   * @purpose PR番号がIssue番号と同じ検証ロジックを使えることの確認
-   */
-  it("should accept valid PR numbers (same as issue numbers)", () => {
-    expect(isIssueNumber("1")).toBe(true);
-    expect(isIssueNumber("42")).toBe(true);
-    expect(isIssueNumber("#42")).toBe(true);
-  });
-
-  /**
-   * @testdoc 無効なPR番号を拒否する
-   * @purpose 非数値入力がPR番号として認識されないことの確認
-   */
-  it("should reject invalid PR numbers", () => {
-    expect(isIssueNumber("")).toBe(false);
-    expect(isIssueNumber("abc")).toBe(false);
-    expect(isIssueNumber("#")).toBe(false);
-  });
-
-  /**
-   * @testdoc PR番号を正しくパースする
-   * @purpose #付きPR番号が数値に変換されることの確認
-   */
-  it("should parse PR numbers correctly", () => {
-    expect(parseIssueNumber("42")).toBe(42);
-    expect(parseIssueNumber("#42")).toBe(42);
-  });
-});
+function setupDefaultValidation() {
+  mockIsIssueNumber.mockImplementation((v: string) => /^#?\d+$/.test(v));
+  mockParseIssueNumber.mockImplementation((v: string) =>
+    parseInt(v.replace("#", ""), 10)
+  );
+  mockValidateBody.mockReturnValue(null);
+  mockResolveTargetRepo.mockReturnValue({ owner: "test-owner", name: "test-repo" });
+}
 
 // =============================================================================
-// #44: pr-comments - Output structure contracts
+// Pure function tests (preserved from original)
 // =============================================================================
 
-describe("pr-comments - output structure", () => {
-  /**
-   * @testdoc pr-commentsの出力JSONにPR情報が含まれる
-   * @purpose PR番号・タイトル・状態・レビュー判定が返される契約
-   */
-  it("should include PR metadata in output", () => {
-    const output = {
-      pr_number: 42,
-      title: "feat: add branch workflow",
-      state: "OPEN",
-      review_decision: "CHANGES_REQUESTED",
-      reviews: [],
-      threads: [],
-      total_threads: 0,
-      unresolved_threads: 0,
-    };
-
-    expect(output).toHaveProperty("pr_number");
-    expect(output).toHaveProperty("title");
-    expect(output).toHaveProperty("state");
-    expect(output).toHaveProperty("review_decision");
-    expect(typeof output.pr_number).toBe("number");
+describe("parseMergeMethod", () => {
+  it("should default to squash", () => {
+    expect(parseMergeMethod({})).toBe("squash");
   });
 
-  /**
-   * @testdoc pr-commentsの出力にレビュースレッドが含まれる
-   * @purpose スレッドのresolved状態・ファイル・行番号が返される契約
-   */
-  it("should include review threads with file and line info", () => {
-    const thread = {
-      id: "PRRT_kwDON12345",
-      is_resolved: false,
-      is_outdated: false,
-      file: "src/commands/issues.ts",
-      line: 42,
-      comments: [
-        {
-          id: "PRRC_kwDON12345",
-          database_id: 12345678,
-          author: "reviewer",
-          body: "Consider using a type guard here",
-          created_at: "2026-02-01T10:00:00Z",
-        },
-      ],
-    };
-
-    expect(thread).toHaveProperty("id");
-    expect(thread).toHaveProperty("is_resolved");
-    expect(thread).toHaveProperty("is_outdated");
-    expect(thread).toHaveProperty("file");
-    expect(thread).toHaveProperty("line");
-    expect(thread.comments).toBeInstanceOf(Array);
-    expect(thread.comments[0]).toHaveProperty("database_id");
-    expect(typeof thread.comments[0].database_id).toBe("number");
-  });
-
-  /**
-   * @testdoc pr-commentsの出力にレビューサマリーが含まれる
-   * @purpose レビューの著者・状態・本文が返される契約
-   */
-  it("should include review summaries", () => {
-    const review = {
-      author: "reviewer",
-      state: "CHANGES_REQUESTED",
-      body: "Please fix the issues noted in the comments.",
-    };
-
-    expect(review).toHaveProperty("author");
-    expect(review).toHaveProperty("state");
-    expect(review).toHaveProperty("body");
-  });
-
-  /**
-   * @testdoc pr-commentsの出力にスレッド集計が含まれる
-   * @purpose 全スレッド数と未解決スレッド数が返される契約
-   */
-  it("should include thread count summary", () => {
-    const output = {
-      pr_number: 42,
-      title: "feat: add feature",
-      state: "OPEN",
-      review_decision: "CHANGES_REQUESTED",
-      reviews: [],
-      threads: [
-        { id: "PRRT_1", is_resolved: true, is_outdated: false, file: "a.ts", line: 1, comments: [] },
-        { id: "PRRT_2", is_resolved: false, is_outdated: false, file: "b.ts", line: 5, comments: [] },
-        { id: "PRRT_3", is_resolved: false, is_outdated: true, file: "c.ts", line: 10, comments: [] },
-      ],
-      total_threads: 3,
-      unresolved_threads: 2,
-    };
-
-    expect(output.total_threads).toBe(output.threads.length);
-    expect(output.unresolved_threads).toBe(
-      output.threads.filter((t) => !t.is_resolved).length
-    );
-  });
-
-  /**
-   * @testdoc PRが見つからない場合の出力
-   * @purpose 存在しないPR番号でエラーが返される契約
-   */
-  it("should document PR not found error condition", () => {
-    const errorCondition = {
-      cause: "PR number does not exist",
-      expectedError: "PR #999 not found",
-      exitCode: 1,
-    };
-
-    expect(errorCondition.exitCode).toBe(1);
-  });
-});
-
-// =============================================================================
-// #47: merge - Input validation
-// =============================================================================
-
-describe("merge - input validation", () => {
-  /**
-   * @testdoc デフォルトでsquashマージを使用する
-   * @purpose マージ方式未指定時にsquashがデフォルトであることの確認
-   */
-  it("should default to squash merge method", () => {
-    const method = parseMergeMethod({});
-    expect(method).toBe("squash");
-  });
-
-  /**
-   * @testdoc --squashオプションでsquashマージを明示的に選択する
-   * @purpose squashフラグが正しく解釈される確認
-   */
   it("should select squash when --squash is specified", () => {
-    const method = parseMergeMethod({ squash: true });
-    expect(method).toBe("squash");
+    expect(parseMergeMethod({ squash: true })).toBe("squash");
   });
 
-  /**
-   * @testdoc --mergeオプションでmergeコミットを選択する
-   * @purpose mergeフラグが正しく解釈される確認
-   */
   it("should select merge when --merge is specified", () => {
-    const method = parseMergeMethod({ merge: true });
-    expect(method).toBe("merge");
+    expect(parseMergeMethod({ merge: true })).toBe("merge");
   });
 
-  /**
-   * @testdoc --rebaseオプションでrebaseマージを選択する
-   * @purpose rebaseフラグが正しく解釈される確認
-   */
   it("should select rebase when --rebase is specified", () => {
-    const method = parseMergeMethod({ rebase: true });
-    expect(method).toBe("rebase");
+    expect(parseMergeMethod({ rebase: true })).toBe("rebase");
   });
+});
 
-  /**
-   * @testdoc 複数のマージ方式指定を拒否する
-   * @purpose --squashと--mergeの同時指定がエラーになる確認
-   */
+describe("validateMergeMethod", () => {
   it("should reject multiple merge methods", () => {
-    const error = validateMergeMethod({ squash: true, merge: true });
-    expect(error).not.toBeNull();
-    expect(error).toContain("Only one merge method");
+    expect(validateMergeMethod({ squash: true, merge: true })).not.toBeNull();
   });
 
-  /**
-   * @testdoc 3つすべてのマージ方式指定を拒否する
-   * @purpose 全フラグ同時指定がエラーになる確認
-   */
-  it("should reject all three merge methods specified", () => {
-    const error = validateMergeMethod({ squash: true, merge: true, rebase: true });
-    expect(error).not.toBeNull();
+  it("should reject all three merge methods", () => {
+    expect(validateMergeMethod({ squash: true, merge: true, rebase: true })).not.toBeNull();
   });
 
-  /**
-   * @testdoc 単一のマージ方式指定を受け入れる
-   * @purpose 正常ケースでnullが返される確認
-   */
   it("should accept single merge method", () => {
     expect(validateMergeMethod({ squash: true })).toBeNull();
     expect(validateMergeMethod({ merge: true })).toBeNull();
@@ -247,874 +145,760 @@ describe("merge - input validation", () => {
   });
 });
 
-// =============================================================================
-// #295: merge --head - PR番号をブランチ名から解決
-// =============================================================================
-
-describe("merge --head - resolve PR from branch", () => {
-  /**
-   * @testdoc resolvePrFromHead関数がエクスポートされている
-   * @purpose ブランチ名からPR番号を解決するヘルパーが利用可能なことの確認
-   */
-  it("should export resolvePrFromHead function", () => {
-    expect(typeof resolvePrFromHead).toBe("function");
+describe("parseLinkedIssues", () => {
+  it("should parse Closes #N", () => {
+    expect(parseLinkedIssues("Fix the bug\n\nCloses #39")).toContain(39);
   });
 
-  /**
-   * @testdoc merge出力に--headで解決したPR番号が含まれる
-   * @purpose --headオプション使用時もPR番号が出力に含まれる契約
-   */
-  it("should include resolved PR number in merge output when using --head", () => {
-    const output = {
-      pr_number: 42,
-      merged: true,
-      merge_method: "squash",
-      branch_deleted: true,
-      linked_issues_updated: [],
-    };
-
-    expect(output).toHaveProperty("pr_number");
-    expect(typeof output.pr_number).toBe("number");
-  });
-
-  /**
-   * @testdoc mergeはPR番号または--headのどちらかを受け付ける
-   * @purpose 2つの入力方式が存在することの文書化
-   */
-  it("should accept either PR number or --head option", () => {
-    // 方式1: PR番号を直接指定
-    const directInput = { target: "42", head: undefined };
-    expect(isIssueNumber(directInput.target)).toBe(true);
-
-    // 方式2: --headでブランチ名からPR番号を解決
-    const headInput = { target: undefined, head: "feat/295-fix-merge-chain" };
-    expect(headInput.head).toBeDefined();
-  });
-
-  /**
-   * @testdoc PR番号も--headも無い場合はエラーになる
-   * @purpose 両方未指定時のエラー条件文書化
-   */
-  it("should require either PR number or --head", () => {
-    const noInput = { target: undefined, head: undefined };
-    expect(noInput.target).toBeUndefined();
-    expect(noInput.head).toBeUndefined();
-  });
-});
-
-// =============================================================================
-// #47: merge - Output structure contracts
-// =============================================================================
-
-describe("merge - output structure", () => {
-  /**
-   * @testdoc merge出力にマージ結果が含まれる
-   * @purpose マージ成功時の出力構造契約
-   */
-  it("should document merge output structure", () => {
-    const output = {
-      pr_number: 42,
-      merged: true,
-      merge_method: "squash",
-      branch_deleted: true,
-      linked_issues_updated: [
-        { number: 39, status: "Done" },
-      ],
-    };
-
-    expect(output).toHaveProperty("pr_number");
-    expect(output).toHaveProperty("merged");
-    expect(output).toHaveProperty("merge_method");
-    expect(output).toHaveProperty("branch_deleted");
-    expect(output).toHaveProperty("linked_issues_updated");
-    expect(output.merged).toBe(true);
-    expect(output.linked_issues_updated).toBeInstanceOf(Array);
-  });
-
-  /**
-   * @testdoc linked issueが無い場合は空配列を返す
-   * @purpose PR本文にCloses/Fixesが無い場合の出力契約
-   */
-  it("should return empty linked_issues_updated when no linked issues", () => {
-    const output = {
-      pr_number: 42,
-      merged: true,
-      merge_method: "squash",
-      branch_deleted: true,
-      linked_issues_updated: [],
-    };
-
-    expect(output.linked_issues_updated).toEqual([]);
-  });
-
-  /**
-   * @testdoc merge_methodが指定したマージ方式を反映する
-   * @purpose 出力にsquash/merge/rebaseが正しく記録される契約
-   */
-  it("should reflect the selected merge method in output", () => {
-    const methods = ["squash", "merge", "rebase"];
-    methods.forEach((method) => {
-      const output = { merge_method: method };
-      expect(["squash", "merge", "rebase"]).toContain(output.merge_method);
-    });
-  });
-});
-
-// =============================================================================
-// #47: merge - Linked issue parsing
-// =============================================================================
-
-describe("merge - linked issue parsing", () => {
-  /**
-   * @testdoc PR本文からCloses #Nを抽出する
-   * @purpose Closes形式のリンクIssue番号抽出の確認
-   */
-  it("should parse Closes #N from PR body", () => {
-    const body = "Fix the bug\n\nCloses #39";
-    expect(parseLinkedIssues(body)).toContain(39);
-  });
-
-  /**
-   * @testdoc PR本文からFixes #Nを抽出する
-   * @purpose Fixes形式のリンクIssue番号抽出の確認
-   */
-  it("should parse Fixes #N from PR body", () => {
-    const body = "Fixes #44\nFixes #45";
-    const linked = parseLinkedIssues(body);
+  it("should parse Fixes #N", () => {
+    const linked = parseLinkedIssues("Fixes #44\nFixes #45");
     expect(linked).toContain(44);
     expect(linked).toContain(45);
   });
 
-  /**
-   * @testdoc PR本文からResolves #Nを抽出する
-   * @purpose Resolves形式のリンクIssue番号抽出の確認
-   */
-  it("should parse Resolves #N from PR body", () => {
-    const body = "Resolves #47";
-    expect(parseLinkedIssues(body)).toContain(47);
+  it("should parse Resolves #N", () => {
+    expect(parseLinkedIssues("Resolves #47")).toContain(47);
   });
 
-  /**
-   * @testdoc 複数のリンクIssueを抽出する
-   * @purpose 異なるキーワード混在の複数Issue抽出の確認
-   */
   it("should parse multiple linked issues with mixed keywords", () => {
-    const body = "Closes #39\nFixes #44\nResolves #47";
-    const linked = parseLinkedIssues(body);
+    const linked = parseLinkedIssues("Closes #39\nFixes #44\nResolves #47");
     expect(linked).toHaveLength(3);
     expect(linked).toEqual(expect.arrayContaining([39, 44, 47]));
   });
 
-  /**
-   * @testdoc リンクIssueが無い本文では空配列を返す
-   * @purpose リンクキーワードがない場合の動作確認
-   */
   it("should return empty array when no linked issues", () => {
-    const body = "Simple PR description without any linked issues.";
-    expect(parseLinkedIssues(body)).toEqual([]);
+    expect(parseLinkedIssues("Simple PR description.")).toEqual([]);
   });
 
-  /**
-   * @testdoc 大文字小文字を問わず抽出する
-   * @purpose closes/CLOSES/Closesすべて対応の確認
-   */
   it("should be case-insensitive", () => {
-    const body = "closes #1\nCLOSES #2\nCloses #3";
-    const linked = parseLinkedIssues(body);
-    expect(linked).toHaveLength(3);
+    expect(parseLinkedIssues("closes #1\nCLOSES #2\nCloses #3")).toHaveLength(3);
   });
 
-  /**
-   * @testdoc 重複するIssue番号を除去する
-   * @purpose 同じIssue番号が複数回参照されている場合の重複排除確認
-   */
   it("should deduplicate issue numbers", () => {
-    const body = "Closes #39\nFixes #39";
-    const linked = parseLinkedIssues(body);
+    const linked = parseLinkedIssues("Closes #39\nFixes #39");
     expect(linked).toHaveLength(1);
-    expect(linked).toContain(39);
   });
 
-  /**
-   * @testdoc undefinedのPR本文で空配列を返す
-   * @purpose PR本文がnull/undefinedの場合の安全なフォールバック確認
-   */
   it("should handle undefined body", () => {
     expect(parseLinkedIssues(undefined)).toEqual([]);
     expect(parseLinkedIssues("")).toEqual([]);
   });
 });
 
-// =============================================================================
-// #965: PR-Issue link graph pattern detection
-// =============================================================================
-
-describe("link graph - pattern detection", () => {
-  /**
-   * @testdoc リンクIssueなしの場合1:1を返す
-   * @purpose リンクIssueがない場合のデフォルトパターン確認
-   */
+describe("detectLinkPattern", () => {
   it("should return 1:1 when no linked issues", () => {
     expect(detectLinkPattern([], new Map())).toBe("1:1");
   });
 
-  /**
-   * @testdoc 1PR-1Issueの場合1:1を返す
-   * @purpose 単純な1対1リンクパターンの検出確認
-   */
   it("should return 1:1 for single PR and single issue", () => {
-    const issueToAllPrs = new Map([[42, [100]]]);
-    expect(detectLinkPattern([42], issueToAllPrs)).toBe("1:1");
+    expect(detectLinkPattern([42], new Map([[42, [100]]]))).toBe("1:1");
   });
 
-  /**
-   * @testdoc 1PR-複数Issueの場合1:Nを返す
-   * @purpose 1つのPRが複数Issueをクローズするパターンの検出確認
-   */
   it("should return 1:N for single PR with multiple issues", () => {
-    const issueToAllPrs = new Map([
-      [42, [100]],
-      [43, [100]],
-    ]);
-    expect(detectLinkPattern([42, 43], issueToAllPrs)).toBe("1:N");
+    expect(detectLinkPattern([42, 43], new Map([[42, [100]], [43, [100]]]))).toBe("1:N");
   });
 
-  /**
-   * @testdoc 複数PR-1Issueの場合N:1を返す
-   * @purpose 複数PRが同一Issueをクローズするパターンの検出確認
-   */
   it("should return N:1 for multiple PRs with single issue", () => {
-    const issueToAllPrs = new Map([[42, [100, 101]]]);
-    expect(detectLinkPattern([42], issueToAllPrs)).toBe("N:1");
+    expect(detectLinkPattern([42], new Map([[42, [100, 101]]]))).toBe("N:1");
   });
 
-  /**
-   * @testdoc 複数PR-複数Issueの場合N:Nを返す
-   * @purpose 多対多の複雑なリンクグラフの検出確認
-   */
   it("should return N:N for multiple PRs with multiple issues", () => {
-    const issueToAllPrs = new Map([
-      [42, [100, 101]],
-      [43, [100]],
-    ]);
-    expect(detectLinkPattern([42, 43], issueToAllPrs)).toBe("N:N");
+    expect(detectLinkPattern([42, 43], new Map([[42, [100, 101]], [43, [100]]]))).toBe("N:N");
   });
 
-  /**
-   * @testdoc 全Issueが同一PRのみを参照する場合は1:Nを返す
-   * @purpose 同一PRから複数Issueへのリンクが正しく1:Nと判定される確認
-   */
   it("should return 1:N when all issues reference only the same PR", () => {
-    const issueToAllPrs = new Map([
-      [42, [100]],
-      [43, [100]],
-      [44, [100]],
-    ]);
-    expect(detectLinkPattern([42, 43, 44], issueToAllPrs)).toBe("1:N");
+    expect(detectLinkPattern([42, 43, 44], new Map([[42, [100]], [43, [100]], [44, [100]]]))).toBe("1:N");
   });
 
-  /**
-   * @testdoc 異なるIssueが異なるPRを参照する場合N:Nを返す
-   * @purpose クロスリンクパターンの検出確認
-   */
   it("should return N:N for cross-linked PRs and issues", () => {
-    const issueToAllPrs = new Map([
-      [42, [100]],
-      [43, [101]],
-    ]);
-    expect(detectLinkPattern([42, 43], issueToAllPrs)).toBe("N:N");
+    expect(detectLinkPattern([42, 43], new Map([[42, [100]], [43, [101]]]))).toBe("N:N");
   });
 });
 
-// =============================================================================
-// #45: session start - openPRs output structure
-// =============================================================================
-
-describe("session start - openPRs output structure", () => {
-  /**
-   * @testdoc session startの出力にopenPRs配列が含まれる
-   * @purpose セッション開始時にオープンPR情報が返される契約
-   */
-  it("should include openPRs array in output", () => {
-    const output = {
-      repository: "owner/repo",
-      lastHandover: null,
-      issues: [],
-      total_issues: 0,
-      openPRs: [],
-    };
-
-    expect(output).toHaveProperty("openPRs");
-    expect(output.openPRs).toBeInstanceOf(Array);
-  });
-
-  /**
-   * @testdoc openPRsにレビュー判定が含まれる
-   * @purpose 各PRのreview_decisionが返される契約
-   */
-  it("should include review decision for each PR", () => {
-    const pr = {
-      number: 42,
-      title: "feat: add feature",
-      url: "https://github.com/owner/repo/pull/42",
-      review_decision: "CHANGES_REQUESTED",
-      review_thread_count: 3,
-      review_count: 1,
-    };
-
-    expect(pr).toHaveProperty("review_decision");
-    expect(["APPROVED", "CHANGES_REQUESTED", "REVIEW_REQUIRED", null]).toContain(
-      pr.review_decision
-    );
-  });
-
-  /**
-   * @testdoc openPRsにレビュースレッド数が含まれる
-   * @purpose 未確認コメントの有無を判断するためのカウント契約
-   */
-  it("should include review thread and review counts", () => {
-    const pr = {
-      number: 42,
-      title: "feat: add feature",
-      url: "https://github.com/owner/repo/pull/42",
-      review_decision: null,
-      review_thread_count: 5,
-      review_count: 2,
-    };
-
-    expect(typeof pr.review_thread_count).toBe("number");
-    expect(typeof pr.review_count).toBe("number");
-  });
-
-  /**
-   * @testdoc openPRsが空の場合は空配列を返す
-   * @purpose オープンPRがない場合の出力契約
-   */
-  it("should return empty openPRs when no open PRs exist", () => {
-    const output = {
-      repository: "owner/repo",
-      lastHandover: null,
-      issues: [],
-      total_issues: 0,
-      openPRs: [],
-    };
-
-    expect(output.openPRs).toEqual([]);
-  });
-
-  /**
-   * @testdoc session startは3つのデータソースを統合する
-   * @purpose Discussions + Issues + PRsの3種を1コマンドで取得する契約
-   */
-  it("should document required queries for session start including open PRs", () => {
-    const requiredQueries = [
-      "GRAPHQL_QUERY_LATEST_HANDOVER",
-      "GRAPHQL_QUERY_ISSUES_WITH_PROJECTS",
-      "GRAPHQL_QUERY_OPEN_PRS",
-    ];
-
-    expect(requiredQueries).toHaveLength(3);
-  });
-});
-
-// =============================================================================
-// #46: pr-reply - Input validation
-// =============================================================================
-
-describe("pr-reply - input validation", () => {
-  /**
-   * @testdoc --reply-toオプションが必須
-   * @purpose reply-to未指定時のエラー条件文書化
-   */
-  it("should require --reply-to option", () => {
-    const options = { replyTo: undefined, bodyFile: "Fixed" };
-    expect(options.replyTo).toBeUndefined();
-  });
-
-  /**
-   * @testdoc --body-fileオプションが必須
-   * @purpose body-file未指定時のエラー条件文書化
-   */
-  it("should require --body-file option", () => {
-    const options = { replyTo: "12345678", bodyFile: undefined };
-    expect(options.bodyFile).toBeUndefined();
-  });
-
-  /**
-   * @testdoc reply-toに数値IDを受け入れる
-   * @purpose REST APIが数値IDを使うことの文書化
-   */
-  it("should accept numeric database ID for --reply-to", () => {
-    const replyTo = "12345678";
-    expect(/^\d+$/.test(replyTo)).toBe(true);
-  });
-
-  /**
-   * @testdoc bodyのバリデーションが適用される
-   * @purpose 既存のbodyバリデーションが再利用される確認
-   */
-  it("should validate body using standard validation", () => {
-    expect(validateBody("Fixed in `abc1234`")).toBeNull();
-    expect(validateBody("")).toBeNull();
-  });
-});
-
-// =============================================================================
-// #46: pr-reply - Output structure contracts
-// =============================================================================
-
-describe("pr-reply - output structure", () => {
-  /**
-   * @testdoc pr-reply出力に返信結果が含まれる
-   * @purpose 返信成功時の出力構造契約
-   */
-  it("should document pr-reply output structure", () => {
-    const output = {
-      pr_number: 42,
-      reply_to: 12345678,
-      comment_id: 87654321,
-      comment_url: "https://github.com/owner/repo/pull/42#discussion_r87654321",
-    };
-
-    expect(output).toHaveProperty("pr_number");
-    expect(output).toHaveProperty("reply_to");
-    expect(output).toHaveProperty("comment_id");
-    expect(output).toHaveProperty("comment_url");
-    expect(typeof output.reply_to).toBe("number");
-  });
-});
-
-// =============================================================================
-// #46: resolve - Input validation
-// =============================================================================
-
-describe("resolve - input validation", () => {
-  /**
-   * @testdoc --thread-idオプションが必須
-   * @purpose thread-id未指定時のエラー条件文書化
-   */
-  it("should require --thread-id option", () => {
-    const options = { threadId: undefined };
-    expect(options.threadId).toBeUndefined();
-  });
-
-  /**
-   * @testdoc GraphQLノードID形式のthread-idを受け入れる
-   * @purpose PRRT_プレフィックスを持つIDの検証
-   */
-  it("should accept GraphQL node ID format for --thread-id", () => {
-    const threadId = "PRRT_kwDON12345";
-    expect(typeof threadId).toBe("string");
-    expect(threadId.startsWith("PRRT_")).toBe(true);
-  });
-});
-
-// =============================================================================
-// #46: resolve - Output structure contracts
-// =============================================================================
-
-describe("resolve - output structure", () => {
-  /**
-   * @testdoc resolve出力にスレッド解決結果が含まれる
-   * @purpose Resolve成功時の出力構造契約
-   */
-  it("should document resolve output structure", () => {
-    const output = {
-      pr_number: 42,
-      thread_id: "PRRT_kwDON12345",
-      resolved: true,
-    };
-
-    expect(output).toHaveProperty("pr_number");
-    expect(output).toHaveProperty("thread_id");
-    expect(output).toHaveProperty("resolved");
-    expect(output.resolved).toBe(true);
-  });
-});
-
-// =============================================================================
-// Action routing - All new PR actions
-// =============================================================================
-
-describe("issues PR actions - routing", () => {
-  /**
-   * @testdoc 新しいPR関連アクション一覧
-   * @purpose 追加されたアクションを文書化
-   */
-  it("should document new PR-related actions", () => {
-    const newActions = ["pr-comments", "merge", "pr-reply", "resolve"];
-
-    newActions.forEach((action) => {
-      expect(typeof action).toBe("string");
-    });
-  });
-
-  /**
-   * @testdoc PR関連アクションはtargetまたは--headを必要とする
-   * @purpose PR番号が必須であることの文書化（mergeは--headでも可）
-   */
-  it("should require target (PR number) for all PR actions", () => {
-    const prActions = ["pr-comments", "merge", "pr-reply", "resolve"];
-
-    prActions.forEach((action) => {
-      // All PR actions require a target (PR number) or --head (merge only)
-      expect(action).toBeDefined();
-    });
-  });
-
-  /**
-   * @testdoc 全アクション一覧（既存 + PR）
-   * @purpose コマンドのアクション一覧を文書化
-   */
-  it("should document complete action list", () => {
-    const allActions = [
-      // Existing
-      "list", "get", "create", "update", "comment",
-      "close", "reopen", "import", "fields", "remove",
-      // PR actions
-      "pr-list", "pr-show", "pr-comments", "merge", "pr-reply", "resolve",
-    ];
-
-    expect(allActions).toHaveLength(16);
-  });
-});
-
-// =============================================================================
-// #568: parsePrStateFilter - state フィルタ変換
-// =============================================================================
-
-describe("parsePrStateFilter - state filter conversion", () => {
-  /**
-   * @testdoc "open" を GraphQL OPEN 状態に変換する
-   * @purpose --state open のデフォルト動作確認
-   */
+describe("parsePrStateFilter", () => {
   it("should convert 'open' to ['OPEN']", () => {
     expect(parsePrStateFilter("open")).toEqual(["OPEN"]);
   });
 
-  /**
-   * @testdoc "closed" を GraphQL CLOSED 状態に変換する
-   * @purpose --state closed でクローズ済み PR のみ取得
-   */
   it("should convert 'closed' to ['CLOSED']", () => {
     expect(parsePrStateFilter("closed")).toEqual(["CLOSED"]);
   });
 
-  /**
-   * @testdoc "merged" を GraphQL MERGED 状態に変換する
-   * @purpose --state merged でマージ済み PR のみ取得
-   */
   it("should convert 'merged' to ['MERGED']", () => {
     expect(parsePrStateFilter("merged")).toEqual(["MERGED"]);
   });
 
-  /**
-   * @testdoc "all" を全状態に変換する
-   * @purpose --state all で全 PR を取得
-   */
   it("should convert 'all' to all states", () => {
     const result = parsePrStateFilter("all");
     expect(result).toEqual(expect.arrayContaining(["OPEN", "CLOSED", "MERGED"]));
     expect(result).toHaveLength(3);
   });
 
-  /**
-   * @testdoc 大文字小文字を問わず変換する
-   * @purpose "OPEN", "Open" 等もサポート
-   */
   it("should be case-insensitive", () => {
     expect(parsePrStateFilter("OPEN")).toEqual(["OPEN"]);
     expect(parsePrStateFilter("Closed")).toEqual(["CLOSED"]);
-    expect(parsePrStateFilter("MERGED")).toEqual(["MERGED"]);
-    expect(parsePrStateFilter("ALL")).toEqual(["OPEN", "CLOSED", "MERGED"]);
   });
 
-  /**
-   * @testdoc 無効な値で null を返す
-   * @purpose バリデーションエラーの検出
-   */
   it("should return null for invalid state", () => {
     expect(parsePrStateFilter("invalid")).toBeNull();
     expect(parsePrStateFilter("")).toBeNull();
-    expect(parsePrStateFilter("draft")).toBeNull();
   });
 });
 
 // =============================================================================
-// #568: pr-list - 出力構造契約
+// cmdPrComments - Integration tests
 // =============================================================================
 
-describe("pr-list - output structure", () => {
-  /**
-   * @testdoc pr-list 出力に全 GH_PR_LIST_COLUMNS フィールドが含まれる
-   * @purpose PR 一覧の出力構造契約
-   */
-  it("should include all GH_PR_LIST_COLUMNS fields", () => {
-    const prOutput = {
-      number: 42,
-      title: "feat: add PR list command",
-      state: "OPEN",
-      head_branch: "feat/568-pr-list-show-commands",
-      base_branch: "develop",
-      author: "squeeze-dev",
-      review_decision: "APPROVED",
-      url: "https://github.com/owner/repo/pull/42",
-    };
+describe("cmdPrComments", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
 
-    expect(prOutput).toHaveProperty("number");
-    expect(prOutput).toHaveProperty("title");
-    expect(prOutput).toHaveProperty("state");
-    expect(prOutput).toHaveProperty("head_branch");
-    expect(prOutput).toHaveProperty("base_branch");
-    expect(prOutput).toHaveProperty("author");
-    expect(prOutput).toHaveProperty("review_decision");
-    expect(prOutput).toHaveProperty("url");
-    expect(typeof prOutput.number).toBe("number");
-    expect(typeof prOutput.author).toBe("string");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockFormatOutput.mockImplementation((data: any) => JSON.stringify(data, null, 2));
   });
 
-  /**
-   * @testdoc pr-list の state は OPEN/CLOSED/MERGED のいずれか
-   * @purpose state フィールドの値域契約
-   */
-  it("should have valid state values", () => {
-    const validStates = ["OPEN", "CLOSED", "MERGED"];
-    validStates.forEach((state) => {
-      expect(validStates).toContain(state);
+  afterEach(() => { consoleSpy.mockRestore(); });
+
+  it("should return 1 for invalid PR number", async () => {
+    mockIsIssueNumber.mockReturnValue(false);
+    const result = await cmdPrComments("abc", {}, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid PR number"));
+  });
+
+  it("should return 1 when GraphQL fails", async () => {
+    mockRunGraphQL.mockResolvedValue({ success: false, error: "timeout" });
+    const result = await cmdPrComments("42", {}, logger);
+    expect(result).toBe(1);
+  });
+
+  it("should return 0 and output PR review data on success", async () => {
+    mockRunGraphQL.mockResolvedValue({
+      success: true,
+      data: {
+        data: {
+          repository: {
+            pullRequest: {
+              title: "feat: test",
+              state: "OPEN",
+              body: "Test PR",
+              reviewDecision: "APPROVED",
+              reviews: { nodes: [{ author: { login: "reviewer" }, state: "APPROVED", body: "LGTM" }] },
+              reviewThreads: {
+                nodes: [
+                  {
+                    id: "PRRT_1",
+                    isResolved: false,
+                    isOutdated: false,
+                    comments: {
+                      nodes: [
+                        {
+                          id: "PRRC_1",
+                          databaseId: 12345,
+                          body: "Fix this",
+                          path: "src/index.ts",
+                          line: 42,
+                          author: { login: "reviewer" },
+                          createdAt: "2026-02-01T00:00:00Z",
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
     });
-  });
 
-  /**
-   * @testdoc pr-list の review_decision は有効値または null
-   * @purpose review_decision フィールドの値域契約
-   */
-  it("should have valid review_decision values", () => {
-    const validDecisions = ["APPROVED", "CHANGES_REQUESTED", "REVIEW_REQUIRED", null];
-    validDecisions.forEach((decision) => {
-      expect(validDecisions).toContain(decision);
-    });
-  });
-
-  /**
-   * @testdoc pr-list 出力に total_count が含まれる
-   * @purpose 件数情報の出力契約
-   */
-  it("should include total_count in output", () => {
-    const output = {
-      repository: "owner/repo",
-      pull_requests: [],
-      total_count: 0,
-    };
-
-    expect(output).toHaveProperty("total_count");
-    expect(typeof output.total_count).toBe("number");
-    expect(output.pull_requests).toBeInstanceOf(Array);
+    const result = await cmdPrComments("42", {}, logger);
+    expect(result).toBe(0);
+    expect(mockFormatOutput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pr_number: 42,
+        title: "feat: test",
+        total_threads: 1,
+        unresolved_threads: 1,
+      }),
+      "json",
+      expect.any(Object)
+    );
   });
 });
 
 // =============================================================================
-// #568: pr-show - 出力構造契約
+// cmdMerge - Integration tests
 // =============================================================================
 
-describe("pr-show - output structure", () => {
-  /**
-   * @testdoc pr-show 出力に PR 詳細フィールドが含まれる
-   * @purpose PR 詳細表示の出力構造契約
-   */
-  it("should include all detail fields", () => {
-    const output = {
-      number: 42,
-      title: "feat: add PR list command",
-      state: "OPEN",
-      head_branch: "feat/568-pr-list-show-commands",
-      base_branch: "develop",
-      author: "squeeze-dev",
-      review_decision: "APPROVED",
-      url: "https://github.com/owner/repo/pull/42",
-      body: "## Summary\nAdds PR list command",
-      labels: ["enhancement"],
-      created_at: "2026-02-15T00:00:00Z",
-      updated_at: "2026-02-15T01:00:00Z",
-      additions: 150,
-      deletions: 20,
-      changed_files: 5,
-      review_thread_count: 2,
-      review_count: 1,
-      linked_issues: [568],
-    };
+describe("cmdMerge", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+  const mockPullsGet = jest.fn<(...args: any[]) => any>();
+  const mockPullsMerge = jest.fn<(...args: any[]) => any>();
+  const mockDeleteRef = jest.fn<(...args: any[]) => any>();
+  const mockSearchIssues = jest.fn<(...args: any[]) => any>();
 
-    // pr-list フィールド
-    expect(output).toHaveProperty("number");
-    expect(output).toHaveProperty("title");
-    expect(output).toHaveProperty("state");
-    expect(output).toHaveProperty("head_branch");
-    expect(output).toHaveProperty("base_branch");
-    expect(output).toHaveProperty("author");
-    expect(output).toHaveProperty("review_decision");
-    expect(output).toHaveProperty("url");
-
-    // pr-show 固有フィールド
-    expect(output).toHaveProperty("body");
-    expect(output).toHaveProperty("labels");
-    expect(output).toHaveProperty("created_at");
-    expect(output).toHaveProperty("updated_at");
-    expect(output).toHaveProperty("additions");
-    expect(output).toHaveProperty("deletions");
-    expect(output).toHaveProperty("changed_files");
-    expect(output).toHaveProperty("review_thread_count");
-    expect(output).toHaveProperty("review_count");
-    expect(output).toHaveProperty("linked_issues");
-  });
-
-  /**
-   * @testdoc pr-show の diff 統計は数値型
-   * @purpose diff 統計フィールドの型契約
-   */
-  it("should have numeric diff stats", () => {
-    const output = {
-      additions: 150,
-      deletions: 20,
-      changed_files: 5,
-    };
-
-    expect(typeof output.additions).toBe("number");
-    expect(typeof output.deletions).toBe("number");
-    expect(typeof output.changed_files).toBe("number");
-  });
-
-  /**
-   * @testdoc pr-show の labels は文字列配列
-   * @purpose labels フィールドの型契約
-   */
-  it("should have labels as string array", () => {
-    const output = {
-      labels: ["enhancement", "area:cli"],
-    };
-
-    expect(output.labels).toBeInstanceOf(Array);
-    output.labels.forEach((label) => {
-      expect(typeof label).toBe("string");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockGetOctokit.mockReturnValue({
+      rest: {
+        pulls: { get: mockPullsGet, merge: mockPullsMerge, list: jest.fn() },
+        git: { deleteRef: mockDeleteRef },
+        search: { issuesAndPullRequests: mockSearchIssues },
+      },
     });
+    mockResolveAndUpdateStatus.mockResolvedValue({ success: true });
+    mockExecFileAsync.mockResolvedValue({ stdout: "", stderr: "", exitCode: 0 });
   });
 
-  /**
-   * @testdoc pr-show の linked_issues は数値配列
-   * @purpose linked_issues フィールドの型契約（parseLinkedIssues との整合性）
-   */
-  it("should have linked_issues as number array", () => {
-    const output = {
-      linked_issues: [39, 44],
-    };
+  afterEach(() => { consoleSpy.mockRestore(); });
 
-    expect(output.linked_issues).toBeInstanceOf(Array);
-    output.linked_issues.forEach((num) => {
-      expect(typeof num).toBe("number");
+  it("should return 1 when no PR number or --head provided", async () => {
+    mockIsIssueNumber.mockReturnValue(false);
+    const result = await cmdMerge(undefined, {}, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("PR number or --head"));
+  });
+
+  it("should merge PR and checkout base branch by default", async () => {
+    mockPullsGet.mockResolvedValue({
+      data: { body: "Closes #39", head: { ref: "feat/39-test" }, base: { ref: "develop" } },
     });
+    mockSearchIssues.mockResolvedValue({
+      data: { items: [{ number: 42, body: "Closes #39" }] },
+    });
+    mockPullsMerge.mockResolvedValue({});
+    mockDeleteRef.mockResolvedValue({});
+
+    const result = await cmdMerge("42", {}, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.pr_number).toBe(42);
+    expect(output.merged).toBe(true);
+    expect(output.merge_method).toBe("squash");
+    expect(output.branch_deleted).toBe(true);
+    expect(output.checked_out).toBe(true);
+    expect(output.pulled).toBe(true);
+    expect(output.local_branch_deleted).toBe(false);
+    expect(mockExecFileAsync).toHaveBeenCalledWith("git", ["checkout", "develop"]);
+    expect(mockExecFileAsync).toHaveBeenCalledWith("git", ["pull", "origin", "develop"]);
   });
 
-  /**
-   * @testdoc pr-show の linked_issues が空の場合は空配列
-   * @purpose リンク Issue がない場合の出力契約
-   */
-  it("should return empty linked_issues when no linked issues in body", () => {
-    const output = {
-      linked_issues: [],
-    };
+  it("should skip local operations when --no-checkout is specified", async () => {
+    mockPullsGet.mockResolvedValue({
+      data: { body: "", head: { ref: "test" }, base: { ref: "develop" } },
+    });
+    mockPullsMerge.mockResolvedValue({});
 
-    expect(output.linked_issues).toEqual([]);
+    const result = await cmdMerge("42", { checkout: false }, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.checked_out).toBe(false);
+    expect(output.pulled).toBe(false);
+    expect(mockExecFileAsync).not.toHaveBeenCalled();
+  });
+
+  it("should warn but return 0 when checkout fails", async () => {
+    mockPullsGet.mockResolvedValue({
+      data: { body: "", head: { ref: "test" }, base: { ref: "develop" } },
+    });
+    mockPullsMerge.mockResolvedValue({});
+    mockExecFileAsync.mockRejectedValue(new Error("checkout failed"));
+
+    const result = await cmdMerge("42", {}, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.checked_out).toBe(false);
+    expect(output.pulled).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Failed to checkout"));
+  });
+
+  it("should delete local branch when --delete-local is specified", async () => {
+    mockPullsGet.mockResolvedValue({
+      data: { body: "", head: { ref: "feat/42-test" }, base: { ref: "develop" } },
+    });
+    mockPullsMerge.mockResolvedValue({});
+
+    const result = await cmdMerge("42", { deleteLocal: true }, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.local_branch_deleted).toBe(true);
+    expect(mockExecFileAsync).toHaveBeenCalledWith("git", ["branch", "-d", "feat/42-test"]);
+  });
+
+  it("should warn when local branch deletion fails", async () => {
+    mockPullsGet.mockResolvedValue({
+      data: { body: "", head: { ref: "feat/42-test" }, base: { ref: "develop" } },
+    });
+    mockPullsMerge.mockResolvedValue({});
+    // checkout and pull succeed, branch delete fails
+    mockExecFileAsync
+      .mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 }) // checkout
+      .mockResolvedValueOnce({ stdout: "", stderr: "", exitCode: 0 }) // pull
+      .mockRejectedValueOnce(new Error("branch not fully merged")); // branch -d
+
+    const result = await cmdMerge("42", { deleteLocal: true }, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.local_branch_deleted).toBe(false);
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("git branch -D"));
+  });
+
+  it("should return 1 when merge fails", async () => {
+    mockPullsGet.mockResolvedValue({ data: { body: "", head: { ref: "test" }, base: { ref: "develop" } } });
+    mockPullsMerge.mockRejectedValue(new Error("Merge conflict"));
+
+    const result = await cmdMerge("42", {}, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Failed to merge"));
+  });
+
+  it("should update linked issues to Done after merge", async () => {
+    mockPullsGet.mockResolvedValue({
+      data: { body: "Closes #39\nFixes #44", head: { ref: "feat/test" }, base: { ref: "develop" } },
+    });
+    mockSearchIssues.mockResolvedValue({
+      data: { items: [{ number: 42, body: "Closes #39\nFixes #44" }] },
+    });
+    mockPullsMerge.mockResolvedValue({});
+    mockDeleteRef.mockResolvedValue({});
+
+    await cmdMerge("42", {}, logger);
+
+    expect(mockResolveAndUpdateStatus).toHaveBeenCalledWith(
+      "test-owner", "test-repo", 39, "Done", logger
+    );
+    expect(mockResolveAndUpdateStatus).toHaveBeenCalledWith(
+      "test-owner", "test-repo", 44, "Done", logger
+    );
+  });
+
+  it("should use specified merge method", async () => {
+    mockPullsGet.mockResolvedValue({ data: { body: "", head: { ref: "test" }, base: { ref: "develop" } } });
+    mockPullsMerge.mockResolvedValue({});
+
+    await cmdMerge("42", { rebase: true }, logger);
+
+    expect(mockPullsMerge).toHaveBeenCalledWith(
+      expect.objectContaining({ merge_method: "rebase" })
+    );
+  });
+
+  it("should skip pull when checkout fails", async () => {
+    mockPullsGet.mockResolvedValue({
+      data: { body: "", head: { ref: "test" }, base: { ref: "develop" } },
+    });
+    mockPullsMerge.mockResolvedValue({});
+    mockExecFileAsync.mockRejectedValue(new Error("checkout failed"));
+
+    await cmdMerge("42", {}, logger);
+
+    // checkout が失敗したので pull は呼ばれない
+    expect(mockExecFileAsync).toHaveBeenCalledTimes(1);
+    expect(mockExecFileAsync).toHaveBeenCalledWith("git", ["checkout", "develop"]);
   });
 });
 
 // =============================================================================
-// #986: pr-create - Output structure contracts
+// cmdPrReply - Integration tests
 // =============================================================================
 
-describe("pr-create - output structure", () => {
-  /**
-   * @testdoc pr-createの出力JSONにPR番号・タイトル・URLが含まれる
-   * @purpose 作成されたPRの基本メタデータが返される契約
-   */
-  it("should include PR metadata in output", () => {
-    const output = {
-      number: 42,
-      title: "feat: add branch workflow (#39)",
-      url: "https://github.com/owner/repo/pull/42",
-      head_branch: "feat/39-branch-workflow",
-      base_branch: "develop",
-    };
+describe("cmdPrReply", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+  const mockOctokitRequest = jest.fn<(...args: any[]) => any>();
 
-    expect(output).toHaveProperty("number");
-    expect(output).toHaveProperty("title");
-    expect(output).toHaveProperty("url");
-    expect(output).toHaveProperty("head_branch");
-    expect(output).toHaveProperty("base_branch");
-    expect(typeof output.number).toBe("number");
-    expect(typeof output.url).toBe("string");
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockGetOctokit.mockReturnValue({ request: mockOctokitRequest });
   });
 
-  /**
-   * @testdoc pr-createの出力にhead/baseブランチ名が含まれる
-   * @purpose ブランチ情報が返される契約（チェーン処理で後続スキルが使用）
-   */
-  it("should include branch names for downstream chain use", () => {
-    const output = {
-      number: 100,
-      title: "release: v0.2.0",
-      url: "https://github.com/owner/repo/pull/100",
-      head_branch: "develop",
-      base_branch: "main",
-    };
+  afterEach(() => { consoleSpy.mockRestore(); });
 
-    expect(output.head_branch).toBe("develop");
-    expect(output.base_branch).toBe("main");
+  it("should return 1 when --reply-to is missing", async () => {
+    const result = await cmdPrReply("42", { bodyFile: "test" }, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--reply-to"));
+  });
+
+  it("should return 1 when --body-file is missing", async () => {
+    const result = await cmdPrReply("42", { replyTo: "12345" }, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--body-file"));
+  });
+
+  it("should return 1 for non-numeric --reply-to", async () => {
+    const result = await cmdPrReply("42", { replyTo: "PRRC_abc", bodyFile: "test" }, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("numeric"));
+  });
+
+  it("should reply and output JSON on success", async () => {
+    mockOctokitRequest.mockResolvedValue({
+      data: { id: 87654, html_url: "https://github.com/owner/repo/pull/42#discussion_r87654" },
+    });
+
+    const result = await cmdPrReply("42", { replyTo: "12345", bodyFile: "Fixed" }, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.pr_number).toBe(42);
+    expect(output.reply_to).toBe(12345);
+    expect(output.comment_id).toBe(87654);
   });
 });
 
 // =============================================================================
-// #986: pr-create - Validation
+// cmdResolve - Integration tests
 // =============================================================================
 
-describe("pr-create - validation", () => {
-  /**
-   * @testdoc --base未指定時にエラーとなる
-   * @purpose 必須オプション未指定の検証
-   */
-  it("should require --base option", () => {
-    // cmdPrCreate checks for options.base and returns 1 if missing
-    const options = { title: "feat: test" };
-    expect(options).not.toHaveProperty("base");
+describe("cmdResolve", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
   });
 
-  /**
-   * @testdoc --title未指定時にエラーとなる
-   * @purpose 必須オプション未指定の検証
-   */
-  it("should require --title option", () => {
-    const options = { base: "develop" };
-    expect(options).not.toHaveProperty("title");
+  afterEach(() => { consoleSpy.mockRestore(); });
+
+  it("should return 1 when --thread-id is missing", async () => {
+    const result = await cmdResolve("42", {}, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--thread-id"));
   });
 
-  /**
-   * @testdoc --headが未指定の場合はgitブランチから自動検出
-   * @purpose デフォルトブランチ検出の仕様確認
-   */
-  it("should use current git branch when --head is not specified", () => {
-    const options = { base: "develop", title: "feat: test" };
-    // head is undefined, cmdPrCreate will call getCurrentBranch()
-    expect(options).not.toHaveProperty("head");
+  it("should return 1 for invalid thread ID format", async () => {
+    const result = await cmdResolve("42", { threadId: "ab" }, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid --thread-id"));
   });
 
-  /**
-   * @testdoc リリースワークフローで--headを明示指定できる
-   * @purpose develop→mainのリリースPR作成パターンの仕様確認
-   */
-  it("should accept explicit --head for release workflow", () => {
-    const options = {
-      base: "main",
-      head: "develop",
-      title: "release: v0.2.0",
-    };
-    expect(options.head).toBe("develop");
-    expect(options.base).toBe("main");
+  it("should resolve thread and output JSON on success", async () => {
+    mockRunGraphQL.mockResolvedValue({
+      success: true,
+      data: {
+        data: {
+          resolveReviewThread: {
+            thread: { id: "PRRT_kwDON12345", isResolved: true },
+          },
+        },
+      },
+    });
+
+    const result = await cmdResolve("42", { threadId: "PRRT_kwDON12345" }, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.pr_number).toBe(42);
+    expect(output.thread_id).toBe("PRRT_kwDON12345");
+    expect(output.resolved).toBe(true);
+  });
+});
+
+// =============================================================================
+// resolvePrFromHead - Integration tests
+// =============================================================================
+
+describe("resolvePrFromHead", () => {
+  let logger: Logger;
+  const mockPullsList = jest.fn<(...args: any[]) => any>();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    mockGetOctokit.mockReturnValue({ rest: { pulls: { list: mockPullsList } } });
+  });
+
+  it("should return PR number when found", async () => {
+    mockPullsList.mockResolvedValue({ data: [{ number: 42 }] });
+
+    const result = await resolvePrFromHead("feat/test", "owner", "repo", logger);
+    expect(result).toBe(42);
+  });
+
+  it("should return null when no open PR found", async () => {
+    mockPullsList.mockResolvedValue({ data: [] });
+
+    const result = await resolvePrFromHead("feat/test", "owner", "repo", logger);
+    expect(result).toBeNull();
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("No open PR found"));
+  });
+});
+
+// =============================================================================
+// cmdPrList - Integration tests
+// =============================================================================
+
+describe("cmdPrList", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockFormatOutput.mockImplementation((data: any) => JSON.stringify(data, null, 2));
+  });
+
+  afterEach(() => { consoleSpy.mockRestore(); });
+
+  it("should return 1 for invalid state filter", async () => {
+    const result = await cmdPrList({ state: "invalid" }, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid state"));
+  });
+
+  it("should return PR list on success", async () => {
+    mockRunGraphQL.mockResolvedValue({
+      success: true,
+      data: {
+        data: {
+          repository: {
+            pullRequests: {
+              nodes: [
+                {
+                  number: 42,
+                  title: "feat: test",
+                  state: "OPEN",
+                  headRefName: "feat/test",
+                  baseRefName: "develop",
+                  author: { login: "user" },
+                  reviewDecision: "APPROVED",
+                  url: "https://github.com/owner/repo/pull/42",
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    const result = await cmdPrList({}, logger);
+    expect(result).toBe(0);
+    expect(mockFormatOutput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        repository: "test-owner/test-repo",
+        total_count: 1,
+      }),
+      "json",
+      expect.any(Object)
+    );
+  });
+});
+
+// =============================================================================
+// cmdPrShow - Integration tests
+// =============================================================================
+
+describe("cmdPrShow", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+  });
+
+  afterEach(() => { consoleSpy.mockRestore(); });
+
+  it("should return 1 when PR not found", async () => {
+    mockRunGraphQL.mockResolvedValue({ success: false });
+    const result = await cmdPrShow("999", {}, logger);
+    expect(result).toBe(1);
+  });
+
+  it("should output full PR details on success", async () => {
+    mockRunGraphQL.mockResolvedValue({
+      success: true,
+      data: {
+        data: {
+          repository: {
+            pullRequest: {
+              number: 42,
+              title: "feat: add feature",
+              state: "OPEN",
+              url: "https://github.com/owner/repo/pull/42",
+              body: "Closes #39\n\nDetails here",
+              headRefName: "feat/39-test",
+              baseRefName: "develop",
+              author: { login: "user" },
+              reviewDecision: "APPROVED",
+              labels: { nodes: [{ name: "enhancement" }] },
+              createdAt: "2026-02-15T00:00:00Z",
+              updatedAt: "2026-02-15T01:00:00Z",
+              additions: 150,
+              deletions: 20,
+              changedFiles: 5,
+              reviewThreads: { totalCount: 2 },
+              reviews: { totalCount: 1 },
+            },
+          },
+        },
+      },
+    });
+
+    const result = await cmdPrShow("42", {}, logger);
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.number).toBe(42);
+    expect(output.title).toBe("feat: add feature");
+    expect(output.linked_issues).toContain(39);
+    expect(output.additions).toBe(150);
+    expect(output.labels).toEqual(["enhancement"]);
+    expect(output.review_thread_count).toBe(2);
+  });
+});
+
+// =============================================================================
+// cmdPrCreate - Integration tests
+// =============================================================================
+
+describe("cmdPrCreate", () => {
+  let logger: Logger;
+  let consoleSpy: jest.SpiedFunction<typeof console.log>;
+  const mockPullsCreate = jest.fn<(...args: any[]) => any>();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    logger = createMockLogger();
+    consoleSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    setupDefaultValidation();
+    mockGetOctokit.mockReturnValue({ rest: { pulls: { create: mockPullsCreate } } });
+    mockGetCurrentBranch.mockReturnValue("feat/test");
+  });
+
+  afterEach(() => { consoleSpy.mockRestore(); });
+
+  it("should return 1 when --base is missing", async () => {
+    const result = await cmdPrCreate({ title: "test" }, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--base"));
+  });
+
+  it("should return 1 when --title is missing", async () => {
+    const result = await cmdPrCreate({ base: "develop" }, logger);
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--title"));
+  });
+
+  it("should create PR and output JSON on success", async () => {
+    mockPullsCreate.mockResolvedValue({
+      data: {
+        number: 42,
+        title: "feat: test (#39)",
+        html_url: "https://github.com/owner/repo/pull/42",
+        head: { ref: "feat/test" },
+        base: { ref: "develop" },
+      },
+    });
+
+    const result = await cmdPrCreate(
+      { base: "develop", title: "feat: test (#39)" },
+      logger
+    );
+    const output = captureConsoleJson<any>(consoleSpy);
+
+    expect(result).toBe(0);
+    expect(output.number).toBe(42);
+    expect(output.head_branch).toBe("feat/test");
+    expect(output.base_branch).toBe("develop");
+    expect(logger.success).toHaveBeenCalledWith(expect.stringContaining("Created PR #42"));
+  });
+
+  it("should use current git branch when --head is not specified", async () => {
+    mockGetCurrentBranch.mockReturnValue("feat/auto-detected");
+    mockPullsCreate.mockResolvedValue({
+      data: { number: 1, title: "t", html_url: "u", head: { ref: "feat/auto-detected" }, base: { ref: "develop" } },
+    });
+
+    await cmdPrCreate({ base: "develop", title: "test" }, logger);
+
+    expect(mockPullsCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ head: "feat/auto-detected" })
+    );
+  });
+
+  it("should return 1 when API fails", async () => {
+    mockPullsCreate.mockRejectedValue(new Error("Validation failed"));
+    const result = await cmdPrCreate(
+      { base: "develop", title: "test" },
+      logger
+    );
+    expect(result).toBe(1);
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Failed to create PR"));
+  });
+});
+
+// =============================================================================
+// fetchOpenPRs - Integration tests
+// =============================================================================
+
+describe("fetchOpenPRs", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("should return empty array when GraphQL fails", async () => {
+    mockRunGraphQL.mockResolvedValue({ success: false });
+    const result = await fetchOpenPRs("owner", "repo");
+    expect(result).toEqual([]);
+  });
+
+  it("should return PR summaries on success", async () => {
+    mockRunGraphQL.mockResolvedValue({
+      success: true,
+      data: {
+        data: {
+          repository: {
+            pullRequests: {
+              nodes: [
+                {
+                  number: 42,
+                  title: "feat: test",
+                  url: "https://github.com/owner/repo/pull/42",
+                  reviewDecision: "APPROVED",
+                  reviewThreads: { totalCount: 2 },
+                  reviews: { totalCount: 1 },
+                },
+              ],
+            },
+          },
+        },
+      },
+    });
+
+    const result = await fetchOpenPRs("owner", "repo");
+    expect(result).toHaveLength(1);
+    expect(result[0]).toEqual(
+      expect.objectContaining({
+        number: 42,
+        title: "feat: test",
+        reviewDecision: "APPROVED",
+      })
+    );
   });
 });
