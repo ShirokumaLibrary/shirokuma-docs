@@ -184,7 +184,7 @@ export default function SettingsPage() {
     });
 
     /**
-     * @testdoc 説明文を抽出できる
+     * @testdoc JSDocブロックから説明文を正しく抽出できる
      */
     it("should extract description from JSDoc", () => {
       const content = `

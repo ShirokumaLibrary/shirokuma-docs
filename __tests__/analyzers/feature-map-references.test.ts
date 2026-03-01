@@ -35,7 +35,7 @@ function createEmptyReferenceResult(): ReferenceAnalysisResult {
 describe("feature-map-references", () => {
   describe("mergeArrays", () => {
     /**
-     * @testdoc Merges two arrays with deduplication
+     * @testdoc 2つの配列を重複排除してマージする
      */
     it("should merge arrays without duplicates", () => {
       const result = mergeArrays(["a", "b"], ["b", "c"]);
@@ -43,7 +43,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Empty arrays
+     * @testdoc 空配列同士のマージを正しく処理する
      */
     it("should handle empty arrays", () => {
       expect(mergeArrays([], [])).toEqual([]);
@@ -54,7 +54,7 @@ describe("feature-map-references", () => {
 
   describe("buildTableReverseReferences", () => {
     /**
-     * @testdoc Action's dbTables create reverse references on Table items
+     * @testdoc ActionのdbTablesからTableアイテムへの逆参照を構築する
      */
     it("should build reverse references from action dbTables to table items", () => {
       const items: FeatureMapItem[] = [
@@ -96,7 +96,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Deduplication in reverse references (uses Set internally)
+     * @testdoc 逆参照の重複を排除する（内部でSetを使用）
      */
     it("should deduplicate reverse references", () => {
       const items: FeatureMapItem[] = [
@@ -124,7 +124,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Actions without dbTables don't affect tables
+     * @testdoc dbTablesを持たないActionはTableアイテムに影響しない
      */
     it("should handle actions without dbTables", () => {
       const items: FeatureMapItem[] = [
@@ -149,7 +149,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Empty items array
+     * @testdoc 空のアイテム配列でもエラーを発生させない
      */
     it("should handle empty items array", () => {
       const items: FeatureMapItem[] = [];
@@ -157,7 +157,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Case-insensitive table name matching
+     * @testdoc テーブル名の大文字小文字を区別せずにマッチングする
      */
     it("should match table names case-insensitively", () => {
       const items: FeatureMapItem[] = [
@@ -184,7 +184,7 @@ describe("feature-map-references", () => {
 
   describe("mergeInferredReferences", () => {
     /**
-     * @testdoc Screen's usedComponents merged from fileUsages
+     * @testdoc ScreenのusedComponentsにfileUsagesからコンポーネント参照をマージする
      */
     it("should merge component references into screen items via fileUsages", () => {
       const items: FeatureMapItem[] = [
@@ -213,7 +213,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Screen's usedActions merged from fileUsages
+     * @testdoc ScreenのusedActionsにfileUsagesからアクション参照をマージする
      */
     it("should merge action references into screen items via fileUsages", () => {
       const items: FeatureMapItem[] = [
@@ -242,7 +242,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Component's usedInScreens merged from reverseRefs
+     * @testdoc ComponentのusedInScreensにreverseRefsから逆参照をマージする
      */
     it("should merge reverse component references from reverseRefs", () => {
       const items: FeatureMapItem[] = [
@@ -274,7 +274,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Existing references are preserved (not duplicated)
+     * @testdoc 既存の参照を保持しつつ重複なくマージする
      */
     it("should not duplicate existing references when merging", () => {
       const items: FeatureMapItem[] = [
@@ -305,7 +305,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Empty reference result doesn't modify items
+     * @testdoc 空の参照解析結果の場合はアイテムを変更しない
      */
     it("should not modify items when reference result is empty", () => {
       const items: FeatureMapItem[] = [
@@ -325,7 +325,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Action reverse references merged from reverseRefs
+     * @testdoc ActionのusedInScreensにreverseRefsから逆参照をマージする
      */
     it("should merge reverse action references from reverseRefs", () => {
       const items: FeatureMapItem[] = [
@@ -359,7 +359,7 @@ describe("feature-map-references", () => {
 
   describe("buildModuleReferences", () => {
     /**
-     * @testdoc Module-to-module references from fileUsages
+     * @testdoc fileUsagesからモジュール間の相互参照を構築する
      */
     it("should build module-to-module references from fileUsages", () => {
       const items: FeatureMapItem[] = [
@@ -402,7 +402,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Empty module items
+     * @testdoc 空のモジュールアイテム配列でもエラーを発生させない
      */
     it("should handle empty items gracefully", () => {
       const items: FeatureMapItem[] = [];
@@ -412,7 +412,7 @@ describe("feature-map-references", () => {
     });
 
     /**
-     * @testdoc Non-module items are unaffected
+     * @testdoc モジュール以外のアイテムタイプには影響しない
      */
     it("should not affect non-module items", () => {
       const items: FeatureMapItem[] = [

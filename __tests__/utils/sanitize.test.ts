@@ -21,11 +21,17 @@ describe("sanitize utilities", () => {
       expect(stripDoubleQuotes('a"b"c"d')).toBe("abcd");
     });
 
+    /**
+     * @testdoc ダブルクォートを含まない文字列はそのまま変更せずに返す
+     */
     it("should return unchanged string when no quotes", () => {
       expect(stripDoubleQuotes("hello")).toBe("hello");
       expect(stripDoubleQuotes("")).toBe("");
     });
 
+    /**
+     * @testdoc ダブルクォートのみで構成される文字列を空文字列に変換する
+     */
     it("should handle only double quotes", () => {
       expect(stripDoubleQuotes('"""')).toBe("");
     });
@@ -51,11 +57,17 @@ describe("sanitize utilities", () => {
       expect(escapeRegExp("back\\slash")).toBe("back\\\\slash");
     });
 
+    /**
+     * @testdoc 正規表現の特殊文字を含まない文字列はそのまま変更せずに返す
+     */
     it("should return unchanged string when no special characters", () => {
       expect(escapeRegExp("hello")).toBe("hello");
       expect(escapeRegExp("")).toBe("");
     });
 
+    /**
+     * @testdoc エスケープ済みの文字列がRegExpコンストラクタで有効なパターンとして機能する
+     */
     it("should produce valid regex pattern", () => {
       const input = "file.name(1).test[2]";
       const escaped = escapeRegExp(input);
@@ -80,6 +92,9 @@ describe("sanitize utilities", () => {
       expect(result!.test("hello beautiful world")).toBe(true);
     });
 
+    /**
+     * @testdoc フラグ引数を指定した場合にRegExpオブジェクトに正しくフラグが設定される
+     */
     it("should support flags", () => {
       const result = safeRegExp("hello", "gi");
       expect(result).toBeInstanceOf(RegExp);
@@ -97,6 +112,9 @@ describe("sanitize utilities", () => {
       expect(safeRegExp("*")).toBeNull();
     });
 
+    /**
+     * @testdoc 無効なフラグ文字列を指定した場合にnullを返しクラッシュしない
+     */
     it("should return null for invalid flags", () => {
       expect(safeRegExp("valid", "xyz")).toBeNull();
     });

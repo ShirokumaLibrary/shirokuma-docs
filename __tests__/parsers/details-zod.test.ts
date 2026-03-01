@@ -8,6 +8,9 @@ import { parseZodSchema, mapZodTypeToJsonType } from "../../src/parsers/details-
 
 describe("details-zod", () => {
   describe("parseZodSchema", () => {
+    /**
+     * @testdoc 基本的なZodオブジェクトスキーマを解析する
+     */
     it("should parse a basic Zod object schema", () => {
       const source = `
 const CreateEntitySchema = z.object({
@@ -31,6 +34,9 @@ const CreateEntitySchema = z.object({
       expect(emailParam!.format).toBe("email");
     });
 
+    /**
+     * @testdoc optionalおよびnullableフィールドを必須でないと判定する
+     */
     it("should handle optional fields", () => {
       const source = `
 const UpdateSchema = z.object({
@@ -48,6 +54,9 @@ const UpdateSchema = z.object({
       expect(ageParam!.required).toBe(false);
     });
 
+    /**
+     * @testdoc describe()メソッドの値をフィールド説明として抽出する
+     */
     it("should extract .describe() values", () => {
       const source = `
 export const FormSchema = z.object({
@@ -61,6 +70,9 @@ export const FormSchema = z.object({
       expect(titleParam!.description).toBe("The title of the entity");
     });
 
+    /**
+     * @testdoc UUIDフォーマットとバリデーションメッセージを抽出する
+     */
     it("should handle uuid format", () => {
       const source = `
 const IdSchema = z.object({
@@ -75,6 +87,9 @@ const IdSchema = z.object({
       expect(idParam!.validation?.message).toBe("Invalid UUID");
     });
 
+    /**
+     * @testdoc default()メソッドのデフォルト値を型ごとに抽出する
+     */
     it("should handle .default() values", () => {
       const source = `
 const ConfigSchema = z.object({
@@ -96,6 +111,9 @@ const ConfigSchema = z.object({
       expect(labelParam!.default).toBe("default");
     });
 
+    /**
+     * @testdoc z.enum()の列挙値を配列として抽出する
+     */
     it("should handle z.enum()", () => {
       const source = `
 const StatusSchema = z.object({
@@ -110,6 +128,9 @@ const StatusSchema = z.object({
       expect(statusParam!.enum).toEqual(["active", "inactive", "pending"]);
     });
 
+    /**
+     * @testdoc 数値型のmin/max制約を最小値・最大値として抽出する
+     */
     it("should handle min/max for numbers", () => {
       const source = `
 const AgeSchema = z.object({
@@ -124,6 +145,9 @@ const AgeSchema = z.object({
       expect(ageParam!.maximum).toBe(150);
     });
 
+    /**
+     * @testdoc 文字列型のmin/max制約をminLength/maxLengthとして抽出する
+     */
     it("should handle min/max for strings (minLength/maxLength)", () => {
       const source = `
 const NameSchema = z.object({
@@ -138,11 +162,17 @@ const NameSchema = z.object({
       expect(nameParam!.maxLength).toBe(100);
     });
 
+    /**
+     * @testdoc 存在しないスキーマ名に対してnullを返す
+     */
     it("should return null for non-existent schema", () => {
       const result = parseZodSchema("NonExistentSchema", "const x = 1;");
       expect(result).toBeNull();
     });
 
+    /**
+     * @testdoc exportされたスキーマも正しく解析する
+     */
     it("should handle exported schemas", () => {
       const source = `
 export const ExportedSchema = z.object({
@@ -154,6 +184,9 @@ export const ExportedSchema = z.object({
       expect(result!.parameters).toHaveLength(1);
     });
 
+    /**
+     * @testdoc URLフォーマットのバリデーションを検出する
+     */
     it("should handle url format", () => {
       const source = `
 const LinkSchema = z.object({
@@ -169,6 +202,9 @@ const LinkSchema = z.object({
   });
 
   describe("mapZodTypeToJsonType", () => {
+    /**
+     * @testdoc 標準的なZod型をJSON型に正しくマッピングする
+     */
     it("should map standard Zod types", () => {
       expect(mapZodTypeToJsonType("string")).toBe("string");
       expect(mapZodTypeToJsonType("number")).toBe("number");
@@ -179,6 +215,9 @@ const LinkSchema = z.object({
       expect(mapZodTypeToJsonType("enum")).toBe("enum");
     });
 
+    /**
+     * @testdoc 未知の型に対してunknownを返す
+     */
     it("should return 'unknown' for unmapped types", () => {
       expect(mapZodTypeToJsonType("customType")).toBe("unknown");
       expect(mapZodTypeToJsonType("")).toBe("unknown");

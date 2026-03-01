@@ -52,6 +52,9 @@ function cleanupTestDir(): void {
 // =============================================================================
 
 describe("getCliInstallDir", () => {
+  /**
+   * @testdoc 開発リポジトリから直接実行した場合にnullを返しインストール先を検出しない
+   */
   test("開発環境ではnullを返す（リポジトリから直接実行）", () => {
     // テストは dist/ から実行されるが、開発リポジトリ内なので
     // /node_modules/ パスを経由していない場合は null を返す
@@ -71,6 +74,9 @@ describe("updateCliPackage", () => {
   beforeEach(setupTestDir);
   afterEach(cleanupTestDir);
 
+  /**
+   * @testdoc dry-runモードではnpm installを実行せずスキップステータスを返す
+   */
   test("dry-run モードでは npm install を実行しない", () => {
     // テスト用の wrapper ディレクトリを作成
     const wrapperDir = join(TEST_OUTPUT_DIR, "wrapper");
@@ -91,6 +97,9 @@ describe("updateCliPackage", () => {
     expect(result.oldVersion).toBeDefined();
   });
 
+  /**
+   * @testdoc 存在しないディレクトリを指定した場合にfailedステータスを返す
+   */
   test("存在しないディレクトリでは failed を返す", () => {
     const nonExistentDir = join(TEST_OUTPUT_DIR, "non-existent");
 
@@ -102,6 +111,9 @@ describe("updateCliPackage", () => {
     expect(result.message).toBeDefined();
   });
 
+  /**
+   * @testdoc npmコマンドが利用できない環境ではskippedステータスを返す
+   */
   test("npm が見つからない場合は skipped を返す", () => {
     // npm のパスを一時的に変更するのは困難なため、
     // この動作は手動テストで検証する。

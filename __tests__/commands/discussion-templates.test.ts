@@ -543,6 +543,9 @@ describe("discussion-templates GitHub Discussion Forms compatibility", () => {
    * @purpose 生成されるテンプレートがGitHub仕様に準拠することを文書化
    */
   describe("GitHub specification compliance", () => {
+    /**
+     * @testdoc テンプレートの必須フィールド（title, labels, body）の構造を文書化する
+     */
     it("should document required template fields", () => {
       const templateStructure = {
         title: "Optional default title",
@@ -553,6 +556,9 @@ describe("discussion-templates GitHub Discussion Forms compatibility", () => {
       expect(templateStructure.body).toBeDefined();
     });
 
+    /**
+     * @testdoc サポートされるbody要素タイプ（markdown, textarea, input, dropdown, checkboxes）を文書化する
+     */
     it("should document supported body element types", () => {
       const supportedTypes = ["markdown", "textarea", "input", "dropdown", "checkboxes"];
 
@@ -562,6 +568,9 @@ describe("discussion-templates GitHub Discussion Forms compatibility", () => {
       expect(supportedTypes).toContain("checkboxes");
     });
 
+    /**
+     * @testdoc textarea要素の属性（label, description, placeholder, value, render）を文書化する
+     */
     it("should document textarea attributes", () => {
       const textareaAttributes = {
         label: "Required field label",

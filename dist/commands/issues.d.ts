@@ -18,6 +18,7 @@
  * - Projects provide: Status/Priority/Size field management
  * - This command unifies both for a seamless experience
  */
+import { Logger } from "../utils/logger.js";
 import { GhVariableValue } from "../utils/github.js";
 import { OutputFormat } from "../utils/formatters.js";
 export interface IssuesOptions {
@@ -80,7 +81,12 @@ export declare function getIssueId(owner: string, repo: string, number: number):
 export declare function getPullRequestId(owner: string, repo: string, number: number): Promise<string | null>;
 export declare function getOrganizationIssueTypes(owner: string): Promise<Record<string, string>>;
 /**
+ * get subcommand
+ */
+declare function cmdGet(issueNumberStr: string, options: IssuesOptions, logger: Logger): Promise<number>;
+/**
  * issues command handler
  */
 export declare function issuesCommand(action: string, target: string | undefined, options: IssuesOptions): Promise<void>;
+export { cmdGet as cmdIssueShow };
 //# sourceMappingURL=issues.d.ts.map

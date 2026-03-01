@@ -17,21 +17,21 @@ import {
 describe("test-annotations", () => {
   describe("countBraces", () => {
     /**
-     * @testdoc Simple opening brace
+     * @testdoc 単一の開き波括弧を正しくカウントする
      */
     it("should count single opening brace", () => {
       expect(countBraces("{")).toBe(1);
     });
 
     /**
-     * @testdoc Opening and closing braces
+     * @testdoc 対になった波括弧のバランスを正しく計算する
      */
     it("should count balanced braces", () => {
       expect(countBraces("{ }")).toBe(0);
     });
 
     /**
-     * @testdoc [test-annotations] Nested braces
+     * @testdoc ネストされた波括弧の深さを正しくカウントする
      */
     it("should count nested braces", () => {
       expect(countBraces("{ { } }")).toBe(0);
@@ -39,7 +39,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Braces in strings ignored
+     * @testdoc 文字列リテラル内の波括弧を無視する
      */
     it("should ignore braces inside strings", () => {
       expect(countBraces('const x = "{ }"')).toBe(0);
@@ -48,14 +48,14 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Empty line returns 0
+     * @testdoc 空行に対してゼロを返す
      */
     it("should return 0 for empty line", () => {
       expect(countBraces("")).toBe(0);
     });
 
     /**
-     * @testdoc Escaped characters in strings
+     * @testdoc エスケープされた文字を含む文字列を正しく処理する
      */
     it("should handle escaped characters", () => {
       expect(countBraces('const x = "\\"{\\""')).toBe(0);
@@ -64,7 +64,7 @@ describe("test-annotations", () => {
 
   describe("parseTestCategory", () => {
     /**
-     * @testdoc Happy path categories
+     * @testdoc 正常系カテゴリのバリエーションを正しく解析する
      */
     it("should parse happy-path variants", () => {
       expect(parseTestCategory("happy-path")).toBe("happy-path");
@@ -74,7 +74,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Auth categories
+     * @testdoc 認証カテゴリのバリエーションを正しく解析する
      */
     it("should parse auth variants", () => {
       expect(parseTestCategory("auth")).toBe("auth");
@@ -85,7 +85,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Error handling categories
+     * @testdoc エラーハンドリングカテゴリのバリエーションを正しく解析する
      */
     it("should parse error-handling variants", () => {
       expect(parseTestCategory("error")).toBe("error-handling");
@@ -94,7 +94,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Validation categories
+     * @testdoc バリデーションカテゴリのバリエーションを正しく解析する
      */
     it("should parse validation variants", () => {
       expect(parseTestCategory("validation")).toBe("validation");
@@ -103,7 +103,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Edge-case categories
+     * @testdoc エッジケースカテゴリのバリエーションを正しく解析する
      */
     it("should parse edge-case variants", () => {
       expect(parseTestCategory("edge")).toBe("edge-case");
@@ -114,7 +114,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Unknown category defaults to other
+     * @testdoc 未知のカテゴリに対してotherを返す
      */
     it("should return 'other' for unknown categories", () => {
       expect(parseTestCategory("unknown")).toBe("other");
@@ -122,7 +122,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Case insensitive
+     * @testdoc カテゴリの大文字小文字を区別しない
      */
     it("should be case insensitive", () => {
       expect(parseTestCategory("AUTH")).toBe("auth");
@@ -132,7 +132,7 @@ describe("test-annotations", () => {
 
   describe("extractTestDocComment", () => {
     /**
-     * @testdoc Basic testdoc extraction
+     * @testdoc JSDocから@testdocタグの値を抽出する
      */
     it("should extract @testdoc from JSDoc", () => {
       const lines = [
@@ -147,7 +147,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Multiple tags extraction
+     * @testdoc 複数のタグ（purpose, precondition, expected）を同時に抽出する
      */
     it("should extract multiple tags", () => {
       const lines = [
@@ -168,7 +168,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc BDD annotations
+     * @testdoc BDDアノテーション（given/when/then/and）を抽出する
      */
     it("should extract BDD annotations", () => {
       const lines = [
@@ -190,7 +190,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Category tag extraction
+     * @testdoc @testCategoryタグからカテゴリを抽出する
      */
     it("should extract @testCategory", () => {
       const lines = [
@@ -205,7 +205,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc App tag extraction
+     * @testdoc @appタグからアプリ名を抽出する
      */
     it("should extract @app tag", () => {
       const lines = [
@@ -221,7 +221,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Skip reason extraction
+     * @testdoc @skip-reasonタグからスキップ理由を抽出する
      */
     it("should extract @skip-reason tag", () => {
       const lines = [
@@ -236,7 +236,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc No JSDoc returns null
+     * @testdoc JSDocが存在しない場合にnullを返す
      */
     it("should return null when no JSDoc present", () => {
       const lines = [
@@ -248,7 +248,7 @@ describe("test-annotations", () => {
     });
 
     /**
-     * @testdoc Empty JSDoc returns null
+     * @testdoc 関連タグのないJSDocに対してnullを返す
      */
     it("should return null for JSDoc without relevant tags", () => {
       const lines = [
@@ -264,7 +264,7 @@ describe("test-annotations", () => {
 
   describe("extractFileDocComment", () => {
     /**
-     * @testdoc File-level doc extraction
+     * @testdoc ファイルヘッダーから@testFileDocと関連タグを抽出する
      */
     it("should extract @testFileDoc from file header", () => {
       const content = `/**
@@ -282,7 +282,7 @@ describe("test", () => {});`;
     });
 
     /**
-     * @testdoc App tag in file header
+     * @testdoc ファイルヘッダーから@appタグを抽出する
      */
     it("should extract @app from file header", () => {
       const content = `/**
@@ -295,7 +295,7 @@ describe("test", () => {});`;
     });
 
     /**
-     * @testdoc No file doc returns null
+     * @testdoc ファイルドキュメントがない場合にnullを返す
      */
     it("should return null when no file doc present", () => {
       const content = `import { something } from "somewhere";
@@ -305,7 +305,7 @@ describe("test", () => {});`;
     });
 
     /**
-     * @testdoc JSDoc without relevant tags returns null
+     * @testdoc testFileDocタグのないJSDocに対してnullを返す
      */
     it("should return null for JSDoc without testFileDoc tags", () => {
       const content = `/**
@@ -319,7 +319,7 @@ describe("test", () => {});`;
 
   describe("extractDescribeDocComment", () => {
     /**
-     * @testdoc Describe group doc extraction
+     * @testdoc describeブロックから@testGroupDocと関連タグを抽出する
      */
     it("should extract @testGroupDoc from describe", () => {
       const lines = [
@@ -336,7 +336,7 @@ describe("test", () => {});`;
     });
 
     /**
-     * @testdoc Priority extraction
+     * @testdoc @priorityタグから優先度を抽出する
      */
     it("should extract @priority", () => {
       const lines = [
@@ -352,7 +352,7 @@ describe("test", () => {});`;
     });
 
     /**
-     * @testdoc No describe doc returns null
+     * @testdoc ドキュメントがない場合にnullを返す
      */
     it("should return null when no doc present", () => {
       const lines = [
@@ -366,15 +366,17 @@ describe("test", () => {});`;
 
   describe("extractTestCases", () => {
     /**
-     * @testdoc Simple test extraction
+     * @testdoc 単純なテストケースをdescribeとit名で抽出する
      */
     it("should extract simple test cases", () => {
       const content = `
 describe("UserService", () => {
+  /** @testdoc ユーザーを作成してDBに保存する */
   it("should create user", () => {
     expect(true).toBe(true);
   });
 
+  /** @testdoc ユーザーをDBから削除して結果を返す */
   it("should delete user", () => {
     expect(true).toBe(true);
   });
@@ -387,12 +389,13 @@ describe("UserService", () => {
     });
 
     /**
-     * @testdoc Nested describe extraction
+     * @testdoc ネストされたdescribeブロックのパスを結合して抽出する
      */
     it("should handle nested describes", () => {
       const content = `
 describe("outer", () => {
   describe("inner", () => {
+    /** @testdoc ネストされた内部テストの動作を検証する */
     it("test", () => {});
   });
 });`;
@@ -402,7 +405,7 @@ describe("outer", () => {
     });
 
     /**
-     * @testdoc Test with JSDoc annotation
+     * @testdoc テストケースからJSDocの@testdocアノテーションを抽出する
      */
     it("should extract JSDoc annotations from test cases", () => {
       const content = `
@@ -418,12 +421,14 @@ describe("test", () => {
     });
 
     /**
-     * @testdoc Skipped test detection
+     * @testdoc スキップされたテストを検出してフラグを設定する
      */
     it("should detect skipped tests", () => {
       const content = `
 describe("test", () => {
+  /** @testdoc スキップ対象のテストケースを検証する */
   it.skip("skipped test", () => {});
+  /** @testdoc 通常実行のテストケースを検証する */
   it("normal test", () => {});
 });`;
       const cases = extractTestCases(content, "test.ts", "jest");
@@ -433,11 +438,12 @@ describe("test", () => {
     });
 
     /**
-     * @testdoc Playwright test.describe support
+     * @testdoc Playwrightのtest.describe構文を正しく処理する
      */
     it("should handle test.describe syntax", () => {
       const content = `
 test.describe("E2E test", () => {
+  /** @testdoc ページの読み込みが正常に完了することを検証する */
   test("should load page", async ({ page }) => {});
 });`;
       const cases = extractTestCases(content, "test.spec.ts", "playwright");
@@ -447,20 +453,22 @@ test.describe("E2E test", () => {
     });
 
     /**
-     * @testdoc Line numbers
+     * @testdoc テストケースの行番号を正確に記録する
      */
     it("should capture correct line numbers", () => {
       const content = `describe("test", () => {
+  /** @testdoc 最初のテストケースの行番号を検証する */
   it("first", () => {});
+  /** @testdoc 2番目のテストケースの行番号を検証する */
   it("second", () => {});
 });`;
       const cases = extractTestCases(content, "test.ts", "jest");
-      expect(cases[0].line).toBe(2);
-      expect(cases[1].line).toBe(3);
+      expect(cases[0].line).toBe(3);
+      expect(cases[1].line).toBe(5);
     });
 
     /**
-     * @testdoc Test outside describe
+     * @testdoc describeブロック外のテストをファイル名ベースで分類する
      */
     it("should handle tests outside describe blocks", () => {
       const content = `it("standalone test", () => {});`;

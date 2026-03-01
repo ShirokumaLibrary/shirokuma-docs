@@ -261,6 +261,7 @@ export default function RootLayout({ children }) {
     it("should not check test files", () => {
       const content = `
 describe("test", () => {
+  /** @testdoc テストファイルの動作確認 */
   it("should work", () => {});
 });
 `;

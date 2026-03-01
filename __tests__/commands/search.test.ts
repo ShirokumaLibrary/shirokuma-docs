@@ -155,7 +155,7 @@ describe("search output format (#553)", () => {
     });
 
     /**
-     * @testdoc 単一タイプの指定
+     * @testdoc --type で単一タイプのみを指定した場合の検索
      * @purpose --type issues で issues のみ検索されることを確認
      */
     it("should support single type", () => {
@@ -169,7 +169,7 @@ describe("search output format (#553)", () => {
     });
 
     /**
-     * @testdoc 無効なタイプの検出
+     * @testdoc 無効な検索タイプを指定した場合の検出処理
      * @purpose 不正な値が検出されることを文書化
      */
     it("should detect invalid types", () => {

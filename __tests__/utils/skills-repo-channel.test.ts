@@ -228,7 +228,7 @@ describe("withMarketplaceVersion", () => {
   });
 
   /**
-   * @testdoc 関数の戻り値を返す
+   * @testdoc withMarketplaceVersionが関数の戻り値をそのまま返す
    */
   it("should return the value from fn", async () => {
     const repoDir = createGitRepoWithTags(["v0.1.0"]);

@@ -2285,3 +2285,6 @@ export async function issuesCommand(
     process.exit(exitCode);
   }
 }
+
+// エクスポートエイリアス: show コマンドからの委任用 (#1138)
+export { cmdGet as cmdIssueShow };

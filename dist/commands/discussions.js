@@ -709,4 +709,6 @@ export async function discussionsCommand(action, target, options) {
         process.exit(exitCode);
     }
 }
+// エクスポートエイリアス: show コマンドからの委任用 (#1138)
+export { cmdGet as cmdDiscussionShow };
 //# sourceMappingURL=discussions.js.map

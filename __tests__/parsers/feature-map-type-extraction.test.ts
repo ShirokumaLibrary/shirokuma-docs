@@ -18,7 +18,7 @@ import {
 describe("feature-map-type-extraction", () => {
   describe("extractBracedBlock", () => {
     /**
-     * @testdoc Simple braced block
+     * @testdoc 単純な波括弧ブロックを抽出する
      */
     it("should extract a simple braced block", () => {
       const content = "{ foo: string; bar: number; }";
@@ -27,7 +27,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc [feature-map-type-extraction] Nested braces
+     * @testdoc ネストされた波括弧を正しく処理する
      */
     it("should handle nested braces", () => {
       const content = "{ outer: { inner: string; }; }";
@@ -36,7 +36,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Braces in strings are ignored
+     * @testdoc ダブルクォート・シングルクォート・バッククォート内の波括弧を無視する
      */
     it("should ignore braces inside strings", () => {
       const content = '{ key: "value with { braces }"; }';
@@ -45,7 +45,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Braces in template literals
+     * @testdoc テンプレートリテラル内の波括弧を無視する
      */
     it("should ignore braces inside template literals", () => {
       const content = "{ key: `template with { braces }`; }";
@@ -54,7 +54,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Braces in comments
+     * @testdoc 行コメント内の波括弧を無視する
      */
     it("should ignore braces inside line comments", () => {
       const content = "{ // comment with {\nfoo: string; }";
@@ -63,7 +63,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Braces in block comments
+     * @testdoc ブロックコメント内の波括弧を無視する
      */
     it("should ignore braces inside block comments", () => {
       const content = "{ /* { nested } */ foo: string; }";
@@ -72,7 +72,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Invalid start position
+     * @testdoc 開始位置が波括弧でない場合にnullを返す
      */
     it("should return null if start is not a brace", () => {
       const content = "not a brace";
@@ -81,7 +81,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Unmatched braces
+     * @testdoc 対応のない波括弧に対してnullを返す
      */
     it("should return null for unmatched braces", () => {
       const content = "{ foo: string;";
@@ -90,7 +90,7 @@ describe("feature-map-type-extraction", () => {
     });
 
     /**
-     * @testdoc Start from middle of content
+     * @testdoc 指定されたインデックス位置からブロックを抽出する
      */
     it("should extract block starting from given index", () => {
       const content = "prefix { inner } suffix";
@@ -101,7 +101,7 @@ describe("feature-map-type-extraction", () => {
 
   describe("extractExportedTypes", () => {
     /**
-     * @testdoc Export interface extraction
+     * @testdoc exportされたインターフェースを抽出する
      */
     it("should extract exported interfaces", () => {
       const content = `
@@ -120,7 +120,7 @@ export interface UserConfig {
     });
 
     /**
-     * @testdoc Export type (object form) extraction
+     * @testdoc exportされたオブジェクト型を抽出する
      */
     it("should extract exported object types", () => {
       const content = `
@@ -138,7 +138,7 @@ export type Options = {
     });
 
     /**
-     * @testdoc Export type (union) extraction
+     * @testdoc exportされたユニオン型を抽出する
      */
     it("should extract exported union types", () => {
       const content = `
@@ -153,7 +153,7 @@ export type Status = "active" | "inactive" | "pending";
     });
 
     /**
-     * @testdoc Export enum extraction
+     * @testdoc exportされたenumを値付きで抽出する
      */
     it("should extract exported enums", () => {
       const content = `
@@ -172,7 +172,7 @@ export enum Color {
     });
 
     /**
-     * @testdoc JSDoc description attached to type (multi-line JSDoc)
+     * @testdoc 型定義に付与された複数行JSDocの説明文を抽出する
      */
     it("should extract JSDoc description for types", () => {
       const content = `
@@ -190,7 +190,7 @@ export interface UserConfig {
     });
 
     /**
-     * @testdoc Multiple types in one file
+     * @testdoc 1つのファイルから複数の型定義を抽出する
      */
     it("should extract multiple types from single file", () => {
       const content = `
@@ -215,7 +215,7 @@ export enum Baz {
     });
 
     /**
-     * @testdoc Non-exported types are ignored
+     * @testdoc exportされていない型定義を除外する
      */
     it("should not extract non-exported types", () => {
       const content = `
@@ -234,7 +234,7 @@ export interface PublicConfig {
     });
 
     /**
-     * @testdoc Nested interface fields
+     * @testdoc ネストされた型を含むインターフェースを処理する
      */
     it("should handle interfaces with nested types", () => {
       const content = `
@@ -257,7 +257,7 @@ export interface Config {
 
   describe("extractPrecedingJSDoc", () => {
     /**
-     * @testdoc JSDoc directly before declaration
+     * @testdoc 宣言の直前にあるJSDocを抽出する
      */
     it("should extract JSDoc immediately before declaration", () => {
       const content = `/** Description */\nexport interface Foo {}`;
@@ -272,7 +272,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc No JSDoc before declaration
+     * @testdoc 宣言前にJSDocがない場合にnullを返す
      */
     it("should return null jsdoc when none present", () => {
       const content = `export interface Foo {}`;
@@ -283,7 +283,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc JSDoc with whitespace gap
+     * @testdoc JSDocと宣言の間に空白行がある場合も抽出する
      */
     it("should handle whitespace between JSDoc and declaration", () => {
       const content = `/** Description */\n\nexport interface Foo {}`;
@@ -296,7 +296,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc Code between JSDoc and declaration
+     * @testdoc JSDocと宣言の間にコードがある場合は抽出しない
      */
     it("should not extract JSDoc if code exists between", () => {
       const content = `/** Old doc */\nconst x = 1;\nexport interface Foo {}`;
@@ -311,7 +311,7 @@ export interface Config {
 
   describe("extractInterfaceFields", () => {
     /**
-     * @testdoc Simple field extraction
+     * @testdoc 基本的なフィールドを名前と型で抽出する
      */
     it("should extract simple fields", () => {
       const body = `
@@ -326,7 +326,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc Optional fields
+     * @testdoc オプショナルフィールドを正しく処理する
      */
     it("should handle optional fields", () => {
       const body = `
@@ -341,7 +341,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc Fields with JSDoc comments
+     * @testdoc インラインJSDocコメントをフィールド説明として抽出する
      */
     it("should extract inline JSDoc as description", () => {
       const body = `
@@ -358,7 +358,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc Fields with line comments
+     * @testdoc 行コメントをフィールド説明として抽出する
      */
     it("should extract line comments as description", () => {
       const body = `
@@ -372,7 +372,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc Empty body
+     * @testdoc 空のボディに対して空配列を返す
      */
     it("should return empty array for empty body", () => {
       const fields = extractInterfaceFields("");
@@ -382,7 +382,7 @@ export interface Config {
 
   describe("extractEnumValues", () => {
     /**
-     * @testdoc Simple enum values
+     * @testdoc シンプルなenum値を抽出する
      */
     it("should extract simple enum values", () => {
       const body = "Red, Green, Blue";
@@ -391,7 +391,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc Enum with initializers
+     * @testdoc 初期化子を無視してenum名のみ抽出する
      */
     it("should extract enum names ignoring initializers", () => {
       const body = `
@@ -404,7 +404,7 @@ export interface Config {
     });
 
     /**
-     * @testdoc Numeric enum
+     * @testdoc 数値enum値を名前で抽出する
      */
     it("should extract numeric enum values", () => {
       const body = `
@@ -419,7 +419,7 @@ export interface Config {
 
   describe("extractExportedUtilities", () => {
     /**
-     * @testdoc Export const extraction
+     * @testdoc exportされた定数を抽出する
      */
     it("should extract exported constants", () => {
       const content = `
@@ -435,7 +435,7 @@ export const API_URL = "https://api.example.com";
     });
 
     /**
-     * @testdoc Arrow function constants are excluded
+     * @testdoc アロー関数のexportを除外する
      */
     it("should exclude arrow function exports", () => {
       const content = `
@@ -452,7 +452,7 @@ export const asyncHelper = async (x: number) => x + 1;
     });
 
     /**
-     * @testdoc Export function extraction (without @serverAction, multi-line JSDoc)
+     * @testdoc @serverActionのないexport関数をJSDoc付きで抽出する
      */
     it("should extract exported functions without @serverAction", () => {
       const content = `
@@ -472,7 +472,7 @@ export function formatDate(date: Date): string {
     });
 
     /**
-     * @testdoc @serverAction functions are excluded
+     * @testdoc @serverActionタグ付き関数を除外する
      */
     it("should exclude functions with @serverAction tag", () => {
       const content = `
@@ -494,7 +494,7 @@ export function validateInput(input: string): boolean {
     });
 
     /**
-     * @testdoc Constant with type annotation
+     * @testdoc 型アノテーション付き定数の動作を確認する
      */
     it("should extract type annotation from constants", () => {
       const content = `
@@ -513,7 +513,7 @@ export const DEFAULT_CONFIG: AppConfig = {
 
   describe("parseParams", () => {
     /**
-     * @testdoc Simple typed parameters
+     * @testdoc 型付きパラメータを名前と型に分解する
      */
     it("should parse typed parameters", () => {
       const result = parseParams("name: string, age: number");
@@ -524,7 +524,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     });
 
     /**
-     * @testdoc Optional parameter
+     * @testdoc オプショナルパラメータを正しく処理する
      */
     it("should handle optional parameters", () => {
       const result = parseParams("name: string, email?: string");
@@ -534,7 +534,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     });
 
     /**
-     * @testdoc Empty parameter string
+     * @testdoc パラメータ文字列が空の場合に空配列を返す
      */
     it("should return empty array for empty string", () => {
       const result = parseParams("");
@@ -542,7 +542,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     });
 
     /**
-     * @testdoc Whitespace-only string
+     * @testdoc 空白のみの文字列に対して空配列を返す
      */
     it("should return empty array for whitespace-only string", () => {
       const result = parseParams("   ");
@@ -550,7 +550,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     });
 
     /**
-     * @testdoc Parameter without type annotation
+     * @testdoc 型アノテーションのないパラメータをunknownとして扱う
      */
     it("should mark untyped parameters as unknown", () => {
       const result = parseParams("data");

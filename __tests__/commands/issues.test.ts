@@ -217,6 +217,9 @@ describe("issues command options", () => {
    * @purpose オプション構造が期待通りであることを確認
    */
   describe("IssuesOptions structure", () => {
+    /**
+     * @testdoc listアクションのオプション構造（all, status, state, labels, limit）をサポートする
+     */
     it("should support list action options", () => {
       const options = {
         all: true,
@@ -233,6 +236,9 @@ describe("issues command options", () => {
       expect(options.limit).toBe(50);
     });
 
+    /**
+     * @testdoc createアクションのオプション構造（title, bodyFile, fieldStatus, priority, size, labels）をサポートする
+     */
     it("should support create action options", () => {
       const options = {
         title: "New Feature Request",
@@ -250,6 +256,9 @@ describe("issues command options", () => {
       expect(options.size).toBe("M");
     });
 
+    /**
+     * @testdoc updateアクションのオプション構造（title, bodyFile, fieldStatus, priority, size）をサポートする
+     */
     it("should support update action options", () => {
       const options = {
         title: "Updated Title",
@@ -366,6 +375,9 @@ describe("issues command options", () => {
       expect(shouldUpdateIssue).toBe(false);
     });
 
+    /**
+     * @testdoc 共通オプション（owner, verbose）をサポートする
+     */
     it("should support common options", () => {
       const options = {
         owner: "custom-owner",

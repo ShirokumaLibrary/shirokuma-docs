@@ -111,32 +111,53 @@ function setupDefaultValidation() {
 // =============================================================================
 
 describe("parseMergeMethod", () => {
+  /**
+   * @testdoc マージメソッド未指定時はデフォルトでsquashを選択する
+   */
   it("should default to squash", () => {
     expect(parseMergeMethod({})).toBe("squash");
   });
 
+  /**
+   * @testdoc --squash指定時にsquashメソッドを選択する
+   */
   it("should select squash when --squash is specified", () => {
     expect(parseMergeMethod({ squash: true })).toBe("squash");
   });
 
+  /**
+   * @testdoc --merge指定時にmergeメソッドを選択する
+   */
   it("should select merge when --merge is specified", () => {
     expect(parseMergeMethod({ merge: true })).toBe("merge");
   });
 
+  /**
+   * @testdoc --rebase指定時にrebaseメソッドを選択する
+   */
   it("should select rebase when --rebase is specified", () => {
     expect(parseMergeMethod({ rebase: true })).toBe("rebase");
   });
 });
 
 describe("validateMergeMethod", () => {
+  /**
+   * @testdoc 複数のマージメソッドを同時指定するとバリデーションエラーを返す
+   */
   it("should reject multiple merge methods", () => {
     expect(validateMergeMethod({ squash: true, merge: true })).not.toBeNull();
   });
 
+  /**
+   * @testdoc 3つすべてのマージメソッドを同時指定するとバリデーションエラーを返す
+   */
   it("should reject all three merge methods", () => {
     expect(validateMergeMethod({ squash: true, merge: true, rebase: true })).not.toBeNull();
   });
 
+  /**
+   * @testdoc 単一のマージメソッド指定または未指定はバリデーションを通過する
+   */
   it("should accept single merge method", () => {
     expect(validateMergeMethod({ squash: true })).toBeNull();
     expect(validateMergeMethod({ merge: true })).toBeNull();
@@ -146,39 +167,63 @@ describe("validateMergeMethod", () => {
 });
 
 describe("parseLinkedIssues", () => {
+  /**
+   * @testdoc PR本文の「Closes #N」パターンからリンクされたIssue番号を抽出する
+   */
   it("should parse Closes #N", () => {
     expect(parseLinkedIssues("Fix the bug\n\nCloses #39")).toContain(39);
   });
 
+  /**
+   * @testdoc PR本文の「Fixes #N」パターンから複数のリンクされたIssue番号を抽出する
+   */
   it("should parse Fixes #N", () => {
     const linked = parseLinkedIssues("Fixes #44\nFixes #45");
     expect(linked).toContain(44);
     expect(linked).toContain(45);
   });
 
+  /**
+   * @testdoc PR本文の「Resolves #N」パターンからリンクされたIssue番号を抽出する
+   */
   it("should parse Resolves #N", () => {
     expect(parseLinkedIssues("Resolves #47")).toContain(47);
   });
 
+  /**
+   * @testdoc 異なるキーワード（Closes/Fixes/Resolves）が混在する場合に全Issue番号を抽出する
+   */
   it("should parse multiple linked issues with mixed keywords", () => {
     const linked = parseLinkedIssues("Closes #39\nFixes #44\nResolves #47");
     expect(linked).toHaveLength(3);
     expect(linked).toEqual(expect.arrayContaining([39, 44, 47]));
   });
 
+  /**
+   * @testdoc リンクキーワードがないPR本文では空配列を返す
+   */
   it("should return empty array when no linked issues", () => {
     expect(parseLinkedIssues("Simple PR description.")).toEqual([]);
   });
 
+  /**
+   * @testdoc リンクキーワードの大文字小文字を区別しない
+   */
   it("should be case-insensitive", () => {
     expect(parseLinkedIssues("closes #1\nCLOSES #2\nCloses #3")).toHaveLength(3);
   });
 
+  /**
+   * @testdoc 重複するIssue番号を除去して一意のリストを返す
+   */
   it("should deduplicate issue numbers", () => {
     const linked = parseLinkedIssues("Closes #39\nFixes #39");
     expect(linked).toHaveLength(1);
   });
 
+  /**
+   * @testdoc undefinedまたは空文字列のPR本文では空配列を返す
+   */
   it("should handle undefined body", () => {
     expect(parseLinkedIssues(undefined)).toEqual([]);
     expect(parseLinkedIssues("")).toEqual([]);
@@ -186,59 +231,98 @@ describe("parseLinkedIssues", () => {
 });
 
 describe("detectLinkPattern", () => {
+  /**
+   * @testdoc リンクされたIssueがない場合は「1:1」パターンを返す
+   */
   it("should return 1:1 when no linked issues", () => {
     expect(detectLinkPattern([], new Map())).toBe("1:1");
   });
 
+  /**
+   * @testdoc 単一PRと単一Issueのリンクは「1:1」パターンを返す
+   */
   it("should return 1:1 for single PR and single issue", () => {
     expect(detectLinkPattern([42], new Map([[42, [100]]]))).toBe("1:1");
   });
 
+  /**
+   * @testdoc 単一PRが複数Issueにリンクする場合は「1:N」パターンを返す
+   */
   it("should return 1:N for single PR with multiple issues", () => {
     expect(detectLinkPattern([42, 43], new Map([[42, [100]], [43, [100]]]))).toBe("1:N");
   });
 
+  /**
+   * @testdoc 複数PRが単一Issueにリンクする場合は「N:1」パターンを返す
+   */
   it("should return N:1 for multiple PRs with single issue", () => {
     expect(detectLinkPattern([42], new Map([[42, [100, 101]]]))).toBe("N:1");
   });
 
+  /**
+   * @testdoc 複数PRと複数Issueが交差リンクする場合は「N:N」パターンを返す
+   */
   it("should return N:N for multiple PRs with multiple issues", () => {
     expect(detectLinkPattern([42, 43], new Map([[42, [100, 101]], [43, [100]]]))).toBe("N:N");
   });
 
+  /**
+   * @testdoc すべてのIssueが同一PRのみを参照する場合は「1:N」パターンを返す
+   */
   it("should return 1:N when all issues reference only the same PR", () => {
     expect(detectLinkPattern([42, 43, 44], new Map([[42, [100]], [43, [100]], [44, [100]]]))).toBe("1:N");
   });
 
+  /**
+   * @testdoc PRとIssueが互いに異なるリンクを持つ場合は「N:N」パターンを返す
+   */
   it("should return N:N for cross-linked PRs and issues", () => {
     expect(detectLinkPattern([42, 43], new Map([[42, [100]], [43, [101]]]))).toBe("N:N");
   });
 });
 
 describe("parsePrStateFilter", () => {
+  /**
+   * @testdoc 「open」文字列をGraphQL用の「OPEN」状態配列に変換する
+   */
   it("should convert 'open' to ['OPEN']", () => {
     expect(parsePrStateFilter("open")).toEqual(["OPEN"]);
   });
 
+  /**
+   * @testdoc 「closed」文字列をGraphQL用の「CLOSED」状態配列に変換する
+   */
   it("should convert 'closed' to ['CLOSED']", () => {
     expect(parsePrStateFilter("closed")).toEqual(["CLOSED"]);
   });
 
+  /**
+   * @testdoc 「merged」文字列をGraphQL用の「MERGED」状態配列に変換する
+   */
   it("should convert 'merged' to ['MERGED']", () => {
     expect(parsePrStateFilter("merged")).toEqual(["MERGED"]);
   });
 
+  /**
+   * @testdoc 「all」文字列をOPEN/CLOSED/MERGEDの全状態配列に変換する
+   */
   it("should convert 'all' to all states", () => {
     const result = parsePrStateFilter("all");
     expect(result).toEqual(expect.arrayContaining(["OPEN", "CLOSED", "MERGED"]));
     expect(result).toHaveLength(3);
   });
 
+  /**
+   * @testdoc PRステートフィルタの大文字小文字を区別しない
+   */
   it("should be case-insensitive", () => {
     expect(parsePrStateFilter("OPEN")).toEqual(["OPEN"]);
     expect(parsePrStateFilter("Closed")).toEqual(["CLOSED"]);
   });
 
+  /**
+   * @testdoc 無効なステート文字列に対してnullを返す
+   */
   it("should return null for invalid state", () => {
     expect(parsePrStateFilter("invalid")).toBeNull();
     expect(parsePrStateFilter("")).toBeNull();
@@ -263,6 +347,9 @@ describe("cmdPrComments", () => {
 
   afterEach(() => { consoleSpy.mockRestore(); });
 
+  /**
+   * @testdoc 無効なPR番号を指定するとエラーコード1を返す
+   */
   it("should return 1 for invalid PR number", async () => {
     mockIsIssueNumber.mockReturnValue(false);
     const result = await cmdPrComments("abc", {}, logger);
@@ -270,12 +357,18 @@ describe("cmdPrComments", () => {
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid PR number"));
   });
 
+  /**
+   * @testdoc GraphQLクエリが失敗した場合にエラーコード1を返す
+   */
   it("should return 1 when GraphQL fails", async () => {
     mockRunGraphQL.mockResolvedValue({ success: false, error: "timeout" });
     const result = await cmdPrComments("42", {}, logger);
     expect(result).toBe(1);
   });
 
+  /**
+   * @testdoc 成功時にPRレビューデータをJSON出力し終了コード0を返す
+   */
   it("should return 0 and output PR review data on success", async () => {
     mockRunGraphQL.mockResolvedValue({
       success: true,
@@ -361,6 +454,9 @@ describe("cmdMerge", () => {
 
   afterEach(() => { consoleSpy.mockRestore(); });
 
+  /**
+   * @testdoc PR番号も--headも未指定の場合にエラーコード1を返す
+   */
   it("should return 1 when no PR number or --head provided", async () => {
     mockIsIssueNumber.mockReturnValue(false);
     const result = await cmdMerge(undefined, {}, logger);
@@ -368,6 +464,9 @@ describe("cmdMerge", () => {
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("PR number or --head"));
   });
 
+  /**
+   * @testdoc PRをsquashマージ後にベースブランチへcheckoutしpullを実行する
+   */
   it("should merge PR and checkout base branch by default", async () => {
     mockPullsGet.mockResolvedValue({
       data: { body: "Closes #39", head: { ref: "feat/39-test" }, base: { ref: "develop" } },
@@ -393,6 +492,9 @@ describe("cmdMerge", () => {
     expect(mockExecFileAsync).toHaveBeenCalledWith("git", ["pull", "origin", "develop"]);
   });
 
+  /**
+   * @testdoc --no-checkout指定時はcheckoutとpullをスキップする
+   */
   it("should skip local operations when --no-checkout is specified", async () => {
     mockPullsGet.mockResolvedValue({
       data: { body: "", head: { ref: "test" }, base: { ref: "develop" } },
@@ -408,6 +510,9 @@ describe("cmdMerge", () => {
     expect(mockExecFileAsync).not.toHaveBeenCalled();
   });
 
+  /**
+   * @testdoc checkout失敗時は警告を出すがマージ自体は成功（終了コード0）を返す
+   */
   it("should warn but return 0 when checkout fails", async () => {
     mockPullsGet.mockResolvedValue({
       data: { body: "", head: { ref: "test" }, base: { ref: "develop" } },
@@ -424,6 +529,9 @@ describe("cmdMerge", () => {
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("Failed to checkout"));
   });
 
+  /**
+   * @testdoc --delete-local指定時にマージ後のローカルブランチを削除する
+   */
   it("should delete local branch when --delete-local is specified", async () => {
     mockPullsGet.mockResolvedValue({
       data: { body: "", head: { ref: "feat/42-test" }, base: { ref: "develop" } },
@@ -438,6 +546,9 @@ describe("cmdMerge", () => {
     expect(mockExecFileAsync).toHaveBeenCalledWith("git", ["branch", "-d", "feat/42-test"]);
   });
 
+  /**
+   * @testdoc ローカルブランチ削除に失敗した場合は警告を出しgit branch -Dの使用を案内する
+   */
   it("should warn when local branch deletion fails", async () => {
     mockPullsGet.mockResolvedValue({
       data: { body: "", head: { ref: "feat/42-test" }, base: { ref: "develop" } },
@@ -457,6 +568,9 @@ describe("cmdMerge", () => {
     expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining("git branch -D"));
   });
 
+  /**
+   * @testdoc マージ操作が失敗した場合にエラーコード1を返す
+   */
   it("should return 1 when merge fails", async () => {
     mockPullsGet.mockResolvedValue({ data: { body: "", head: { ref: "test" }, base: { ref: "develop" } } });
     mockPullsMerge.mockRejectedValue(new Error("Merge conflict"));
@@ -466,6 +580,9 @@ describe("cmdMerge", () => {
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Failed to merge"));
   });
 
+  /**
+   * @testdoc マージ後にPR本文からリンクされたIssueのステータスをDoneに更新する
+   */
   it("should update linked issues to Done after merge", async () => {
     mockPullsGet.mockResolvedValue({
       data: { body: "Closes #39\nFixes #44", head: { ref: "feat/test" }, base: { ref: "develop" } },
@@ -486,6 +603,9 @@ describe("cmdMerge", () => {
     );
   });
 
+  /**
+   * @testdoc 指定されたマージメソッド（rebase等）でPRをマージする
+   */
   it("should use specified merge method", async () => {
     mockPullsGet.mockResolvedValue({ data: { body: "", head: { ref: "test" }, base: { ref: "develop" } } });
     mockPullsMerge.mockResolvedValue({});
@@ -497,6 +617,9 @@ describe("cmdMerge", () => {
     );
   });
 
+  /**
+   * @testdoc checkoutが失敗した場合はpullもスキップする
+   */
   it("should skip pull when checkout fails", async () => {
     mockPullsGet.mockResolvedValue({
       data: { body: "", head: { ref: "test" }, base: { ref: "develop" } },
@@ -531,24 +654,36 @@ describe("cmdPrReply", () => {
 
   afterEach(() => { consoleSpy.mockRestore(); });
 
+  /**
+   * @testdoc --reply-toオプション未指定時にエラーコード1を返す
+   */
   it("should return 1 when --reply-to is missing", async () => {
     const result = await cmdPrReply("42", { bodyFile: "test" }, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--reply-to"));
   });
 
+  /**
+   * @testdoc --body-fileオプション未指定時にエラーコード1を返す
+   */
   it("should return 1 when --body-file is missing", async () => {
     const result = await cmdPrReply("42", { replyTo: "12345" }, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--body-file"));
   });
 
+  /**
+   * @testdoc --reply-toに数値以外を指定するとエラーコード1を返す
+   */
   it("should return 1 for non-numeric --reply-to", async () => {
     const result = await cmdPrReply("42", { replyTo: "PRRC_abc", bodyFile: "test" }, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("numeric"));
   });
 
+  /**
+   * @testdoc 正常にPRスレッドへ返信しJSON形式で結果を出力する
+   */
   it("should reply and output JSON on success", async () => {
     mockOctokitRequest.mockResolvedValue({
       data: { id: 87654, html_url: "https://github.com/owner/repo/pull/42#discussion_r87654" },
@@ -581,18 +716,27 @@ describe("cmdResolve", () => {
 
   afterEach(() => { consoleSpy.mockRestore(); });
 
+  /**
+   * @testdoc --thread-idオプション未指定時にエラーコード1を返す
+   */
   it("should return 1 when --thread-id is missing", async () => {
     const result = await cmdResolve("42", {}, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--thread-id"));
   });
 
+  /**
+   * @testdoc 不正な形式のスレッドIDを指定するとエラーコード1を返す
+   */
   it("should return 1 for invalid thread ID format", async () => {
     const result = await cmdResolve("42", { threadId: "ab" }, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid --thread-id"));
   });
 
+  /**
+   * @testdoc レビュースレッドを正常に解決しJSON形式で結果を出力する
+   */
   it("should resolve thread and output JSON on success", async () => {
     mockRunGraphQL.mockResolvedValue({
       success: true,
@@ -629,6 +773,9 @@ describe("resolvePrFromHead", () => {
     mockGetOctokit.mockReturnValue({ rest: { pulls: { list: mockPullsList } } });
   });
 
+  /**
+   * @testdoc ヘッドブランチに対応するオープンPRが見つかった場合にPR番号を返す
+   */
   it("should return PR number when found", async () => {
     mockPullsList.mockResolvedValue({ data: [{ number: 42 }] });
 
@@ -636,6 +783,9 @@ describe("resolvePrFromHead", () => {
     expect(result).toBe(42);
   });
 
+  /**
+   * @testdoc ヘッドブランチに対応するオープンPRがない場合にnullを返す
+   */
   it("should return null when no open PR found", async () => {
     mockPullsList.mockResolvedValue({ data: [] });
 
@@ -663,12 +813,18 @@ describe("cmdPrList", () => {
 
   afterEach(() => { consoleSpy.mockRestore(); });
 
+  /**
+   * @testdoc 無効なステートフィルタを指定するとエラーコード1を返す
+   */
   it("should return 1 for invalid state filter", async () => {
     const result = await cmdPrList({ state: "invalid" }, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("Invalid state"));
   });
 
+  /**
+   * @testdoc 正常時にPR一覧をJSON形式で出力し終了コード0を返す
+   */
   it("should return PR list on success", async () => {
     mockRunGraphQL.mockResolvedValue({
       success: true,
@@ -724,12 +880,18 @@ describe("cmdPrShow", () => {
 
   afterEach(() => { consoleSpy.mockRestore(); });
 
+  /**
+   * @testdoc 指定されたPRが見つからない場合にエラーコード1を返す
+   */
   it("should return 1 when PR not found", async () => {
     mockRunGraphQL.mockResolvedValue({ success: false });
     const result = await cmdPrShow("999", {}, logger);
     expect(result).toBe(1);
   });
 
+  /**
+   * @testdoc 正常時にPRの詳細情報（リンクされたIssue・変更統計・レビュー情報含む）を出力する
+   */
   it("should output full PR details on success", async () => {
     mockRunGraphQL.mockResolvedValue({
       success: true,
@@ -793,18 +955,27 @@ describe("cmdPrCreate", () => {
 
   afterEach(() => { consoleSpy.mockRestore(); });
 
+  /**
+   * @testdoc --baseオプション未指定時にエラーコード1を返す
+   */
   it("should return 1 when --base is missing", async () => {
     const result = await cmdPrCreate({ title: "test" }, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--base"));
   });
 
+  /**
+   * @testdoc --titleオプション未指定時にエラーコード1を返す
+   */
   it("should return 1 when --title is missing", async () => {
     const result = await cmdPrCreate({ base: "develop" }, logger);
     expect(result).toBe(1);
     expect(logger.error).toHaveBeenCalledWith(expect.stringContaining("--title"));
   });
 
+  /**
+   * @testdoc PR作成に成功しJSON形式で番号・ブランチ情報を出力する
+   */
   it("should create PR and output JSON on success", async () => {
     mockPullsCreate.mockResolvedValue({
       data: {
@@ -829,6 +1000,9 @@ describe("cmdPrCreate", () => {
     expect(logger.success).toHaveBeenCalledWith(expect.stringContaining("Created PR #42"));
   });
 
+  /**
+   * @testdoc --head未指定時に現在のgitブランチを自動検出してヘッドブランチに使用する
+   */
   it("should use current git branch when --head is not specified", async () => {
     mockGetCurrentBranch.mockReturnValue("feat/auto-detected");
     mockPullsCreate.mockResolvedValue({
@@ -842,6 +1016,9 @@ describe("cmdPrCreate", () => {
     );
   });
 
+  /**
+   * @testdoc API呼び出しが失敗した場合にエラーコード1を返す
+   */
   it("should return 1 when API fails", async () => {
     mockPullsCreate.mockRejectedValue(new Error("Validation failed"));
     const result = await cmdPrCreate(
@@ -862,12 +1039,18 @@ describe("fetchOpenPRs", () => {
     jest.clearAllMocks();
   });
 
+  /**
+   * @testdoc GraphQLクエリ失敗時に空配列を返す
+   */
   it("should return empty array when GraphQL fails", async () => {
     mockRunGraphQL.mockResolvedValue({ success: false });
     const result = await fetchOpenPRs("owner", "repo");
     expect(result).toEqual([]);
   });
 
+  /**
+   * @testdoc 正常時にオープンPRのサマリー一覧を返す
+   */
   it("should return PR summaries on success", async () => {
     mockRunGraphQL.mockResolvedValue({
       success: true,

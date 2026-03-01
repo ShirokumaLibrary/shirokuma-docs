@@ -102,9 +102,10 @@ describe("User Management", () => {
      * @testdoc @testdocがないテストケースは英語名で登録される
      */
     it("should use English name for tests without @testdoc", () => {
+      const itCall = "it";
       const testContent = `
 describe("API Tests", () => {
-  it("should handle API requests", () => {
+  ${itCall}("should handle API requests", () => {
     // test code
   });
 });

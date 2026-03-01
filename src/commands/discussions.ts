@@ -1047,3 +1047,6 @@ export async function discussionsCommand(
     process.exit(exitCode);
   }
 }
+
+// エクスポートエイリアス: show コマンドからの委任用 (#1138)
+export { cmdGet as cmdDiscussionShow };

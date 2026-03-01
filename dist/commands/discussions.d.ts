@@ -12,6 +12,7 @@
  *
  * Primarily used for Handovers category in session management.
  */
+import { Logger } from "../utils/logger.js";
 import { OutputFormat } from "../utils/formatters.js";
 export interface DiscussionsOptions {
     verbose?: boolean;
@@ -25,7 +26,12 @@ export interface DiscussionsOptions {
     repo?: string;
 }
 /**
+ * get subcommand
+ */
+declare function cmdGet(idOrNumber: string, options: DiscussionsOptions, logger: Logger): Promise<number>;
+/**
  * discussions command handler
  */
 export declare function discussionsCommand(action: string, target: string | undefined, options: DiscussionsOptions): Promise<void>;
+export { cmdGet as cmdDiscussionShow };
 //# sourceMappingURL=discussions.d.ts.map

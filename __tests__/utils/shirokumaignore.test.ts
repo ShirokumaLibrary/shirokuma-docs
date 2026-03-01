@@ -69,7 +69,7 @@ docs/internal/`;
   });
 
   /**
-   * @testdoc 空行を無視する
+   * @testdoc パターン解析時に空行を無視してスキップする
    * @purpose 空行のスキップ処理確認
    * @expected 空行はパターンに含まれない
    */

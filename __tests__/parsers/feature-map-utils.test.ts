@@ -15,7 +15,7 @@ import {
 describe("feature-map-utils", () => {
   describe("extractTags", () => {
     /**
-     * @testdoc Basic tag extraction from JSDoc block
+     * @testdoc JSDocブロックから基本的なタグを抽出する
      */
     it("should extract basic tags", () => {
       const jsdoc = `/**
@@ -31,7 +31,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc @serverAction as a marker tag (no value)
+     * @testdoc 値なしのマーカータグ（@serverAction）を空文字列で処理する
      */
     it("should handle marker tags like @serverAction", () => {
       const jsdoc = `/**
@@ -45,7 +45,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Tags with trailing whitespace
+     * @testdoc タグ値の前後の空白をトリムする
      */
     it("should trim tag values", () => {
       const jsdoc = `/**
@@ -59,7 +59,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Tags with comma-separated values
+     * @testdoc カンマ区切りの値を単一文字列として保持する
      */
     it("should preserve comma-separated values as single string", () => {
       const jsdoc = `/**
@@ -73,7 +73,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Empty JSDoc block
+     * @testdoc タグのないJSDocに対して空オブジェクトを返す
      */
     it("should return empty object for JSDoc without tags", () => {
       const jsdoc = `/**
@@ -86,7 +86,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Tag at end of JSDoc (before closing)
+     * @testdoc 閉じタグ直前のインラインタグを抽出する
      */
     it("should extract tags before closing */", () => {
       const jsdoc = `/** @screen Inline */`;
@@ -98,7 +98,7 @@ describe("feature-map-utils", () => {
 
   describe("extractDescription", () => {
     /**
-     * @testdoc Single-line description
+     * @testdoc 単一行の説明文を抽出する
      */
     it("should extract single-line description", () => {
       const jsdoc = `/**
@@ -110,7 +110,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Multi-line description
+     * @testdoc 複数行の説明文を結合して抽出する
      */
     it("should extract multi-line description", () => {
       const jsdoc = `/**
@@ -124,7 +124,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc JSDoc with only tags (no description)
+     * @testdoc タグのみで説明文がないJSDocに対してundefinedを返す
      */
     it("should return undefined when no description exists", () => {
       const jsdoc = `/**
@@ -136,7 +136,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Japanese description
+     * @testdoc 日本語の説明文を正しく抽出する
      */
     it("should extract Japanese description", () => {
       const jsdoc = `/**
@@ -148,7 +148,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Description lines preserve relative indentation
+     * @testdoc 説明文の相対インデントを保持する
      */
     it("should preserve content after JSDoc marker", () => {
       const jsdoc = `/**
@@ -164,7 +164,7 @@ describe("feature-map-utils", () => {
 
   describe("parseCommaSeparatedList", () => {
     /**
-     * @testdoc Standard comma-separated values
+     * @testdoc カンマ区切りの値を配列に分割する
      */
     it("should parse comma-separated values", () => {
       const result = parseCommaSeparatedList("CompA, CompB, CompC");
@@ -172,7 +172,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Undefined input
+     * @testdoc undefined入力に対して空配列を返す
      */
     it("should return empty array for undefined", () => {
       const result = parseCommaSeparatedList(undefined);
@@ -180,7 +180,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Empty string
+     * @testdoc 空文字列に対して空配列を返す
      */
     it("should return empty array for empty string", () => {
       const result = parseCommaSeparatedList("");
@@ -188,7 +188,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Whitespace handling
+     * @testdoc 値の前後の空白をトリムして返す
      */
     it("should trim whitespace from values", () => {
       const result = parseCommaSeparatedList("  CompA ,  CompB  , CompC  ");
@@ -196,7 +196,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Single value without commas
+     * @testdoc カンマなしの単一値を1要素の配列として返す
      */
     it("should handle single value", () => {
       const result = parseCommaSeparatedList("CompA");
@@ -204,7 +204,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Filter out empty entries from trailing commas
+     * @testdoc 末尾カンマや連続カンマによる空エントリを除外する
      */
     it("should filter out empty entries", () => {
       const result = parseCommaSeparatedList("CompA,,CompB,");
@@ -214,7 +214,7 @@ describe("feature-map-utils", () => {
 
   describe("extractModuleName", () => {
     /**
-     * @testdoc Actions directory extraction
+     * @testdoc actionsディレクトリからモジュール名を抽出する
      */
     it("should extract module name from actions path", () => {
       const result = extractModuleName("apps/web/lib/actions/members.ts");
@@ -222,7 +222,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Components subdirectory
+     * @testdoc componentsパスからサブディレクトリ名を抽出する
      */
     it("should extract module name from components path", () => {
       const result = extractModuleName("apps/web/components/ui/button.tsx");
@@ -230,7 +230,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Route group directory (parentheses)
+     * @testdoc ルートグループの括弧を除去してグループ名を抽出する
      */
     it("should extract route group name without parentheses", () => {
       const result = extractModuleName("apps/web/app/[locale]/(dashboard)/page.tsx");
@@ -238,7 +238,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Dynamic route segments are skipped
+     * @testdoc 動的ルートセグメントをスキップして次のディレクトリを使用する
      */
     it("should skip dynamic route segments", () => {
       const result = extractModuleName("apps/web/app/[locale]/settings/page.tsx");
@@ -246,7 +246,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Package path - 'database' is first non-excluded dir from right
+     * @testdoc パッケージパスから除外対象外の最初のディレクトリを抽出する
      */
     it("should extract from package path", () => {
       const result = extractModuleName("packages/database/src/schema/users.ts");
@@ -255,7 +255,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Fallback to filename
+     * @testdoc 有効なディレクトリがない場合にファイル名にフォールバックする
      */
     it("should fallback to filename when no meaningful directory", () => {
       const result = extractModuleName("src/utils.ts");
@@ -263,7 +263,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Excludes common directory names
+     * @testdoc lib, app, srcなどの共通ディレクトリ名をスキップする
      */
     it("should skip excluded directories like lib, app, src", () => {
       const result = extractModuleName("apps/web/lib/auth/session.ts");
@@ -271,7 +271,7 @@ describe("feature-map-utils", () => {
     });
 
     /**
-     * @testdoc Backslash path handling (Windows)
+     * @testdoc バックスラッシュ区切りのWindowsパスを正しく処理する
      */
     it("should handle backslash paths", () => {
       const result = extractModuleName("apps\\web\\lib\\actions\\members.ts");

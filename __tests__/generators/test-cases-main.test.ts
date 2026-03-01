@@ -320,7 +320,7 @@ describe("buildSummaryCard", () => {
   });
 
   /**
-   * @testdoc 生成日時を含む
+   * @testdoc サマリーカードに生成日時のタイムスタンプを含む
    */
   it("should include generation timestamp", () => {
     const summary = createSummary();

@@ -38,6 +38,7 @@ import { packagesCommand } from "./commands/packages.js";
 import { projectsCommand } from "./commands/projects.js";
 import { issuesCommand } from "./commands/issues.js";
 import { discussionsCommand } from "./commands/discussions.js";
+import { showCommand } from "./commands/show.js";
 import { repoCommand } from "./commands/repo.js";
 import { githubDataCommand } from "./commands/github-data.js";
 import { discussionTemplatesCommand } from "./commands/discussion-templates.js";
@@ -552,6 +553,17 @@ program
         options.query = target;
     }
     await discussionsCommand(action, target, options);
+});
+// 番号指定による自動判別取得 (#1138)
+program
+    .command("show <number>")
+    .description("番号を指定して Issue/PR/Discussion を自動判別取得")
+    .option("--format <format>", "出力形式: json, frontmatter (デフォルト: frontmatter)")
+    .option("--public", "公開リポジトリを対象")
+    .option("--repo <alias>", "クロスリポジトリのエイリアス")
+    .option("-v, --verbose", "詳細ログ出力")
+    .action(async (number, options) => {
+    await showCommand(number, options);
 });
 // 統合検索 (Issues + Discussions 横断)
 program

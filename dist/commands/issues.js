@@ -1652,4 +1652,6 @@ export async function issuesCommand(action, target, options) {
         process.exit(exitCode);
     }
 }
+// エクスポートエイリアス: show コマンドからの委任用 (#1138)
+export { cmdGet as cmdIssueShow };
 //# sourceMappingURL=issues.js.map

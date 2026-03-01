@@ -17,7 +17,7 @@ import type { TestCase, FileStats } from "../../src/commands/test-cases-types.js
 describe("test-categorization", () => {
   describe("inferCategoryFromTestName", () => {
     /**
-     * @testdoc Auth keyword detection
+     * @testdoc 認証関連キーワードからauthカテゴリを検出する
      */
     it("should detect auth-related tests", () => {
       expect(inferCategoryFromTestName("should authenticate user")).toBe("auth");
@@ -28,7 +28,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Japanese auth keywords
+     * @testdoc 日本語の認証キーワードからauthカテゴリを検出する
      */
     it("should detect Japanese auth keywords", () => {
       expect(inferCategoryFromTestName("test", "認証が必要")).toBe("auth");
@@ -38,7 +38,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Error keyword detection
+     * @testdoc エラー関連キーワードからerror-handlingカテゴリを検出する
      */
     it("should detect error-related tests", () => {
       expect(inferCategoryFromTestName("should throw error")).toBe("error-handling");
@@ -47,7 +47,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Japanese error keywords
+     * @testdoc 日本語のエラーキーワードからerror-handlingカテゴリを検出する
      */
     it("should detect Japanese error keywords", () => {
       expect(inferCategoryFromTestName("test", "エラーが発生")).toBe("error-handling");
@@ -55,7 +55,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Validation keyword detection
+     * @testdoc バリデーション関連キーワードからvalidationカテゴリを検出する
      */
     it("should detect validation-related tests", () => {
       expect(inferCategoryFromTestName("should validate email")).toBe("validation");
@@ -66,7 +66,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Edge case keyword detection
+     * @testdoc エッジケース関連キーワードからedge-caseカテゴリを検出する
      */
     it("should detect edge-case tests", () => {
       expect(inferCategoryFromTestName("edge case: large list")).toBe("edge-case");
@@ -76,7 +76,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Happy path keyword detection
+     * @testdoc CRUD操作キーワードからhappy-pathカテゴリを検出する
      */
     it("should detect happy-path tests", () => {
       expect(inferCategoryFromTestName("should create user")).toBe("happy-path");
@@ -87,7 +87,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Japanese happy path keywords
+     * @testdoc 日本語のCRUD操作キーワードからhappy-pathカテゴリを検出する
      */
     it("should detect Japanese happy-path keywords", () => {
       expect(inferCategoryFromTestName("test", "作成できる")).toBe("happy-path");
@@ -98,7 +98,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Unknown test name defaults to other
+     * @testdoc 認識できないパターンに対してotherカテゴリを返す
      */
     it("should return 'other' for unrecognized patterns", () => {
       expect(inferCategoryFromTestName("renders correctly")).toBe("other");
@@ -108,7 +108,7 @@ describe("test-categorization", () => {
 
   describe("computeCategoryStats", () => {
     /**
-     * @testdoc Category stats computation
+     * @testdoc テストケースからカテゴリ別統計を算出する
      */
     it("should compute category statistics", () => {
       const cases: TestCase[] = [
@@ -123,7 +123,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Empty array returns zero stats
+     * @testdoc 空配列に対して全カテゴリのカウントをゼロで返す
      */
     it("should return zero stats for empty array", () => {
       const stats = computeCategoryStats([]);
@@ -137,7 +137,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Explicit category takes precedence
+     * @testdoc 明示的に指定されたカテゴリが推論より優先される
      */
     it("should use explicit category over inferred", () => {
       const cases: TestCase[] = [
@@ -151,7 +151,7 @@ describe("test-categorization", () => {
 
   describe("inferModuleFromPath", () => {
     /**
-     * @testdoc Action test path
+     * @testdoc actionsパスからactionモジュールを推論する
      */
     it("should infer action module from actions path", () => {
       const result = inferModuleFromPath("apps/web/__tests__/lib/actions/members.test.ts", "jest");
@@ -161,7 +161,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Component test path
+     * @testdoc componentsパスからcomponentモジュールを推論する
      */
     it("should infer component module from components path", () => {
       const result = inferModuleFromPath("apps/web/__tests__/components/UserForm.test.tsx", "jest");
@@ -171,7 +171,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Playwright E2E path
+     * @testdoc Playwrightテストからscreenモジュールを推論する
      */
     it("should infer screen module for playwright tests", () => {
       const result = inferModuleFromPath("tests/e2e/dashboard.spec.ts", "playwright");
@@ -181,7 +181,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc E2E path detection by directory
+     * @testdoc e2eディレクトリ配下のJestテストもscreen型と判定する
      */
     it("should detect e2e path for jest framework too", () => {
       const result = inferModuleFromPath("tests/e2e/login.spec.ts", "jest");
@@ -189,7 +189,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Unknown path
+     * @testdoc 認識できないパスに対してunknownモジュールを返す
      */
     it("should return unknown for unrecognized paths", () => {
       const result = inferModuleFromPath("src/utils/helpers.test.ts", "jest");
@@ -199,7 +199,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc File extensions stripped
+     * @testdoc テストファイルの拡張子をモジュール名から除去する
      */
     it("should strip test file extensions from name", () => {
       expect(inferModuleFromPath("test/actions/create.test.ts", "jest").name).toBe("create");
@@ -209,7 +209,7 @@ describe("test-categorization", () => {
 
   describe("getTestCategory", () => {
     /**
-     * @testdoc Module type to category mapping
+     * @testdoc モジュール型をテストカテゴリ名にマッピングする
      */
     it("should map module types to categories", () => {
       expect(getTestCategory({ type: "action", name: "x", detailPath: "" })).toBe("Server Actions");
@@ -221,7 +221,7 @@ describe("test-categorization", () => {
 
   describe("createSummary", () => {
     /**
-     * @testdoc Summary creation
+     * @testdoc ファイル統計とテストケースからサマリーを正しく作成する
      */
     it("should create correct summary", () => {
       const fileStats: FileStats[] = [
@@ -248,7 +248,7 @@ describe("test-categorization", () => {
     });
 
     /**
-     * @testdoc Empty summary
+     * @testdoc 空の入力に対してゼロ値のサマリーを返す
      */
     it("should handle empty inputs", () => {
       const summary = createSummary([], []);
