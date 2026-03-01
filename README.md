@@ -1,6 +1,6 @@
 # shirokuma-docs
 
-Next.js + TypeScript プロジェクト向けのドキュメント自動生成 CLI。Claude Code スキル同梱。
+AI 駆動の開発ワークフロー管理 CLI。Claude Code スキル同梱。TypeScript プロジェクト向けドキュメント自動生成も対応。
 
 [English](README.en.md)
 
@@ -27,11 +27,11 @@ shirokuma-docs init --with-skills --with-rules --lang ja
 # 3. GitHub Project セットアップ
 shirokuma-docs projects create-project --title "プロジェクト名" --lang ja
 
-# 4. ドキュメント生成
-shirokuma-docs generate
-
-# 5. Claude Code と連携
+# 4. Claude Code と連携
 #    新しいセッションを開始 → /working-on-issue #42
+
+# 5. (任意) ドキュメント生成
+shirokuma-docs generate
 ```
 
 詳細は [Getting Started ガイド](docs/guide/getting-started.md) を参照してください。
@@ -40,12 +40,12 @@ shirokuma-docs generate
 
 | カテゴリ | コマンド数 | 例 |
 |---------|-----------|-----|
+| GitHub 連携 | 5 | `issues`, `projects`, `discussions`, `session start/end` |
+| Claude Code スキル | 22 | `working-on-issue`, `committing-on-issue`, `creating-pr-on-issue` |
+| Claude Code ルール | 21 | Git, GitHub, ワークフロー, shirokuma-docs 規約 |
 | ドキュメント生成 | 16 | `typedoc`, `schema`, `deps`, `portal`, `test-cases`, `coverage` |
 | 検証 | 7 | `lint-tests`, `lint-coverage`, `lint-docs`, `lint-code` |
-| GitHub 連携 | 5 | `issues`, `projects`, `discussions`, `session start/end` |
 | 管理 | 8 | `init`, `generate`, `update`, `adr`, `repo-pairs`, `md` |
-| Claude Code スキル | 22 | `working-on-issue`, `committing-on-issue`, `creating-pr-on-issue` |
-| Claude Code ルール | 21 | Git, GitHub, Next.js, shirokuma-docs 規約 |
 
 全コマンド一覧は [コマンドリファレンス](docs/guide/commands/) を、スキル・ルール一覧は [プラグイン管理](docs/guide/plugins.md) を参照してください。
 

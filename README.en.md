@@ -1,6 +1,6 @@
 # shirokuma-docs
 
-Next.js + TypeScript project documentation generator CLI with bundled Claude Code skills.
+AI-driven development workflow management CLI with bundled Claude Code skills. Also includes documentation generation for TypeScript projects.
 
 [日本語](README.md)
 
@@ -27,11 +27,11 @@ shirokuma-docs init --with-skills --with-rules --lang en
 # 3. GitHub Project setup
 shirokuma-docs projects create-project --title "Project Name" --lang en
 
-# 4. Generate documentation
-shirokuma-docs generate
-
-# 5. Use with Claude Code
+# 4. Use with Claude Code
 #    Start a new session → /working-on-issue #42
+
+# 5. (Optional) Generate documentation
+shirokuma-docs generate
 ```
 
 See [Getting Started Guide](docs/guide/getting-started.md) for detailed instructions.
@@ -40,12 +40,12 @@ See [Getting Started Guide](docs/guide/getting-started.md) for detailed instruct
 
 | Category | Commands | Examples |
 |----------|----------|----------|
+| GitHub | 5 | `issues`, `projects`, `discussions`, `session start/end` |
+| Claude Code Skills | 22 | `working-on-issue`, `committing-on-issue`, `creating-pr-on-issue` |
+| Claude Code Rules | 21 | Git, GitHub, workflow, shirokuma-docs conventions |
 | Documentation | 16 | `typedoc`, `schema`, `deps`, `portal`, `test-cases`, `coverage` |
 | Validation | 7 | `lint-tests`, `lint-coverage`, `lint-docs`, `lint-code` |
-| GitHub | 5 | `issues`, `projects`, `discussions`, `session start/end` |
 | Management | 8 | `init`, `generate`, `update`, `adr`, `repo-pairs`, `md` |
-| Claude Code Skills | 22 | `working-on-issue`, `committing-on-issue`, `creating-pr-on-issue` |
-| Claude Code Rules | 21 | Git, GitHub, Next.js, shirokuma-docs conventions |
 
 See [Command Reference](docs/guide/commands/) for all commands and [Plugin Management](docs/guide/plugins.md) for skills/rules.
 

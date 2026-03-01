@@ -1,8 +1,8 @@
 # shirokuma-docs ユーザーマニュアル
 
-shirokuma-docs は、Next.js + TypeScript プロジェクト向けの**ドキュメント自動生成 CLI ツール**です。
+shirokuma-docs は、**AI 駆動の開発ワークフロー管理 CLI** です。
 
-コードアノテーション（JSDoc タグ）からドキュメントを自動抽出し、API リファレンス、ER 図、テストケース一覧、機能マップなどを一括で生成します。また、GitHub Projects / Issues / Discussions との統合により、AI（Claude Code）との協働作業を効率化します。
+GitHub Projects / Issues / Discussions と Claude Code スキルを統合し、計画→実装→レビュー→リリースの開発サイクルを一元管理します。TypeScript プロジェクト向けのドキュメント自動生成機能も同梱しています。
 
 ## このマニュアルの対象読者
 
@@ -19,11 +19,11 @@ shirokuma-docs は、Next.js + TypeScript プロジェクト向けの**ドキュ
 
 ### コマンドリファレンス
 
-- [ドキュメント生成コマンド](commands/generation.md) - typedoc, schema, deps, portal など
-- [検証（Lint）コマンド](commands/linting.md) - lint-tests, lint-code, lint-docs など
 - [GitHub 連携コマンド](commands/github.md) - issues, projects, discussions
 - [セッション管理コマンド](commands/session.md) - session start / end / check
 - [管理・ユーティリティコマンド](commands/management.md) - init, update, update-skills, repo-pairs
+- [ドキュメント生成コマンド](commands/generation.md) - typedoc, schema, deps, portal など
+- [検証（Lint）コマンド](commands/linting.md) - lint-tests, lint-code, lint-docs など
 
 ### ガイド
 
@@ -33,7 +33,51 @@ shirokuma-docs は、Next.js + TypeScript プロジェクト向けの**ドキュ
 
 ## shirokuma-docs でできること
 
-### 1. ドキュメント自動生成
+### 1. AI 協働支援
+
+Claude Code のスキル・ルールをバンドルし、AI との協働作業を標準化します。
+
+- **スキル**: 実装、レビュー、コミット、PR 作成などの作業パターン
+- **ルール**: ブランチ運用、コミットスタイル、GitHub 連携などの規約
+- **フック**: 破壊的コマンドの自動ブロック
+
+**日常ワークフロー（スキルを使った場合）:**
+
+```
+/starting-session        セッション開始（前回引き継ぎ + Issue 一覧）
+  ↓
+/creating-item           Issue 作成 → /working-on-issue に自動チェーン
+  （または直接 /working-on-issue #42）
+  ↓
+/planning-on-issue       計画策定（未計画 Issue のみ）
+  ↓
+実装（coding-on-issue が自動委任）
+  ↓
+/committing-on-issue     コミット・プッシュ
+  ↓
+/creating-pr-on-issue    PR 作成 + セルフレビュー
+  ↓
+/ending-session          セッション終了（引き継ぎ保存）
+```
+
+詳しくは [プラグイン管理](plugins.md) を参照してください。
+
+### 2. GitHub 連携
+
+GitHub Projects V2 と統合し、Issue / Discussion の管理を CLI から一括で行えます。
+
+| コマンド | 機能 |
+|---------|------|
+| `issues` | Issues の CRUD + Projects フィールド統合 |
+| `projects` | Projects V2 の管理 |
+| `discussions` | Discussions の管理 |
+| `repo` | リポジトリ情報・ラベル管理 |
+| `github-data` | GitHub データ JSON 出力 |
+| `adr` | ADR（Architecture Decision Records）管理 |
+| `session` | セッション管理（引き継ぎ + ステータス一括更新） |
+| `discussion-templates` | Discussion テンプレート生成 |
+
+### 3. ドキュメント自動生成
 
 コードからドキュメントを自動的に生成します。手動で Markdown を書く必要はありません。
 
@@ -56,7 +100,7 @@ shirokuma-docs は、Next.js + TypeScript プロジェクト向けの**ドキュ
 | `i18n` | i18n 翻訳ファイルドキュメント |
 | `packages` | モノレポ共有パッケージドキュメント |
 
-### 2. コード品質検証
+### 4. コード品質検証
 
 コードやドキュメントの品質をチェックし、問題を早期に発見します。
 
@@ -69,50 +113,6 @@ shirokuma-docs は、Next.js + TypeScript プロジェクト向けの**ドキュ
 | `lint-annotations` | アノテーション整合性 |
 | `lint-structure` | プロジェクト構造・命名規則 |
 | `lint-workflow` | AI ワークフロー規約 |
-
-### 3. GitHub 連携
-
-GitHub Projects V2 と統合し、Issue / Discussion の管理を CLI から一括で行えます。
-
-| コマンド | 機能 |
-|---------|------|
-| `issues` | Issues の CRUD + Projects フィールド統合 |
-| `projects` | Projects V2 の管理 |
-| `discussions` | Discussions の管理 |
-| `repo` | リポジトリ情報・ラベル管理 |
-| `github-data` | GitHub データ JSON 出力 |
-| `adr` | ADR（Architecture Decision Records）管理 |
-| `session` | セッション管理（引き継ぎ + ステータス一括更新） |
-| `discussion-templates` | Discussion テンプレート生成 |
-
-### 4. AI 協働支援
-
-Claude Code のスキル・ルールをバンドルし、AI との協働作業を標準化します。
-
-- **スキル**: 実装、レビュー、コミット、PR 作成などの作業パターン
-- **ルール**: ブランチ運用、コミットスタイル、GitHub 連携などの規約
-- **フック**: 破壊的コマンドの自動ブロック
-
-**日常ワークフロー（スキルを使った場合）:**
-
-```
-/starting-session        セッション開始（前回引き継ぎ + Issue 一覧）
-  ↓
-/creating-item           Issue 作成 → /working-on-issue に自動チェーン
-  （または直接 /working-on-issue #42）
-  ↓
-/planning-on-issue       計画策定（未計画 Issue のみ）
-  ↓
-実装（coding-nextjs / designing-shadcn-ui）
-  ↓
-/committing-on-issue     コミット・プッシュ
-  ↓
-/creating-pr-on-issue    PR 作成 + セルフレビュー
-  ↓
-/ending-session          セッション終了（引き継ぎ保存）
-```
-
-詳しくは [プラグイン管理](plugins.md) を参照してください。
 
 ### 5. 管理・ユーティリティ
 
@@ -144,8 +144,8 @@ curl -fsSL https://raw.githubusercontent.com/ShirokumaLibrary/shirokuma-docs/mai
 cd your-project
 shirokuma-docs init --with-skills --with-rules --lang ja
 
-# 3. ドキュメントを一括生成
-shirokuma-docs generate
+# 3. Claude Code と連携
+#    新しいセッションを開始 → /working-on-issue #42
 ```
 
 詳しいセットアップ手順は [Getting Started](getting-started.md) を参照してください。
